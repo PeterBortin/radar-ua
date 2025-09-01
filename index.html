@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>radloc</title>
+  <style>
+    body {
+      background-color: black;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Courier New', monospace;
+    }
+
+    .radar-container {
+      position: relative;
+      margin-bottom: 30px;
+    }
+
+    .radar {
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      border: 1px dashed #70FF00;
+      background-color: black;
+      position: relative;
+    }
+
+    .gradient {
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      position: absolute;
+      animation: rotate 4s linear infinite;
+      background: conic-gradient(from 180deg at 50% 50%, rgba(0, 0, 0, 0.00) 0deg, rgba(9, 20, 0, 0.08) 147.53514289855957deg, #70FF00 360deg);
+    }
+
+    .shape {
+      content: '';
+      position: absolute;
+      width: 100%;
+      border: 1px dashed #333;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+    }
+
+    .shape2 {
+      content: '';
+      position: absolute;
+      height: 100%;
+      border: 1px dashed #333;
+      left: 50%;
+      top: 0;
+      transform: translateX(-50%);
+    }
+
+    .diagonal-line {
+      width: 141%;
+      border: 1px dashed #333;
+      top: 0%;
+      left: 0;
+      transform-origin: left center;
+      transform: rotate(45deg);
+      position: absolute;
+    }
+
+    .diagonal-line2 {
+      width: 141%;
+      border: 1px dashed #333;
+      top: 0%;
+      right: 0;
+      transform-origin: right center;
+      transform: rotate(-45deg);
+      position: absolute;
+    }
+
+    .radar::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      background-color: #111111;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      border: 2px dashed #70FF00;
+      transform: translate(-50%, -50%);
+    }
+
+    .radar::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 2px dashed #70FF00;
+      transform: translate(-50%, -50%);
+    }
+
+    .sweep-line {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 2px;
+      height: 250px;
+      background-color: #70FF00;
+      transform-origin: center top;
+      animation: rotate 4s linear infinite;
+      transform: translateX(-1px);
+    }
+
+    /* Блок целей */
+    .targets-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .target {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      position: absolute;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .target.hostile {
+      background-color: #FF4444;
+      animation: moveHostile 12s linear infinite, pulse 1s ease-in-out infinite;
+    }
+
+    .target.drone {
+      background-color: #FFD700;
+      width: 6px;
+      height: 6px;
+      animation: moveDrone 10s linear infinite, pulse 1s ease-in-out infinite;
+    }
+
+    .target.aircraft {
+      background-color: #00FFFF;
+      width: 10px;
+      height: 10px;
+      animation: moveAircraft 15s linear infinite, pulse 1s ease-in-out infinite;
+    }
+
+    /* Ракеты ПВО */
+    .pvo-missile {
+      width: 4px;
+      height: 4px;
+      background-color: #FFFFFF;
+      border-radius: 50%;
+      position: absolute;
+      display: none;
+      z-index: 100;
+    }
+
+    /* Кнопка управления */
+    .control-button {
+      padding: 15px 30px;
+      background: linear-gradient(45deg, #004400, #70FF00);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      font-size: 16px;
+      transition: all 0.3s;
+      box-shadow: 0 8px 24px rgba(112, 255, 0, 0.3);
+    }
+
+    .control-button:hover {
+      background: linear-gradient(45deg, #70FF00, #90FF20);
+      box-shadow: 0 12px 24px rgba(112, 255, 0, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .control-button:active {
+      transform: translateY(0);
+    }
+
+    .control-button:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Анимации движения целей */
+    @keyframes moveHostile {
+      0% { top: 10%; left: 80%; }
+      25% { top: 80%; left: 90%; }
+      50% { top: 90%; left: 20%; }
+      75% { top: 20%; left: 10%; }
+      100% { top: 10%; left: 80%; }
+    }
+
+    @keyframes moveDrone {
+      0% { top: 90%; left: 70%; }
+      25% { top: 20%; left: 80%; }
+      50% { top: 10%; left: 30%; }
+      75% { top: 70%; left: 10%; }
+      100% { top: 90%; left: 70%; }
+    }
+
+    @keyframes moveAircraft {
+      0% { top: 30%; left: 10%; }
+      33% { top: 70%; left: 80%; }
+      66% { top: 20%; left: 90%; }
+      100% { top: 30%; left: 10%; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+    }
+
+    @keyframes rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Анимация ракеты */
+    .missile-launch {
+      display: block !important;
+      animation: flyToTarget 4s linear forwards;
+    }
+
+    @keyframes flyToTarget {
+      0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      100% {
+        top: var(--target-y);
+        left: var(--target-x);
+        transform: translate(-50%, -50%) scale(2);
+      }
+    }
+
+    .explosion {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      background: radial-gradient(circle, #FFD700 25%, #FF4444 0%, transparent 100%);
+      border-radius: 80%;
+      animation: explode 0.5s ease-out forwards;
+    }
+
+    @keyframes explode {
+      0% {
+        transform: scale(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(3);
+        opacity: 0;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+  <div class="radar-container">
+    <!-- Блок радара -->
+    <div class="radar">
+      <div class="gradient"></div>
+      <div class="shape"></div>
+      <div class="shape2"></div>
+      <div class="diagonal-line"></div>
+      <div class="diagonal-line2"></div>
+      <div class="sweep-line"></div>
+      
+      <!-- Блок целей -->
+      <div class="targets-container">
+        <div class="target hostile" data-type="hostile"></div>
+        <div class="target drone" data-type="drone"></div>
+        <div class="target aircraft" data-type="aircraft"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Кнопка ПВО -->
+  <button class="control-button" id="pvoButton">🚀 ПУСК</button>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const radar = document.querySelector('.radar');
+      const pvoButton = document.getElementById('pvoButton');
+      const targetsContainer = document.querySelector('.targets-container');
+      
+      let isLaunching = false;
+      let activeMissiles = [];
+
+      function createMissile() {
+        const missile = document.createElement('div');
+        missile.className = 'pvo-missile';
+        missile.style.display = 'block';
+        missile.style.position = 'absolute';
+        missile.style.top = '50%';
+        missile.style.left = '50%';
+        missile.style.transform = 'translate(-50%, -50%)';
+        radar.appendChild(missile);
+        return missile;
+      }
+
+      function getTargetPosition(target) {
+        if (!target || target.style.visibility === 'hidden') return null;
+        
+        const targetRect = target.getBoundingClientRect();
+        const radarRect = radar.getBoundingClientRect();
+        
+        return {
+          x: ((targetRect.left + targetRect.width/2) - radarRect.left) / radarRect.width * 100,
+          y: ((targetRect.top + targetRect.height/2) - radarRect.top) / radarRect.height * 100
+        };
+      }
+
+      function findNearestTarget(missilePos = {x: 50, y: 50}) {
+        const targets = Array.from(targetsContainer.querySelectorAll('.target'))
+          .filter(target => target.style.visibility !== 'hidden');
+        
+        let nearest = null;
+        let minDistance = Infinity;
+
+        targets.forEach(target => {
+          const targetPos = getTargetPosition(target);
+          if (!targetPos) return;
+          
+          const distance = Math.sqrt(
+            Math.pow(targetPos.x - missilePos.x, 2) + 
+            Math.pow(targetPos.y - missilePos.y, 2)
+          );
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearest = target;
+          }
+        });
+
+        return nearest;
+      }
+
+      function calculateInterceptCourse(missilePos, target) {
+        const targetPos = getTargetPosition(target);
+        if (!targetPos) return null;
+
+        // Получаем скорость цели на основе её типа
+        const targetType = target.classList.contains('hostile') ? 'hostile' : 
+                          target.classList.contains('drone') ? 'drone' : 'aircraft';
+        
+        const targetSpeed = {
+          'hostile': 200000,  // 120 секунд на полный цикл
+          'drone': 300000,    // 100 секунд на полный цикл  
+          'aircraft': 400000  // 150 секунд на полный цикл
+        };
+
+        // Предсказываем позицию цели через время полета ракеты
+        const missileSpeed = 150; // пикселей в секунду
+        const distance = Math.sqrt(
+          Math.pow(targetPos.x - missilePos.x, 2) + 
+          Math.pow(targetPos.y - missilePos.y, 2)
+        );
+        
+        const flightTime = (distance * radar.offsetWidth / 100) / missileSpeed;
+        
+        // Упрощенное предсказание: цель продолжает движение по текущему направлению
+        return {
+          x: targetPos.x,
+          y: targetPos.y,
+          speed: Math.min(3000, distance * 100) // Адаптивная скорость: чем дальше цель, тем быстрее ракета
+        };
+      }
+
+      function guideMissile(missile, target) {
+        let missilePos = { x: 50, y: 50 };
+        const missileSpeed = 1; // Шаг перемещения в процентах
+        
+        const updateMissile = () => {
+          // Переключаемся на ближайшую цель если текущая исчезла
+          if (!target || target.style.visibility === 'hidden') {
+            target = findNearestTarget(missilePos);
+          }
+          
+          if (!target) {
+            missile.remove();
+            return;
+          }
+
+          const targetPos = getTargetPosition(target);
+          if (!targetPos) {
+            missile.remove();
+            return;
+          }
+
+          // Вычисляем направление к цели
+          const deltaX = targetPos.x - missilePos.x;
+          const deltaY = targetPos.y - missilePos.y;
+          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+          // Проверяем попадание
+          if (distance < 1) {
+            // Попадание!
+            createExplosion(targetPos.x, targetPos.y);
+            target.style.visibility = 'hidden';
+            missile.remove();
+            
+            // Возвращаем цель через 6 секунд
+            setTimeout(() => {
+              if (target.parentNode) {
+                target.style.visibility = 'visible';
+              }
+            }, 6000);
+            
+            return;
+          }
+
+          // Адаптивная скорость: чем ближе к цели, тем медленнее
+          const adaptiveSpeed = Math.max(0.8, Math.min(missileSpeed, distance / 6));
+          
+          // Нормализуем направление и применяем скорость
+          const moveX = (deltaX / distance) * adaptiveSpeed;
+          const moveY = (deltaY / distance) * adaptiveSpeed;
+
+          missilePos.x += moveX;
+          missilePos.y += moveY;
+
+          // Обновляем позицию ракеты
+          missile.style.left = missilePos.x + '%';
+          missile.style.top = missilePos.y + '%';
+
+          // Продолжаем наведение
+          requestAnimationFrame(updateMissile);
+        };
+
+        updateMissile();
+      }
+
+      function createExplosion(x, y) {
+        const explosion = document.createElement('div');
+        explosion.className = 'explosion';
+        explosion.style.left = x + '%';
+        explosion.style.top = y + '%';
+        explosion.style.position = 'absolute';
+        explosion.style.transform = 'translate(-50%, -50%)';
+        radar.appendChild(explosion);
+        
+        setTimeout(() => {
+          explosion.remove();
+        }, 500);
+      }
+
+      function launchPVOMissile() {
+        if (isLaunching) return;
+
+        // Автоматически находим ближайшую цель
+        const target = findNearestTarget();
+        if (!target) {
+          pvoButton.textContent = '❌ НЕТ ЦЕЛЕЙ';
+          setTimeout(() => {
+            pvoButton.textContent = '🚀 ПУСК';
+          }, 1000);
+          return;
+        }
+
+        isLaunching = true;
+        pvoButton.disabled = true;
+        pvoButton.textContent = '🎯 НАВЕДЕНИЕ';
+
+        const missile = createMissile();
+        
+        // Запускаем систему наведения
+        guideMissile(missile, target);
+
+        // Возвращаем кнопку в рабочее состояние через 1 секунду
+        setTimeout(() => {
+          isLaunching = false;
+          pvoButton.disabled = false;
+          pvoButton.textContent = '🚀 ПУСК';
+        }, 1000);
+      }
+
+      // Автоматическое сканирование и запуск каждые 5 секунд
+      setInterval(() => {
+        if (!isLaunching) {
+          const targets = Array.from(targetsContainer.querySelectorAll('.target'))
+            .filter(target => target.style.visibility !== 'hidden');
+          
+          if (targets.length > 0 && Math.random() > 0.5) {
+            // 50% шанс автоматического запуска
+            launchPVOMissile();
+          }
+        }
+      }, 5000);
+
+      // Добавляем случайные новые цели каждые 15 секунд
+      let activeTrajectories = new Set(); // Отслеживаем занятые траектории
+      
+      setInterval(() => {
+        const currentTargets = targetsContainer.querySelectorAll('.target').length;
+        
+        if (currentTargets < 3) { // Максимум 8 целей одновременно
+          const targetTypes = ['hostile', 'drone', 'aircraft'];
+          const availableTypes = targetTypes.filter(type => !activeTrajectories.has(type));
+          
+          // Если все траектории заняты, ждём освобождения
+          if (availableTypes.length === 0) return;
+          
+          const randomType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+          
+          // Помечаем траекторию как занятую
+          activeTrajectories.add(randomType);
+          
+          const newTarget = document.createElement('div');
+          newTarget.className = `target ${randomType}`;
+          newTarget.setAttribute('data-type', randomType);
+          
+          targetsContainer.appendChild(newTarget);
+          
+          // Удаляем цель через полный цикл её анимации + случайное время
+          const lifeTime = (randomType === 'aircraft' ? 15000 : 
+                          randomType === 'hostile' ? 12000 : 10000) + 
+                          Math.random() * 5000; // Уменьшили случайное время
+          
+          setTimeout(() => {
+            if (newTarget.parentNode) {
+              newTarget.remove();
+            }
+            // Освобождаем траекторию после удаления цели
+            activeTrajectories.delete(randomType);
+          }, lifeTime);
+        }
+      }, 6000); // Уменьшили интервал до 6 секунд
+
+      pvoButton.addEventListener('click', launchPVOMissile);
+    });
+  </script>
+
+</body>
+</html>
