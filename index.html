@@ -3,90 +3,217 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Tactical Map Advanced BR</title>
+<title>Tactical Map -- цветные точки + гармоничный низ</title>
 
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
 
 <style>
-html,body{margin:0;padding:0;height:100%;background:#111;font-family:Arial;}
+html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',Arial,sans-serif;}
 #map{height:100%;width:100%;}
 
-.panel{
+/* Гармоничная нижняя панель -- центр, компактно */
+.control-panel{
   position:absolute;
-  bottom:15px;
+  bottom:20px;
   left:50%;
   transform:translateX(-50%);
-  background:rgba(0,0,0,0.9);
-  padding:12px;
-  border-radius:14px;
+  background:rgba(20,20,20,0.85);
+  backdrop-filter:blur(8px);
+  border-radius:100px;
+  padding:8px 16px;
+  border:1px solid #3a3a3a;
+  box-shadow:0 8px 20px rgba(0,0,0,0.6);
+  z-index:1000;
+  display:flex;
+  gap:24px;
+  align-items:center;
+  font-size:13px;
+}
+
+.select-group{
   display:flex;
   gap:8px;
-  flex-wrap:wrap;
+}
+.select-group select{
+  background:#1e1e1e;
+  color:white;
+  border:1px solid #444;
+  border-radius:40px;
+  padding:8px 18px;
+  font-size:13px;
+  font-weight:400;
+  cursor:pointer;
+  outline:none;
+  min-width:110px;
+  transition:0.15s;
+}
+.select-group select:hover{background:#2a2a2a;border-color:#666;}
+
+.button-group{
+  display:flex;
+  gap:8px;
+}
+.button-group button{
+  background:#1e1e1e;
+  border:1px solid #444;
+  color:#eee;
+  border-radius:40px;
+  padding:8px 22px;
+  font-size:13px;
+  font-weight:500;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  transition:0.15s;
+  letter-spacing:0.3px;
+}
+.button-group button i{font-size:12px;}
+.button-group button:hover{
+  background:#2d2d2d;
+  color:white;
+  border-color:#777;
+}
+.reset-btn{color:#ffb0b0;}
+.reset-btn:hover{background:#4a1a1a !important;border-color:#c44 !important;}
+
+/* Кнопки зума справа внизу (над панелью) */
+.zoom-ui{
+  position:absolute;
+  bottom:100px;
+  right:20px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
   z-index:1000;
 }
-
-select,button{
-  padding:8px 12px;
-  border-radius:8px;
-  border:none;
-  font-size:14px;
+.zoom-ui button{
+  width:40px;
+  height:40px;
+  border-radius:40px;
+  background:rgba(20,20,20,0.85);
+  backdrop-filter:blur(8px);
+  border:1px solid #444;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:0.15s;
 }
+.zoom-ui button:hover{background:#2d2d2d;border-color:#777;}
 
-button{background:#2196f3;color:white;}
-.reset{background:#c62828;}
-
+/* Тултип без обводки */
 .tooltip{
   position:absolute;
-  background:rgba(0,0,0,0.8);
-  color:white;
-  padding:4px 8px;
-  border-radius:6px;
-  font-size:12px;
+  background:rgba(30,30,30,0.9);
+  color:#eee;
+  padding:4px 10px;
+  border-radius:20px;
+  font-size:11px;
   pointer-events:none;
   white-space:nowrap;
+  z-index:2000;
+  backdrop-filter:blur(2px);
+  border:none;
+  box-shadow:0 2px 6px black;
 }
 
-@media(max-width:600px){
-  .panel{width:95%;justify-content:center;}
+/* точки на карте -- цвет зависит от типа выбранного (временно) */
+.temp-point{
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,0.5);
+}
+
+@media(max-width:650px){
+  .control-panel{flex-direction:column;gap:12px;border-radius:30px;width:95%;padding:15px;}
+  .zoom-ui{bottom:200px;}
 }
 </style>
 </head>
 <body>
 
 <div id="map"></div>
-<div class="panel">
-  <select id="category">
-    <option value="drone">БПЛА</option>
-    <option value="cr">КР</option>
-    <option value="br">БР</option>
-  </select>
-  <select id="speedSelect"></select>
-  <button onclick="startObject()">Старт</button>
-  <button class="reset" onclick="resetAll()">Сброс</button>
+
+<!-- Зум справа внизу -->
+<div class="zoom-ui">
+  <button onclick="map.zoomIn()"><i class="fas fa-plus"></i></button>
+  <button onclick="map.zoomOut()"><i class="fas fa-minus"></i></button>
+</div>
+
+<!-- Нижняя панель управления (гармоничная) -->
+<div class="control-panel">
+  <div class="select-group">
+    <select id="category">
+      <option value="drone">🚁 БПЛА</option>
+      <option value="cr">⚡ КР</option>
+      <option value="br">🔥 БР</option>
+    </select>
+    <select id="speedSelect"></select>
+  </div>
+  
+  <div class="button-group">
+    <button onclick="startObject()"><i class="fas fa-play"></i> Старт</button>
+    <button class="reset-btn" onclick="resetAll()"><i class="fas fa-trash-alt"></i> Сброс</button>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const TIME_SCALE = 60; // ускорение времени
-const SOUND_SPEED = 1234; // км/ч
-
-const map = L.map('map').setView([49,31],6);
+const TIME_SCALE = 60;
+const map = L.map('map', {zoomControl: false}).setView([49,31],6);
 L.tileLayer(
 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
 {attribution:'© OpenStreetMap & CartoDB'}
 ).addTo(map);
 
+// Эффект (дым/частицы)
+function createExplosionEffect(latlng, color) {
+  const particles = 12;
+  for(let i=0; i<particles; i++) {
+    let angle = Math.random() * 2 * Math.PI;
+    let dist = Math.random() * 200;
+    let offsetLat = (Math.sin(angle) * dist) / 111000;
+    let offsetLng = (Math.cos(angle) * dist) / (111000 * Math.cos(latlng.lat * Math.PI/180));
+    let particleLatLng = [latlng.lat + offsetLat, latlng.lng + offsetLng];
+    
+    let particle = L.circleMarker(particleLatLng, {
+      radius: Math.random() * 6 + 2,
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.7,
+      weight: 0.5
+    }).addTo(map);
+    
+    let life = 1.0;
+    function fade() {
+      life -= 0.025;
+      if(life <= 0) {
+        map.removeLayer(particle);
+        return;
+      }
+      particle.setStyle({
+        fillOpacity: life * 0.6,
+        radius: (Math.random() * 5 + 2) * life
+      });
+      requestAnimationFrame(fade);
+    }
+    requestAnimationFrame(fade);
+  }
+}
+
 const speedOptions={
   drone:[80,150,300],
-  cr:[700],
-  br:[3000,5000,10000]
+  cr:[700, 900, 1200],
+  br:[3000,5000,10000, 15000]
 };
 
 const impactRadius={
-  drone:50,
-  cr:150,
-  br:250
+  drone:40,
+  cr:120,
+  br:300
 };
 
 const categorySelect=document.getElementById("category");
@@ -105,15 +232,51 @@ updateSpeedOptions();
 categorySelect.addEventListener("change",updateSpeedOptions);
 
 let tempPoints=[];
+let tempMarkers=[]; // чтобы удалять при смене типа или сбросе
 let activeObjects=[];
-let tooltips=[];
 
-map.on("click",e=>{
-  tempPoints.push([e.latlng.lat,e.latlng.lng]);
-  L.circleMarker(e.latlng,{radius:4,color:"cyan"}).addTo(map);
+// Функция цвета в зависимости от выбранного типа
+function getCurrentTypeColor(){
+  const type = categorySelect.value;
+  if(type==="drone") return "#00ffff";
+  if(type==="cr") return "#ffaa00";
+  if(type==="br") return "#ff4444";
+  return "#ffffff";
+}
+
+// Перерисовка временных точек при смене типа (обновляем цвет)
+function refreshTempPointsColor(){
+  const color = getCurrentTypeColor();
+  tempMarkers.forEach(m => {
+    m.setStyle({color: color, fillColor: color});
+  });
+}
+
+categorySelect.addEventListener("change", ()=>{
+  updateSpeedOptions();
+  refreshTempPointsColor();
 });
 
-// старт объекта
+map.on("click",e=>{
+  if(categorySelect.value === "br" && tempPoints.length >= 2) {
+    alert("Для БР только две точки: старт и финиш");
+    return;
+  }
+  const latlng = [e.latlng.lat, e.latlng.lng];
+  tempPoints.push(latlng);
+  
+  const color = getCurrentTypeColor();
+  const marker = L.circleMarker(latlng, {
+    radius: 5,
+    color: color,
+    fillColor: color,
+    fillOpacity: 0.9,
+    weight: 1.5,
+    className: 'temp-point'
+  }).addTo(map);
+  tempMarkers.push(marker);
+});
+
 function startObject(){
   if(tempPoints.length<2){alert("Минимум 2 точки"); return;}
   const type = categorySelect.value;
@@ -123,7 +286,13 @@ function startObject(){
     type:type,
     points:[...tempPoints],
     speed:speed,
-    marker:L.circleMarker(tempPoints[0],{radius:5,color:"white",fillColor:"white",fillOpacity:1}).addTo(map),
+    marker:L.circleMarker(tempPoints[0],{
+      radius:6,
+      color:getColor(type),
+      fillColor:getColor(type),
+      fillOpacity:1,
+      weight:1.5
+    }).addTo(map),
     passedLine:null,
     remainingLine:null,
     impactCircle:null,
@@ -135,24 +304,28 @@ function startObject(){
 
   obj.marker.bringToFront();
   activeObjects.push(obj);
+  
+  // удаляем временные точки
+  tempMarkers.forEach(m=>map.removeLayer(m));
+  tempMarkers = [];
+  tempPoints = [];
+  
   animateObject(obj);
-  tempPoints=[];
 }
 
-// тулбар/tooltip
 function createTooltip(latlng){
   const div = document.createElement("div");
   div.className="tooltip";
   div.style.left="0px"; div.style.top="0px";
-  div.innerHTML="0:00:00 | 0 км/ч";
+  div.innerHTML = `0:00:00 | 0 км/ч`;
   document.body.appendChild(div);
   return div;
 }
 
 function updateTooltip(obj,latlng,currentSpeed,time){
   const point = map.latLngToContainerPoint(latlng);
-  obj.tooltip.style.left = (point.x+10)+"px";
-  obj.tooltip.style.top = (point.y-20)+"px";
+  obj.tooltip.style.left = (point.x+12)+"px";
+  obj.tooltip.style.top = (point.y-25)+"px";
   obj.tooltip.innerHTML = `${formatTime(time)} | ${currentSpeed.toFixed(0)} км/ч`;
 }
 
@@ -160,7 +333,6 @@ function removeTooltip(obj){
   if(obj.tooltip) document.body.removeChild(obj.tooltip);
 }
 
-// формат времени чч:мм:сс
 function formatTime(hours){
   const totalSec = Math.floor(hours*3600);
   const h=Math.floor(totalSec/3600);
@@ -169,7 +341,6 @@ function formatTime(hours){
   return `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
 }
 
-// анимация объектов
 function animateObject(obj){
   function frame(){
     if(obj.finished) return;
@@ -210,62 +381,84 @@ function animateObject(obj){
   frame();
 }
 
-// расчет баллистической дуги (упрощенно)
 function getBRDistance(obj,hours){
-  const accelPhase = 5/3600; // 5 сек до крейсерской фазы в часах
-  const distance = obj.speed*(hours-accelPhase);
-  return distance>0?distance:obj.speed*hours*0.5; // упрощение разгона
+  const accelPhase = 5/3600;
+  if(hours < accelPhase) {
+    return obj.speed * hours * 0.3;
+  } else {
+    return obj.speed * (hours - accelPhase*0.5);
+  }
 }
 
-// рисование линий
 function drawLines(obj,index,currentPos){
   if(obj.passedLine) map.removeLayer(obj.passedLine);
   if(obj.remainingLine) map.removeLayer(obj.remainingLine);
 
   const passed = obj.points.slice(0,index+1);
   passed.push(currentPos);
-
   const remaining = obj.points.slice(index+1);
 
-  obj.passedLine = L.polyline(passed,{color:getColor(obj.type)}).addTo(map);
+  obj.passedLine = L.polyline(passed,{color:getColor(obj.type), weight:3, opacity:0.8}).addTo(map);
 
   if(remaining.length>0){
-    obj.remainingLine = L.polyline([currentPos,...remaining],{color:getColor(obj.type),dashArray:"6,6"}).addTo(map);
+    obj.remainingLine = L.polyline([currentPos,...remaining],{
+      color:getColor(obj.type),
+      dashArray:"6,6",
+      weight:2,
+      opacity:0.5
+    }).addTo(map);
   }
 }
 
-// завершение объекта
 function finishObject(obj){
   obj.finished=true;
   if(obj.marker) map.removeLayer(obj.marker);
   if(obj.remainingLine) map.removeLayer(obj.remainingLine);
   if(obj.passedLine) map.removeLayer(obj.passedLine);
 
-  obj.passedLine=L.polyline(obj.points,{color:getColor(obj.type),opacity:0.3}).addTo(map);
+  obj.passedLine=L.polyline(obj.points,{color:getColor(obj.type),opacity:0.3, weight:2}).addTo(map);
 
   const last=obj.points[obj.points.length-1];
-  flashEffect(last,impactRadius[obj.type],getColor(obj.type));
-  obj.impactCircle=L.circle(last,{radius:impactRadius[obj.type],color:getColor(obj.type),fillColor:getColor(obj.type),fillOpacity:0.3}).addTo(map);
+  
+  flashEffect(last, impactRadius[obj.type], getColor(obj.type));
+  createExplosionEffect(L.latLng(last[0], last[1]), getColor(obj.type));
+  
+  let shockwave = L.circle(last, {
+    radius: 30,
+    color: 'white',
+    weight: 1.5,
+    fillOpacity: 0,
+    opacity: 0.6
+  }).addTo(map);
+  let r = 30;
+  function expandWave() {
+    r += 20;
+    shockwave.setRadius(r);
+    shockwave.setStyle({opacity: 0.6 * (1 - r/impactRadius[obj.type])});
+    if(r < impactRadius[obj.type]) requestAnimationFrame(expandWave);
+    else map.removeLayer(shockwave);
+  }
+  expandWave();
+  
+  obj.impactCircle=L.circle(last,{radius:impactRadius[obj.type],color:getColor(obj.type),fillColor:getColor(obj.type),fillOpacity:0.15, weight:1.5}).addTo(map);
 
   removeTooltip(obj);
 }
 
-// вспышка
 function flashEffect(latlng,radius,color){
-  let r=10;
+  let r=8;
   const maxR=radius;
-  const flash=L.circle(latlng,{radius:r,color:color,fillColor:color,fillOpacity:0.8}).addTo(map);
+  const flash=L.circle(latlng,{radius:r,color:'white',fillColor:color,fillOpacity:0.8, weight:1}).addTo(map);
   function expand(){
-    r+=maxR/15;
+    r+=maxR/12;
     flash.setRadius(r);
-    flash.setStyle({fillOpacity:0.8*(1-r/maxR)});
+    flash.setStyle({fillOpacity:0.6*(1-r/maxR), color:'white'});
     if(r<maxR) requestAnimationFrame(expand);
     else map.removeLayer(flash);
   }
   expand();
 }
 
-// сброс
 function resetAll(){
   map.eachLayer(layer=>{
     if(layer instanceof L.Polyline ||
@@ -275,10 +468,12 @@ function resetAll(){
     }
   });
   activeObjects.forEach(o=>removeTooltip(o));
-  activeObjects=[]; tempPoints=[];
+  activeObjects=[]; 
+  tempPoints=[];
+  tempMarkers.forEach(m=>map.removeLayer(m));
+  tempMarkers=[];
 }
 
-// расстояние
 function calcTotal(points){let d=0;for(let i=0;i<points.length-1;i++) d+=getDistance(points[i],points[i+1]);return d;}
 function getDistance(a,b){
   const R=6371;
@@ -291,9 +486,10 @@ function getDistance(a,b){
 }
 
 function getColor(type){
-  if(type==="drone") return "cyan";
-  if(type==="cr") return "orange";
-  if(type==="br") return "red";
+  if(type==="drone") return "#00ffff";
+  if(type==="cr") return "#ffaa00";
+  if(type==="br") return "#ff4444";
+  return "#ffffff";
 }
 </script>
 
