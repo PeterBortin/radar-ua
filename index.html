@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Tactical Map -- ПВО + КР + БР + БПЛА</title>
+<title>Тактическая карта -- БПЛА / КР / БР</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
@@ -12,132 +12,98 @@
 html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',Arial,sans-serif;}
 #map{height:100%;width:100%;}
 
-/* Верхняя панель со статистикой */
-.top-panel {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(20,20,20,0.85);
-  backdrop-filter: blur(8px);
-  border-radius: 40px;
-  padding: 10px 25px;
-  border: 1px solid #3a3a3a;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-  z-index: 1000;
-  display: flex;
-  gap: 40px;
-  color: #eee;
-  font-size: 14px;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.stat-item i {
-  color: #ffaa00;
-  width: 20px;
-  text-align: center;
-}
-
-.stat-value {
-  font-weight: bold;
-  color: white;
-  margin-left: 5px;
-}
-
 /* Нижняя панель управления */
 .control-panel{
   position:absolute;
   bottom:20px;
   left:50%;
   transform:translateX(-50%);
-  background:rgba(20,20,20,0.85);
+  background:rgba(20,20,20,0.95);
   backdrop-filter:blur(8px);
-  border-radius:100px;
-  padding:12px 25px;
+  border-radius:60px;
+  padding:15px 30px;
   border:1px solid #3a3a3a;
-  box-shadow:0 8px 20px rgba(0,0,0,0.6);
+  box-shadow:0 8px 20px rgba(0,0,0,0.8);
   z-index:1000;
   display:flex;
-  gap:20px;
+  gap:25px;
   align-items:center;
   font-size:13px;
+  flex-wrap:wrap;
+  justify-content:center;
 }
 
-.mode-group{
+/* Блок цели */
+.target-group {
   display:flex;
-  gap:4px;
+  gap:15px;
   background:#1a1a1a;
   border-radius:40px;
-  padding:3px;
+  padding:8px 20px;
+  border:1px solid #333;
+  align-items:center;
+}
+
+.group-label {
+  color:#ffaa00;
+  font-weight:bold;
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+
+.target-option select {
+  background:#2a2a2a;
+  color:white;
+  border:1px solid #444;
+  border-radius:30px;
+  padding:8px 15px;
+  font-size:12px;
+  cursor:pointer;
+  outline:none;
+  min-width:130px;
+}
+
+.target-option select:hover {
+  background:#333;
+  border-color:#666;
+}
+
+/* Характеристики */
+.specs {
+  display:flex;
+  gap:15px;
+  color:#ccc;
+  font-size:11px;
+  background:#1e1e1e;
+  padding:5px 15px;
+  border-radius:30px;
   border:1px solid #333;
 }
 
-.mode-btn{
-  background:transparent;
-  border:none;
-  color:#999;
-  padding:8px 25px;
-  border-radius:40px;
-  font-size:13px;
-  font-weight:500;
-  cursor:pointer;
-  transition:0.15s;
+.spec-item {
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+
+.spec-item i {
+  color:#ffaa00;
+  width:16px;
+}
+
+/* Счетчик точек */
+.points-badge {
+  background:#ffaa00;
+  color:#111;
+  border-radius:20px;
+  padding:4px 12px;
+  font-size:12px;
+  font-weight:bold;
   white-space:nowrap;
 }
 
-.mode-btn.active{
-  background:#2d5a8c;
-  color:white;
-}
-
-.mode-btn i{margin-right:8px; font-size:12px;}
-
-/* Сетка контролов */
-.controls-grid {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  background: #1a1a1a;
-  padding: 5px 15px;
-  border-radius: 40px;
-  border: 1px solid #333;
-}
-
-.control-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #ccc;
-}
-
-.control-item i {
-  color: #ffaa00;
-  font-size: 14px;
-}
-
-.control-item select {
-  background: #2a2a2a;
-  color: white;
-  border: 1px solid #444;
-  border-radius: 30px;
-  padding: 6px 15px;
-  font-size: 12px;
-  cursor: pointer;
-  outline: none;
-  min-width: 130px;
-}
-
-.control-item select:hover {
-  background: #333;
-  border-color: #666;
-}
-
-/* Кнопки действий */
+/* Кнопки */
 .action-group{
   display:flex;
   gap:8px;
@@ -148,7 +114,7 @@ html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',
   border:1px solid #444;
   color:#eee;
   border-radius:40px;
-  padding:8px 25px;
+  padding:10px 30px;
   font-size:13px;
   font-weight:500;
   cursor:pointer;
@@ -163,16 +129,14 @@ html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',
   border-color:#777;
 }
 
-.action-group button i{font-size:12px;}
-
-#launchBtn {
+#startBtn {
   background: #2d5a8c;
   border-color: #4a7aac;
   min-width: 140px;
   justify-content: center;
 }
 
-#launchBtn:hover {
+#startBtn:hover {
   background: #3a6a9c;
 }
 
@@ -214,7 +178,7 @@ html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',
 
 .zoom-ui button:hover{background:#2d2d2d;border-color:#777;}
 
-/* Тултипы */
+/* Тултипы целей */
 .tooltip{
   position:absolute;
   background:rgba(30,30,30,0.9);
@@ -230,44 +194,60 @@ html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',
   box-shadow:0 2px 6px black;
 }
 
-/* Легенда */
-.legend {
-  position: absolute;
-  bottom: 100px;
-  left: 20px;
-  background: rgba(20,20,20,0.85);
-  backdrop-filter: blur(8px);
-  border-radius: 20px;
-  padding: 15px;
-  border: 1px solid #3a3a3a;
-  color: #eee;
-  font-size: 12px;
-  z-index: 1000;
+/* Статистика */
+.stats-corner {
+  position:absolute;
+  top:20px;
+  left:20px;
+  background:rgba(20,20,20,0.8);
+  backdrop-filter:blur(4px);
+  border-radius:30px;
+  padding:8px 16px;
+  border:1px solid #333;
+  color:#eee;
+  font-size:12px;
+  display:flex;
+  gap:20px;
+  z-index:1000;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+.stat-item {
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
 
-.legend-color {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+.stat-item i {
+  color:#ffaa00;
 }
 
-.legend-color.pvo-m { background: #ffaa00; }
-.legend-color.pvo-s { background: #ff5500; }
-.legend-color.drone { background: #00ffff; }
-.legend-color.cr { background: #ffaa00; }
-.legend-color.br { background: #ff4444; }
+.stat-value {
+  font-weight:bold;
+  color:white;
+}
+
+/* Подсказка */
+.hint {
+  position:absolute;
+  top:20px;
+  right:20px;
+  background:rgba(0,0,0,0.7);
+  color:#ccc;
+  padding:8px 15px;
+  border-radius:30px;
+  font-size:12px;
+  border:1px solid #333;
+  z-index:1000;
+}
+
+.hint i {
+  color:#ffaa00;
+  margin-right:5px;
+}
 
 @media(max-width:1000px){
   .control-panel{flex-direction:column;border-radius:30px;width:95%;padding:15px;}
-  .controls-grid{flex-wrap:wrap;}
-  .top-panel{flex-direction:column;gap:10px;width:90%;}
+  .target-group{flex-wrap:wrap;}
   .zoom-ui{bottom:220px;}
 }
 </style>
@@ -276,47 +256,24 @@ html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',
 
 <div id="map"></div>
 
-<!-- Верхняя панель статистики -->
-<div class="top-panel">
-  <div class="stat-item">
-    <i class="fas fa-shield-alt"></i>
-    <span>ПВО: <span class="stat-value" id="pvoCount">0</span></span>
-  </div>
+<!-- Статистика -->
+<div class="stats-corner">
   <div class="stat-item">
     <i class="fas fa-bullseye"></i>
-    <span>Активных целей: <span class="stat-value" id="targetCount">0</span></span>
+    <span>Цели: <span class="stat-value" id="targetCount">0</span></span>
   </div>
   <div class="stat-item">
     <i class="fas fa-clock"></i>
-    <span>Масштаб времени: <span class="stat-value">60x</span></span>
+    <span>Время: <span class="stat-value" id="simTime">00:00</span></span>
   </div>
 </div>
 
-<!-- Легенда -->
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-color pvo-m"></div>
-    <span>ПВО мобильная (100 км)</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color pvo-s"></div>
-    <span>ПВО статическая (350 км)</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color drone"></div>
-    <span>БПЛА</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color cr"></div>
-    <span>Крылатая ракета</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color br"></div>
-    <span>Баллистическая ракета</span>
-  </div>
+<!-- Подсказка -->
+<div class="hint">
+  <i class="fas fa-mouse-pointer"></i> Кликните на карте чтобы добавить точку маршрута
 </div>
 
-<!-- Зум справа внизу -->
+<!-- Кнопки зума -->
 <div class="zoom-ui">
   <button onclick="map.zoomIn()"><i class="fas fa-plus"></i></button>
   <button onclick="map.zoomOut()"><i class="fas fa-minus"></i></button>
@@ -324,27 +281,28 @@ html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',
 
 <!-- Нижняя панель управления -->
 <div class="control-panel">
-  <!-- Переключатель режимов -->
-  <div class="mode-group">
-    <button class="mode-btn active" onclick="setMode('pvo')" id="modePVO">
-      <i class="fas fa-shield-alt"></i> ПВО
-    </button>
-    <button class="mode-btn" onclick="setMode('target')" id="modeTarget">
-      <i class="fas fa-bullseye"></i> Цели
-    </button>
+  <!-- Блок ЦЕЛИ -->
+  <div class="target-group">
+    <span class="group-label"><i class="fas fa-bullseye"></i> Цель:</span>
+    <div class="target-option">
+      <select id="targetTypeSelect">
+        <option value="drone">🚁 БПЛА (80-300 км/ч)</option>
+        <option value="cr">⚡ Крылатая ракета (700-1200 км/ч)</option>
+        <option value="br">🔥 Баллистическая ракета (3000-10000 км/ч)</option>
+      </select>
+    </div>
+    <div class="target-option">
+      <select id="targetSpeedSelect"></select>
+    </div>
+    <div id="waypointBadge" class="points-badge">0 точек</div>
   </div>
-  
-  <!-- Сетка контролов -->
-  <div id="contextControls" class="controls-grid">
-    <!-- Динамически заполняется -->
-  </div>
-  
-  <!-- Кнопки действий -->
+
+  <!-- Кнопки -->
   <div class="action-group">
-    <button id="launchBtn" onclick="handleLaunch()">
-      <i class="fas fa-rocket"></i> Запустить цели
+    <button id="startBtn" onclick="toggleSimulation()">
+      <i class="fas fa-play"></i> Старт
     </button>
-    <button id="resetBtn" onclick="resetAllTargets()">
+    <button id="resetBtn" onclick="resetAll()">
       <i class="fas fa-stop"></i> Сброс
     </button>
   </div>
@@ -352,216 +310,135 @@ html,body{margin:0;padding:0;height:100%;background:#111;font-family:'Segoe UI',
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-const TIME_SCALE = 60;
+// ========== ИНИЦИАЛИЗАЦИЯ КАРТЫ ==========
+const TIME_SCALE = 60; // ускорение времени в 60 раз
 const map = L.map('map', {zoomControl: false}).setView([50, 30], 6);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   attribution: '© OpenStreetMap, © CartoDB'
 }).addTo(map);
 
-// Текущий режим
-let currentMode = 'pvo';
+// ========== ГЛОБАЛЬНЫЕ ДАННЫЕ ==========
+let activeTargets = [];          // активные цели
+let pendingWaypoints = [];       // временные точки для текущей цели
+let pendingMarkers = [];         // маркеры временных точек
+let simulationActive = false;    // флаг, что симуляция запущена
+let simulationStartTime = null;  // время старта симуляции
+let animationFrame = null;       // для анимации времени
 
-// Данные ПВО
-let pvoUnits = [];
+// Параметры для следующей цели
+let pendingTargetParams = {
+  type: 'drone',
+  speed: 80
+};
 
-// Данные для целей
-let pendingWaypoints = []; // Точки для текущей набираемой цели
-let pendingMarkers = [];
-let pendingType = 'drone'; // По умолчанию БПЛА
-let pendingSpeed = 80;
-
-// Активные цели
-let activeTargets = [];
-
-// Временные переменные для режима ПВО
-let tempPVOPoint = null;
-let tempPVOMarker = null;
-let tempPVOZone = null;
-
-// Параметры для разных типов целей
+// Типы целей
 const targetTypes = {
   drone: { 
-    name: '🚁 БПЛА', 
+    name: 'БПЛА', 
     color: '#00ffff', 
     speedOptions: [80, 150, 300], 
-    impactRadius: 40,
-    icon: 'fa-drone'
+    icon: 'fa-drone',
+    radius: 40,        // км
+    maxPoints: 10      // можно много точек
   },
   cr: { 
-    name: '⚡ КР', 
+    name: 'КР', 
     color: '#ffaa00', 
     speedOptions: [700, 900, 1200], 
-    impactRadius: 120,
-    icon: 'fa-rocket'
+    icon: 'fa-rocket',
+    radius: 120,
+    maxPoints: 10
   },
   br: { 
-    name: '🔥 БР', 
+    name: 'БР', 
     color: '#ff4444', 
     speedOptions: [3000, 5000, 10000], 
-    impactRadius: 300,
-    icon: 'fa-bomb'
+    icon: 'fa-bomb',
+    radius: 300,
+    maxPoints: 2       // только 2 точки
   }
 };
 
 // ========== ИНИЦИАЛИЗАЦИЯ ИНТЕРФЕЙСА ==========
-function updateInterface() {
-  const contextDiv = document.getElementById('contextControls');
-  
-  if(currentMode === 'pvo') {
-    contextDiv.innerHTML = `
-      <div class="control-item">
-        <i class="fas fa-shield-alt"></i>
-        <select id="pvoTypeSelect">
-          <option value="mobile">🚜 Мобильная (100 км)</option>
-          <option value="static">🏹 Статическая (350 км)</option>
-        </select>
-      </div>
-    `;
-  } else {
-    // Сохраняем текущий выбранный тип перед обновлением
-    const currentType = pendingType;
-    
-    contextDiv.innerHTML = `
-      <div class="control-item">
-        <i class="fas fa-fighter-jet"></i>
-        <select id="targetTypeSelect">
-          <option value="drone" ${currentType === 'drone' ? 'selected' : ''}>🚁 БПЛА</option>
-          <option value="cr" ${currentType === 'cr' ? 'selected' : ''}>⚡ Крылатая ракета</option>
-          <option value="br" ${currentType === 'br' ? 'selected' : ''}>🔥 Баллистическая ракета</option>
-        </select>
-      </div>
-      <div class="control-item">
-        <i class="fas fa-tachometer-alt"></i>
-        <select id="targetSpeedSelect"></select>
-      </div>
-    `;
-    
-    updateSpeedOptions();
-    
-    // Показываем количество точек
-    if(pendingWaypoints.length > 0) {
-      const pointsCount = document.createElement('div');
-      pointsCount.className = 'control-item';
-      pointsCount.innerHTML = `
-        <i class="fas fa-map-marker-alt"></i>
-        <span style="color:#ffaa00">Точек: ${pendingWaypoints.length}</span>
-      `;
-      contextDiv.appendChild(pointsCount);
-    }
-  }
-  
-  // Обновляем статистику
-  document.getElementById('pvoCount').textContent = pvoUnits.length;
-  document.getElementById('targetCount').textContent = activeTargets.length;
-}
-
-// Обновление списка скоростей
-function updateSpeedOptions() {
-  const targetTypeSelect = document.getElementById('targetTypeSelect');
-  if (!targetTypeSelect) return;
-  
-  const targetType = targetTypeSelect.value;
+function updateSpeedSelect() {
+  const targetType = document.getElementById('targetTypeSelect').value;
   const speedSelect = document.getElementById('targetSpeedSelect');
   
-  // Обновляем pendingType
-  pendingType = targetType;
-  
+  pendingTargetParams.type = targetType;
   speedSelect.innerHTML = '';
+  
   targetTypes[targetType].speedOptions.forEach(speed => {
     const option = document.createElement('option');
     option.value = speed;
     option.textContent = speed + ' км/ч';
-    if (speed === pendingSpeed && targetType === pendingType) {
-      option.selected = true;
-    }
+    if (speed === pendingTargetParams.speed) option.selected = true;
     speedSelect.appendChild(option);
   });
+
+  // Если текущая скорость не подходит, берём первую
+  if (!targetTypes[targetType].speedOptions.includes(pendingTargetParams.speed)) {
+    pendingTargetParams.speed = targetTypes[targetType].speedOptions[0];
+    speedSelect.value = pendingTargetParams.speed;
+  }
   
-  // Если скорость не соответствует типу, выбираем первую
-  if (!targetTypes[targetType].speedOptions.includes(pendingSpeed)) {
-    pendingSpeed = targetTypes[targetType].speedOptions[0];
+  updateWaypointBadge();
+}
+
+function updateWaypointBadge() {
+  const badge = document.getElementById('waypointBadge');
+  const targetType = document.getElementById('targetTypeSelect').value;
+  const maxPoints = targetTypes[targetType].maxPoints;
+  
+  if (pendingWaypoints.length > 0) {
+    badge.textContent = `${pendingWaypoints.length}/${maxPoints} точек`;
+    badge.style.background = pendingWaypoints.length >= maxPoints ? '#ff5555' : '#ffaa00';
+  } else {
+    badge.textContent = '0 точек';
+    badge.style.background = '#ffaa00';
   }
 }
 
-// Переключение режимов
-function setMode(mode) {
-  currentMode = mode;
-  
-  document.getElementById('modePVO').classList.toggle('active', mode === 'pvo');
-  document.getElementById('modeTarget').classList.toggle('active', mode === 'target');
-  
-  clearTempData();
-  updateInterface();
+// Обновление счётчика целей
+function updateStats() {
+  document.getElementById('targetCount').textContent = activeTargets.length;
 }
 
-// Очистка временных данных
-function clearTempData() {
-  if(tempPVOMarker) {
-    map.removeLayer(tempPVOMarker);
-    tempPVOMarker = null;
-  }
-  if(tempPVOZone) {
-    map.removeLayer(tempPVOZone);
-    tempPVOZone = null;
-  }
-  tempPVOPoint = null;
+// Обновление времени симуляции
+function updateSimulationTime() {
+  if (!simulationActive || !simulationStartTime) return;
+  
+  const now = performance.now();
+  const simHours = ((now - simulationStartTime) / 1000 / 3600) * TIME_SCALE;
+  const totalSec = Math.floor(simHours * 3600);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  
+  document.getElementById('simTime').textContent = 
+    `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+  
+  animationFrame = requestAnimationFrame(updateSimulationTime);
 }
 
-// ========== ОБРАБОТКА КЛИКА ПО КАРТЕ ==========
+// ========== КЛИК ПО КАРТЕ ==========
 map.on('click', function(e) {
   const latlng = [e.latlng.lat, e.latlng.lng];
   
-  if(currentMode === 'pvo') {
-    handlePVOClick(latlng);
-  } else {
-    handleTargetClick(latlng);
-  }
-});
-
-function handlePVOClick(latlng) {
-  clearTempData();
+  // Получаем текущий тип цели
+  const targetType = document.getElementById('targetTypeSelect').value;
+  const maxPoints = targetTypes[targetType].maxPoints;
   
-  const pvoType = document.getElementById('pvoTypeSelect').value;
-  const color = pvoType === 'mobile' ? '#ffaa00' : '#ff5500';
-  const radius = pvoType === 'mobile' ? 100000 : 350000;
-  
-  tempPVOMarker = L.circleMarker(latlng, {
-    radius: pvoType === 'mobile' ? 8 : 10,
-    color: 'white',
-    fillColor: color,
-    fillOpacity: 0.9,
-    weight: 2
-  }).addTo(map);
-  
-  tempPVOZone = L.circle(latlng, {
-    radius: radius,
-    color: color,
-    fillColor: color,
-    fillOpacity: 0.15,
-    weight: 2
-  }).addTo(map);
-  
-  tempPVOPoint = latlng;
-}
-
-function handleTargetClick(latlng) {
-  // Получаем текущий тип цели из селекта
-  const targetTypeSelect = document.getElementById('targetTypeSelect');
-  if (targetTypeSelect) {
-    pendingType = targetTypeSelect.value;
-  }
-  
-  // Проверка для БР
-  if(pendingType === 'br' && pendingWaypoints.length >= 2) {
-    alert('Для баллистической ракеты только 2 точки: старт и цель');
+  // Проверка лимита точек
+  if (pendingWaypoints.length >= maxPoints) {
+    alert(`Максимум ${maxPoints} точки для ${targetTypes[targetType].name}`);
     return;
   }
   
+  // Добавляем точку маршрута
   pendingWaypoints.push(latlng);
   
-  const color = targetTypes[pendingType].color;
+  const color = targetTypes[targetType].color;
   const marker = L.circleMarker(latlng, {
     radius: 6,
     color: color,
@@ -571,39 +448,10 @@ function handleTargetClick(latlng) {
   }).addTo(map);
   
   pendingMarkers.push(marker);
-  updateInterface();
-}
+  updateWaypointBadge();
+});
 
-// ========== ЗАПУСК ЦЕЛЕЙ ==========
-function handleLaunch() {
-  if(pendingWaypoints.length < 2) {
-    alert('Добавьте минимум 2 точки маршрута');
-    return;
-  }
-  
-  // Получаем текущие параметры из селектов
-  const targetType = document.getElementById('targetTypeSelect').value;
-  const speed = parseInt(document.getElementById('targetSpeedSelect').value);
-  
-  // Сохраняем выбранный тип для следующей цели
-  pendingType = targetType;
-  pendingSpeed = speed;
-  
-  // Создаем новую цель
-  const target = createTarget(targetType, speed, [...pendingWaypoints]);
-  activeTargets.push(target);
-  
-  // Очищаем временные точки
-  pendingMarkers.forEach(m => map.removeLayer(m));
-  pendingMarkers = [];
-  pendingWaypoints = [];
-  
-  updateInterface();
-  
-  alert(`Цель запущена! Активных целей: ${activeTargets.length}`);
-}
-
-// Создание цели
+// ========== СОЗДАНИЕ ЦЕЛИ ==========
 function createTarget(type, speed, waypoints) {
   const color = targetTypes[type].color;
   const target = {
@@ -626,254 +474,197 @@ function createTarget(type, speed, waypoints) {
       weight: 2,
       dashArray: '5,5'
     }).addTo(map),
-    startTime: performance.now(),
     totalDistance: calculateTotalDistance(waypoints),
     active: true,
     intercepted: false,
-    tooltip: createTooltip(waypoints[0])
+    tooltip: createTooltip(waypoints[0]),
+    progress: 0,        // пройденное расстояние в км
+    lastUpdate: performance.now()
   };
-  
-  animateTarget(target);
-  checkPVOThreats(target);
-  
+
+  if (simulationActive) {
+    startTargetMovement(target);
+  }
+
   return target;
 }
 
-// ========== АНИМАЦИЯ ЦЕЛИ ==========
-function animateTarget(target) {
-  function frame() {
-    if(!target.active || target.intercepted) return;
+// ========== ЗАПУСК ЦЕЛИ ==========
+function addTarget() {
+  if (pendingWaypoints.length < 2) {
+    alert('Добавьте минимум 2 точки маршрута');
+    return false;
+  }
+
+  // Получаем параметры
+  const targetType = document.getElementById('targetTypeSelect').value;
+  const speed = parseInt(document.getElementById('targetSpeedSelect').value);
+
+  // Сохраняем как параметры по умолчанию
+  pendingTargetParams.type = targetType;
+  pendingTargetParams.speed = speed;
+
+  // Создаём цель
+  const target = createTarget(targetType, speed, [...pendingWaypoints]);
+  activeTargets.push(target);
+
+  // Очищаем временные маркеры
+  pendingMarkers.forEach(m => map.removeLayer(m));
+  pendingMarkers = [];
+  pendingWaypoints = [];
+
+  updateWaypointBadge();
+  updateStats();
+  
+  return true;
+}
+
+// ========== ЗАПУСК ДВИЖЕНИЯ ЦЕЛИ ==========
+function startTargetMovement(target) {
+  if (!target.active || target.intercepted) return;
+  
+  target.lastUpdate = performance.now();
+  
+  function moveFrame() {
+    if (!target.active || target.intercepted || !simulationActive) return;
     
     const now = performance.now();
-    const hours = ((now - target.startTime) / 1000 / 3600) * TIME_SCALE;
+    const dtHours = ((now - target.lastUpdate) / 1000 / 3600) * TIME_SCALE;
+    target.lastUpdate = now;
     
-    let traveled;
-    if(target.type === 'br') {
-      const accelPhase = 5/3600;
-      if(hours < accelPhase) {
-        traveled = target.speed * hours * 0.3;
-      } else {
-        traveled = target.speed * (hours - accelPhase * 0.5);
-      }
-    } else {
-      traveled = target.speed * hours;
-    }
+    // Расстояние, которое нужно пройти за этот кадр
+    const segmentKm = target.speed * dtHours;
+    target.progress += segmentKm;
     
-    if(traveled >= target.totalDistance) {
+    if (target.progress >= target.totalDistance) {
+      // Достигли финальной точки
       finishTarget(target);
       return;
     }
     
+    // Находим текущую позицию на маршруте
     let accumulated = 0;
-    for(let i = 0; i < target.waypoints.length - 1; i++) {
+    for (let i = 0; i < target.waypoints.length - 1; i++) {
       const segmentDist = getDistance(target.waypoints[i], target.waypoints[i+1]);
-      if(accumulated + segmentDist >= traveled) {
-        const ratio = (traveled - accumulated) / segmentDist;
+      if (accumulated + segmentDist >= target.progress) {
+        const ratio = (target.progress - accumulated) / segmentDist;
         const lat = target.waypoints[i][0] + (target.waypoints[i+1][0] - target.waypoints[i][0]) * ratio;
         const lng = target.waypoints[i][1] + (target.waypoints[i+1][1] - target.waypoints[i][1]) * ratio;
         
         target.position = [lat, lng];
         target.marker.setLatLng([lat, lng]);
         
+        // Обновляем тултип
         const point = map.latLngToContainerPoint([lat, lng]);
         target.tooltip.style.left = (point.x + 12) + 'px';
         target.tooltip.style.top = (point.y - 25) + 'px';
-        target.tooltip.innerHTML = `${formatTime(hours)} | ${target.speed} км/ч`;
+        
+        const totalSec = Math.floor((target.progress / target.speed) * 3600);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        target.tooltip.innerHTML = `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')} | ${target.speed} км/ч`;
         
         break;
       }
       accumulated += segmentDist;
     }
     
-    requestAnimationFrame(frame);
-  }
-  frame();
-}
-
-// ========== ПРОВЕРКА УГРОЗ ==========
-function checkPVOThreats(target) {
-  function threatCheck() {
-    if(!target.active || target.intercepted) return;
-    
-    for(let pvo of pvoUnits) {
-      const distance = getDistance(target.position, pvo.latlng) * 1000;
-      
-      if(distance <= pvo.radius) {
-        if(pvo.type === 'mobile') {
-          fireMachineGun(pvo, target);
-        } else {
-          launchMissile(pvo, target);
-        }
-        break;
-      }
-    }
-    
-    setTimeout(threatCheck, 2000 / TIME_SCALE);
+    requestAnimationFrame(moveFrame);
   }
   
-  threatCheck();
+  moveFrame();
 }
 
-// ========== ПУЛЕМЕТНЫЙ ОГОНЬ ==========
-function fireMachineGun(pvo, target) {
-  if(!target.active || target.intercepted) return;
-  
-  let shots = 0;
-  const maxShots = target.type === 'drone' ? 15 : 
-                   target.type === 'cr' ? 8 : 3;
-  
-  function shoot() {
-    if(!target.active || target.intercepted || shots >= maxShots) return;
-    
-    const tracer = L.circleMarker([
-      target.position[0] + (Math.random() - 0.5) * 0.02,
-      target.position[1] + (Math.random() - 0.5) * 0.02
-    ], {
-      radius: 2,
-      color: '#ffff00',
-      fillColor: '#ffff00',
-      fillOpacity: 1
-    }).addTo(map);
-    
-    setTimeout(() => map.removeLayer(tracer), 100);
-    
-    shots++;
-    
-    let hitChance = shots / maxShots * 0.7;
-    if(target.type === 'drone') hitChance *= 1.2;
-    if(target.type === 'br') hitChance *= 0.3;
-    
-    if(Math.random() < hitChance) {
-      destroyTarget(target, 'пулеметным огнем');
-      return;
-    }
-    
-    setTimeout(shoot, 70);
-  }
-  
-  shoot();
-}
-
-// ========== РАКЕТНЫЙ ПУСК ==========
-function launchMissile(pvo, target) {
-  if(!target.active || target.intercepted) return;
-  
-  const missile = {
-    position: pvo.latlng,
-    target: target,
-    speed: target.type === 'br' ? 4000 : 2000,
-    marker: L.circleMarker(pvo.latlng, {
-      radius: 5,
-      color: '#ff0000',
-      fillColor: '#ff6600',
-      fillOpacity: 1,
-      weight: 2
-    }).addTo(map),
-    startTime: performance.now()
-  };
-  
-  function animateMissile() {
-    if(!target.active || target.intercepted) {
-      map.removeLayer(missile.marker);
-      return;
-    }
-    
-    const now = performance.now();
-    const hours = ((now - missile.startTime) / 1000 / 3600) * TIME_SCALE;
-    const traveled = missile.speed * hours;
-    const distanceToTarget = getDistance(missile.position, target.position) * 1000;
-    
-    if(traveled >= distanceToTarget || distanceToTarget < 3000) {
-      map.removeLayer(missile.marker);
-      destroyTarget(target, 'ракетой ЗРК');
-      return;
-    }
-    
-    const ratio = traveled / distanceToTarget;
-    const lat = missile.position[0] + (target.position[0] - missile.position[0]) * ratio;
-    const lng = missile.position[1] + (target.position[1] - missile.position[1]) * ratio;
-    
-    missile.position = [lat, lng];
-    missile.marker.setLatLng([lat, lng]);
-    
-    requestAnimationFrame(animateMissile);
-  }
-  
-  animateMissile();
-}
-
-// ========== УНИЧТОЖЕНИЕ ЦЕЛИ ==========
-function destroyTarget(target, weapon) {
-  if(target.intercepted) return;
-  
-  target.intercepted = true;
-  target.active = false;
-  
-  createExplosion(target.position, target.color);
-  
-  map.removeLayer(target.marker);
-  map.removeLayer(target.pathLine);
-  document.body.removeChild(target.tooltip);
-  
-  L.circle(target.position, {
-    radius: target.type === 'drone' ? 40000 : 
-            target.type === 'cr' ? 120000 : 300000,
-    color: target.color,
-    fillColor: target.color,
-    fillOpacity: 0.15,
-    weight: 2
-  }).addTo(map);
-  
-  activeTargets = activeTargets.filter(t => t !== target);
-  
-  alert(`${targetTypes[target.type].name} уничтожен ${weapon}`);
-  updateInterface();
-}
-
-// ========== ЗАВЕРШЕНИЕ МИССИИ ==========
+// ========== ЗАВЕРШЕНИЕ МАРШРУТА ==========
 function finishTarget(target) {
   target.active = false;
   
+  // Показываем зону поражения
   L.circle(target.position, {
-    radius: target.type === 'drone' ? 40000 : 
-            target.type === 'cr' ? 120000 : 300000,
+    radius: targetTypes[target.type].radius * 1000,
     color: target.color,
     fillColor: target.color,
     fillOpacity: 0.2,
     weight: 2
   }).addTo(map);
   
+  // Эффект взрыва
   createExplosion(target.position, target.color);
   
+  // Удаляем через 2 секунды
   setTimeout(() => {
-    if(target.marker) map.removeLayer(target.marker);
-    if(target.pathLine) map.removeLayer(target.pathLine);
-    if(target.tooltip) document.body.removeChild(target.tooltip);
+    map.removeLayer(target.marker);
+    map.removeLayer(target.pathLine);
+    if (target.tooltip) document.body.removeChild(target.tooltip);
   }, 2000);
   
+  // Удаляем из активных
   activeTargets = activeTargets.filter(t => t !== target);
-  
-  alert(`${targetTypes[target.type].name} поразил цель!`);
-  updateInterface();
+  updateStats();
 }
 
-// ========== СБРОС ВСЕХ ЦЕЛЕЙ ==========
-function resetAllTargets() {
-  if(confirm('Сбросить все активные цели?')) {
+// ========== УПРАВЛЕНИЕ СИМУЛЯЦИЕЙ ==========
+function toggleSimulation() {
+  if (!simulationActive) {
+    // Запускаем симуляцию
+    simulationActive = true;
+    simulationStartTime = performance.now();
+    document.getElementById('startBtn').innerHTML = '<i class="fas fa-pause"></i> Пауза';
+    
+    // Запускаем анимацию времени
+    updateSimulationTime();
+    
+    // Запускаем движение всех существующих целей
     activeTargets.forEach(target => {
-      if(target.marker) map.removeLayer(target.marker);
-      if(target.pathLine) map.removeLayer(target.pathLine);
-      if(target.tooltip) document.body.removeChild(target.tooltip);
+      if (!target.intercepted && target.active) {
+        target.lastUpdate = performance.now();
+        startTargetMovement(target);
+      }
     });
     
-    activeTargets = [];
+  } else {
+    // Ставим на паузу
+    simulationActive = false;
+    document.getElementById('startBtn').innerHTML = '<i class="fas fa-play"></i> Старт';
     
+    // Останавливаем анимацию времени
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+    }
+  }
+}
+
+// ========== СБРОС ВСЕГО ==========
+function resetAll() {
+  if (confirm('Сбросить все цели?')) {
+    // Удаляем все цели
+    activeTargets.forEach(t => {
+      map.removeLayer(t.marker);
+      map.removeLayer(t.pathLine);
+      if (t.tooltip) document.body.removeChild(t.tooltip);
+    });
+    activeTargets = [];
+
+    // Очищаем временные точки
     pendingMarkers.forEach(m => map.removeLayer(m));
     pendingMarkers = [];
     pendingWaypoints = [];
+
+    // Сбрасываем симуляцию
+    simulationActive = false;
+    simulationStartTime = null;
+    document.getElementById('startBtn').innerHTML = '<i class="fas fa-play"></i> Старт';
+    document.getElementById('simTime').textContent = '00:00';
     
-    alert('Все цели сброшены');
-    updateInterface();
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+    }
+
+    updateWaypointBadge();
+    updateStats();
   }
 }
 
@@ -888,14 +679,6 @@ function createTooltip(latlng) {
   return div;
 }
 
-function formatTime(hours) {
-  const totalSec = Math.floor(hours * 3600);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-}
-
 function calculateTotalDistance(points) {
   let total = 0;
   for(let i = 0; i < points.length - 1; i++) {
@@ -905,12 +688,12 @@ function calculateTotalDistance(points) {
 }
 
 function getDistance(a, b) {
-  const R = 6371;
+  const R = 6371; // радиус Земли в км
   const dLat = (b[0] - a[0]) * Math.PI / 180;
   const dLon = (b[1] - a[1]) * Math.PI / 180;
   const lat1 = a[0] * Math.PI / 180;
   const lat2 = b[0] * Math.PI / 180;
-  
+
   const x = Math.sin(dLat/2) * Math.sin(dLat/2) +
             Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2);
   const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
@@ -918,89 +701,68 @@ function getDistance(a, b) {
 }
 
 function createExplosion(position, color) {
-  for(let i = 0; i < 20; i++) {
+  for(let i = 0; i < 15; i++) {
     const angle = Math.random() * 2 * Math.PI;
-    const dist = Math.random() * 10000 / 111000;
-    
+    const dist = Math.random() * 8000 / 111000; // до 8 км в градусах
     const particle = L.circleMarker([
       position[0] + Math.sin(angle) * dist,
       position[1] + Math.cos(angle) * dist
     ], {
-      radius: Math.random() * 10 + 3,
+      radius: Math.random() * 8 + 2,
       color: color,
       fillColor: color,
       fillOpacity: 0.8
     }).addTo(map);
-    
-    setTimeout(() => map.removeLayer(particle), 400);
+    setTimeout(() => map.removeLayer(particle), 300);
   }
 }
 
-// Слушатель изменения типа цели
-document.addEventListener('change', function(e) {
-  if(e.target.id === 'targetTypeSelect') {
-    // Сохраняем выбранный тип
-    pendingType = e.target.value;
-    updateSpeedOptions();
+// ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
+document.getElementById('targetTypeSelect').addEventListener('change', function(e) {
+  updateSpeedSelect();
+  
+  // Очищаем точки, если новый тип несовместим с текущим количеством
+  const newType = e.target.value;
+  const maxPoints = targetTypes[newType].maxPoints;
+  
+  if (pendingWaypoints.length > maxPoints) {
+    // Удаляем лишние точки
+    const toRemove = pendingWaypoints.length - maxPoints;
+    for (let i = 0; i < toRemove; i++) {
+      const marker = pendingMarkers.pop();
+      map.removeLayer(marker);
+      pendingWaypoints.pop();
+    }
+    alert(`Оставлено ${maxPoints} точек для ${targetTypes[newType].name}`);
   }
-  if(e.target.id === 'targetSpeedSelect') {
-    pendingSpeed = parseInt(e.target.value);
-  }
+  
+  updateWaypointBadge();
 });
 
-// Установка ПВО при клике на кнопку
-window.installPVO = function() {
-  if(!tempPVOPoint) {
-    alert('Кликните на карте, чтобы выбрать позицию ПВО');
-    return;
-  }
-  
-  const pvoType = document.getElementById('pvoTypeSelect').value;
-  const color = pvoType === 'mobile' ? '#ffaa00' : '#ff5500';
-  const radius = pvoType === 'mobile' ? 100000 : 350000;
-  
-  const marker = L.circleMarker(tempPVOPoint, {
-    radius: pvoType === 'mobile' ? 8 : 10,
-    color: 'white',
-    fillColor: color,
-    fillOpacity: 0.9,
-    weight: 2
-  }).addTo(map);
-  
-  const zone = L.circle(tempPVOPoint, {
-    radius: radius,
-    color: color,
-    fillColor: color,
-    fillOpacity: 0.15,
-    weight: 2
-  }).addTo(map);
-  
-  pvoUnits.push({
-    type: pvoType,
-    latlng: tempPVOPoint,
-    radius: radius,
-    marker: marker,
-    zone: zone,
-    active: true
-  });
-  
-  clearTempData();
-  updateInterface();
-  alert(`ПВО установлено`);
-};
+document.getElementById('targetSpeedSelect').addEventListener('change', function(e) {
+  pendingTargetParams.speed = parseInt(e.target.value);
+});
 
-// Переопределяем обработку кнопки действия
-document.getElementById('launchBtn').onclick = function() {
-  if(currentMode === 'pvo') {
-    installPVO();
-  } else {
-    handleLaunch();
+// Добавляем обработчик для кнопки "Старт" - создаём новую цель
+document.getElementById('startBtn').onclick = function() {
+  // Создаём цель из текущих точек
+  if (pendingWaypoints.length >= 2) {
+    addTarget();
+  }
+  // Затем переключаем симуляцию, если она не активна
+  if (!simulationActive && activeTargets.length > 0) {
+    toggleSimulation();
+  } else if (simulationActive) {
+    toggleSimulation();
   }
 };
 
 // Инициализация
-updateInterface();
-</script>
+updateSpeedSelect();
+updateStats();
 
+// Добавляем подсказку о создании цели
+console.log('Кликайте на карту для добавления точек, затем Старт для запуска');
+</script>
 </body>
 </html>
