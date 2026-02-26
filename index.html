@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tactical Defense Elite v11.1</title>
+    <title>Tactical Defense Elite v11.3</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
     <style>
-        :root { --primary: #ffbb33; --bg: #0a0c10; --panel-bg: rgba(15, 20, 30, 0.95); }
+        :root { --primary: #ffbb33; --bg: #0a0c10; --panel-bg: rgba(15, 20, 30, 0.95); --accent: #00e5ff; }
         body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; }
         #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 1; }
         
@@ -19,26 +19,27 @@
         }
         .status-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; }
 
-        .ui-layer { position: absolute; top: 55px; width: 100%; z-index: 9998; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .ui-layer { position: absolute; top: 50px; width: 100%; z-index: 9998; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .ui-layer > * { pointer-events: auto; }
 
-        /* Возвращенный стиль карточек управления */
-        .tool-selection { display: flex; gap: 15px; justify-content: center; width: 100%; max-width: 600px; }
-        .tool-card { background: var(--panel-bg); border: 1px solid rgba(255,187,51,0.4); border-radius: 10px; padding: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); flex: 1; }
-        .card-label { font-size: 10px; color: var(--primary); font-weight: 900; margin-bottom: 6px; display: block; text-transform: uppercase; border-bottom: 1px solid rgba(255,187,51,0.2); padding-bottom: 3px; }
+        .tool-selection { display: flex; gap: 10px; justify-content: center; width: 95%; max-width: 600px; }
+        .tool-card { background: var(--panel-bg); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; flex: 1; transition: 0.3s; cursor: pointer; }
+        .tool-card.active { border-color: var(--primary); box-shadow: 0 0 15px rgba(255,187,51,0.3); }
+        .tool-card.active-target { border-color: var(--accent); box-shadow: 0 0 15px rgba(0,229,255,0.3); }
         
-        select { background: #1a222d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; font-size: 12px; cursor: pointer; outline: none; width: 100%; }
+        .card-label { font-size: 9px; color: #888; font-weight: 900; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px; }
+        .active .card-label { color: var(--primary); }
+        .active-target .card-label { color: var(--accent); }
 
-        .mode-switch { background: var(--panel-bg); border: 1px solid var(--primary); border-radius: 20px; display: flex; overflow: hidden; padding: 2px; }
-        .mode-btn { padding: 6px 15px; color: #aaa; cursor: pointer; font-size: 11px; font-weight: bold; border-radius: 18px; transition: 0.3s; }
-        .mode-btn.active { background: var(--primary); color: #000; }
+        select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; font-size: 12px; cursor: pointer; outline: none; width: 100%; }
 
-        .obj-toolbar { position: absolute; background: rgba(0, 10, 20, 0.9); color: #00ffaa; padding: 4px 10px; border-left: 3px solid #00ffaa; font-family: monospace; font-size: 10px; pointer-events: none; z-index: 10000; white-space: nowrap; transform: translate(15px, -15px); box-shadow: 0 0 10px rgba(0,255,170,0.2); }
+        .obj-toolbar { position: absolute; background: rgba(0, 10, 20, 0.9); color: #00ffaa; padding: 4px 10px; border-left: 3px solid #00ffaa; font-family: monospace; font-size: 10px; pointer-events: none; z-index: 10000; white-space: nowrap; transform: translate(15px, -15px); }
 
         .bottom-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 9998; }
-        .btn { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: 0.2s; }
-        .btn-confirm { background: #28a745 !important; border: 3px solid #fff !important; transform: scale(1.1); box-shadow: 0 0 20px rgba(40,167,69,0.5); }
+        .btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: 0.2s; }
+        
         #playBtn { background: #1a73e8; }
+        .btn-confirm { background: #28a745 !important; border: 3px solid #fff !important; transform: scale(1.1); }
         #resetBtn { background: #444; }
     </style>
 </head>
@@ -52,15 +53,10 @@
 </div>
 
 <div class="ui-layer">
-    <div class="mode-switch">
-        <div class="mode-btn active" id="modePVO" onclick="setMode('pvo')">РЕЖИМ ПВО</div>
-        <div class="mode-btn" id="modeTarget" onclick="setMode('target')">РЕЖИМ ЦЕЛЬ</div>
-    </div>
-    
     <div class="tool-selection">
-        <div class="tool-card" id="pvoBox">
-            <span class="card-label">ОБОРОНА</span>
-            <select id="pvoSelect">
+        <div class="tool-card active" id="pvoCard" onclick="setMode('pvo')">
+            <span class="card-label">СИСТЕМА ОБОРОНЫ</span>
+            <select id="pvoSelect" onchange="setMode('pvo')">
                 <option value="pvo_pancyr">Панцирь-С1 (20 км)</option>
                 <option value="pvo_iris">IRIS-T SLM (40 км)</option>
                 <option value="pvo_buk">Бук-М3 (70 км)</option>
@@ -69,9 +65,9 @@
                 <option value="pvo_s400">С-400 (400 км)</option>
             </select>
         </div>
-        <div class="tool-card" id="targetBox" style="opacity: 0.5;">
-            <span class="card-label">УГРОЗЫ</span>
-            <select id="targetSelect">
+        <div class="tool-card" id="targetCard" onclick="setMode('target')">
+            <span class="card-label">ТИП УГРОЗЫ</span>
+            <select id="targetSelect" onchange="setMode('target')">
                 <option value="drone_shahed">Shahed-136 (185 км/ч)</option>
                 <option value="missile_x101">Х-101 (850 км/ч)</option>
                 <option value="missile_iskander">Искандер-М (7500 км/ч)</option>
@@ -108,10 +104,8 @@
 
     function setMode(m) {
         state.currentMode = m;
-        document.getElementById('modePVO').classList.toggle('active', m === 'pvo');
-        document.getElementById('modeTarget').classList.toggle('active', m === 'target');
-        document.getElementById('pvoBox').style.opacity = m === 'pvo' ? '1' : '0.5';
-        document.getElementById('targetBox').style.opacity = m === 'target' ? '1' : '0.5';
+        document.getElementById('pvoCard').className = 'tool-card' + (m === 'pvo' ? ' active' : '');
+        document.getElementById('targetCard').className = 'tool-card' + (m === 'target' ? ' active-target' : '');
     }
 
     map.on('click', (e) => {
@@ -122,29 +116,75 @@
         } else {
             addWaypoint(pos);
         }
+        updateNavButtons();
     });
 
     function addPVO(pos, cfg) {
-        L.circle(pos, { radius: cfg.r * 1000, color: cfg.c, weight: 1, fillOpacity: 0.1 }).addTo(map);
-        L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: cfg.c, fillOpacity: 1 }).addTo(map);
-        state.pvo.push({ id: Math.random(), pos, radius: cfg.r });
+        const circle = L.circle(pos, { radius: cfg.r * 1000, color: cfg.c, weight: 1, fillOpacity: 0.1 }).addTo(map);
+        const marker = L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: cfg.c, fillOpacity: 1 }).addTo(map);
+        state.pvo.push({ id: Math.random(), pos, radius: cfg.r, layers: [circle, marker] });
         updateCounters();
     }
 
     function addWaypoint(pos) {
         const type = document.getElementById('targetSelect').value;
         const marker = L.circleMarker(pos, { radius: 4, color: CONFIG[type].color, fillOpacity: 1 }).addTo(map);
-        state.pendingPath.push(pos); state.tempMarkers.push(marker);
+        state.pendingPath.push(pos); 
+        state.tempMarkers.push(marker);
+        updatePathLine();
+    }
+
+    function undoAction() {
+        if (state.currentMode === 'target' && state.pendingPath.length > 0) {
+            state.pendingPath.pop();
+            const m = state.tempMarkers.pop();
+            if (m) map.removeLayer(m);
+            updatePathLine();
+        } else if (state.currentMode === 'pvo' && state.pvo.length > 0) {
+            const lastPvo = state.pvo.pop();
+            lastPvo.layers.forEach(l => map.removeLayer(l));
+            updateCounters();
+        }
+        updateNavButtons();
+    }
+
+    function updatePathLine() {
         if (state.activeFutureLine) map.removeLayer(state.activeFutureLine);
-        state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
-        
-        const btn = document.getElementById('playBtn');
-        btn.innerHTML = '<i class="fas fa-check"></i>';
-        btn.className = 'btn btn-confirm';
+        if (state.pendingPath.length > 0) {
+            state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
+        }
+    }
+
+    function updateNavButtons() {
+        const resetBtn = document.getElementById('resetBtn');
+        const playBtn = document.getElementById('playBtn');
+        const hasPending = state.pendingPath.length > 0;
+        const hasPvo = state.pvo.length > 0;
+
+        // Если есть что отменять (точки цели или установки ПВО)
+        if (hasPending || (state.currentMode === 'pvo' && hasPvo)) {
+            resetBtn.innerHTML = '<i class="fas fa-undo"></i>';
+            resetBtn.onclick = undoAction;
+        } else {
+            resetBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+            resetBtn.onclick = () => location.reload();
+        }
+
+        if (hasPending) {
+            playBtn.innerHTML = '<i class="fas fa-check"></i>';
+            playBtn.className = 'btn btn-confirm';
+        } else {
+            playBtn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+            playBtn.className = 'btn';
+        }
     }
 
     function finalizeTarget() {
-        if (state.pendingPath.length < 2) return;
+        if (state.pendingPath.length < 2) {
+            state.pendingPath.forEach((p, i) => map.removeLayer(state.tempMarkers[i]));
+            state.pendingPath = []; state.tempMarkers = []; updatePathLine(); updateNavButtons();
+            return;
+        }
         const type = document.getElementById('targetSelect').value;
         const info = CONFIG[type];
         const target = {
@@ -152,14 +192,14 @@
             currentPos: state.pendingPath[0], totalDist: 0, active: true, toolbar: createTB(),
             marker: L.circleMarker(state.pendingPath[0], { radius: 6, color: '#fff', fillColor: info.color, fillOpacity: 1 }).addTo(map),
             linePast: L.polyline([], { color: info.color, weight: 3 }).addTo(map),
-            lineFuture: state.activeFutureLine, engagedBy: new Set()
+            lineFuture: state.activeFutureLine, // Оставляем ссылку на пунктир
+            engagedBy: new Set()
         };
         for(let i=0; i<target.path.length-1; i++) target.totalDist += map.distance(target.path[i], target.path[i+1]) / 1000;
         state.targets.push(target);
         state.pendingPath = []; state.tempMarkers = []; state.activeFutureLine = null;
         updateCounters();
-        const btn = document.getElementById('playBtn');
-        btn.innerHTML = '<i class="fas fa-play"></i>'; btn.className = 'btn';
+        updateNavButtons();
     }
 
     function createTB() { const div = document.createElement('div'); div.className = 'obj-toolbar'; document.body.appendChild(div); return div; }
@@ -216,7 +256,13 @@
     }
 
     function markEvent(pos, type) {
-        const icon = L.divIcon({ html: type === 'hit' ? '<i class="fas fa-skull" style="color:#ff4444;font-size:22px;"></i>' : '<i class="fas fa-certificate" style="color:#fff;font-size:22px;"></i>', className: 'event-icon', iconSize: [25, 25] });
+        const icon = L.divIcon({ 
+            html: type === 'hit' ? 
+                '<i class="fas fa-skull" style="color:rgba(255,68,68,0.2);font-size:22px;"></i>' : 
+                '<i class="fas fa-certificate" style="color:rgba(255,255,255,0.2);font-size:22px;"></i>', 
+            className: 'event-icon', 
+            iconSize: [25, 25] 
+        });
         L.marker(pos, { icon }).addTo(map);
         if (type === 'intercept') confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 } });
     }
@@ -241,7 +287,14 @@
         return path[path.length-1];
     }
 
-    function removeT(t) { t.active = false; map.removeLayer(t.marker); map.removeLayer(t.linePast); if(t.lineFuture) map.removeLayer(t.lineFuture); t.toolbar.remove(); updateCounters(); }
+    function removeT(t) { 
+        t.active = false; 
+        map.removeLayer(t.marker); 
+        // Линию linePast НЕ удаляем (пунктир остается)
+        // Линию lineFuture НЕ удаляем (весь маршрут виден)
+        t.toolbar.remove(); 
+        updateCounters(); 
+    }
     
     document.getElementById('playBtn').onclick = () => {
         if (state.pendingPath.length > 0) finalizeTarget();
@@ -255,6 +308,7 @@
 
     function updateUI() { const m = Math.floor(state.simSeconds/60); const s = Math.floor(state.simSeconds%60); document.getElementById('simTime').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }
     function updateCounters() { document.getElementById('targetCount').innerText = state.targets.filter(t => t.active).length; document.getElementById('pvoCount').innerText = state.pvo.length; }
+    
     document.getElementById('resetBtn').onclick = () => location.reload();
 </script>
 </body>
