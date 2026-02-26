@@ -1,214 +1,196 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Тактический симулятор – Тулбары целей и ракет</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
-
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; background: #0a0c10; font-family: 'Segoe UI', Roboto, sans-serif; }
-#map { height: 100%; width: 100%; background: #111; }
-
-/* Левая панель снизу */
-.toolbar-left {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 220px;
-}
-
-.tool-btn {
-  background: rgba(20, 20, 30, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1px solid #3a4a5a;
-  border-radius: 40px;
-  padding: 12px 20px;
-  color: #e0e0e0;
-  font-size: 15px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  transition: 0.2s;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.7);
-}
-
-.tool-btn i { width: 22px; color: #ffbb33; font-size: 1.2rem; }
-.tool-btn:hover { background: rgba(45, 50, 70, 0.95); border-color: #6a8caf; }
-
-/* Выпадающие меню вверх */
-.dropdown-menu {
-  display: none;
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  width: 100%;
-  background: rgba(20, 25, 35, 0.98);
-  backdrop-filter: blur(12px);
-  border: 1px solid #2f4a60;
-  border-radius: 24px;
-  padding: 12px 8px;
-  margin-bottom: 6px;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 -8px 20px rgba(0,0,0,0.8);
-}
-
-.dropdown-menu.show { display: flex; }
-
-.radio-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  border-radius: 30px;
-  background: #1e2635;
-  border: 1px solid #2f4055;
-  color: #ddd;
-  font-size: 14px;
-  cursor: pointer;
-}
-.radio-option:hover { background: #2a3448; border-color: #5a7a9a; }
-.radio-option input[type="radio"] { accent-color: #ffbb33; }
-
-/* Кнопки управления */
-.action-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-.action-btn {
-  flex: 1;
-  background: #1e4a6b;
-  border: 1px solid #3a6d8c;
-  border-radius: 40px;
-  padding: 12px 0;
-  color: white;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-}
-.action-btn#resetBtn {
-  background: #5a2d2d;
-  border-color: #8c4a4a;
-}
-.action-btn:hover { filter: brightness(1.2); }
-
-/* Счетчики */
-.counter-badge {
-  margin-left: auto;
-  background: #1e3240;
-  border-radius: 40px;
-  padding: 3px 12px;
-  font-size: 12px;
-  color: #bbddff;
-  border: 1px solid #3a5f78;
-}
-
-/* Правый верхний угол */
-.info-panel {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(10, 15, 22, 0.8);
-  backdrop-filter: blur(8px);
-  border-radius: 40px;
-  padding: 8px 24px;
-  border: 1px solid #2e4a5a;
-  color: #eee;
-  font-size: 15px;
-  z-index: 1000;
-  display: flex;
-  gap: 24px;
-}
-.info-panel i { color: #ffbb33; margin-right: 8px; }
-
-/* Кнопки зума */
-.zoom-ui {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 1000;
-}
-.zoom-ui button {
-  width: 48px;
-  height: 48px;
-  border-radius: 48px;
-  background: rgba(20, 28, 38, 0.9);
-  backdrop-filter: blur(6px);
-  border: 1px solid #3a5068;
-  color: #f0f0f0;
-  font-size: 20px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px black;
-}
-.zoom-ui button:hover { background: #1e2b3c; }
-
-/* Маркеры целей -- цветные кружки (цвет линии) */
-.target-marker {
-  border-radius: 50%;
-  width: 14px !important;
-  height: 14px !important;
-  margin-left: -7px !important;
-  margin-top: -7px !important;
-  border: 2px solid white;
-  box-shadow: 0 0 12px currentColor;
-  z-index: 1100 !important;
-}
-
-/* Маркеры ракет ПВО */
-.missile-marker {
-  background: #ffaa00;
-  border-radius: 50%;
-  width: 8px !important;
-  height: 8px !important;
-  margin-left: -4px !important;
-  margin-top: -4px !important;
-  box-shadow: 0 0 20px #ffaa00;
-  z-index: 1200;
-  border: 1px solid white;
-}
-
-/* Тулбары (информационные панели) */
-.toolbar-div {
-  position: absolute;
-  background: rgba(10, 15, 25, 0.9);
-  backdrop-filter: blur(8px);
-  border: 1px solid #3a5f7a;
-  border-radius: 30px;
-  padding: 4px 14px;
-  color: white;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 2000;
-  box-shadow: 0 4px 15px black;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-.toolbar-div i {
-  margin-right: 5px;
-  color: #ffbb33;
-  font-size: 10px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тактический симулятор – зум справа, высоты целей, D400 и т.д.</title>
+    
+    <!-- Leaflet & Fonts -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { height: 100%; background: #0a0c10; font-family: 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
+        #map { height: 100%; width: 100%; background: #111; }
+        
+        /* Левая панель (низ) */
+        .toolbar-left {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 260px;
+        }
+        .tool-btn {
+            background: rgba(20, 20, 30, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid #3a4a5a;
+            border-radius: 40px;
+            padding: 12px 20px;
+            color: #e0e0e0;
+            font-size: 15px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+        }
+        .tool-btn i { width: 22px; color: #ffbb33; font-size: 1.2rem; }
+        .tool-btn:hover { background: rgba(45, 50, 70, 0.95); border-color: #6a8caf; }
+        
+        /* Выпадающие меню (вверх) */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            width: 100%;
+            background: rgba(20, 25, 35, 0.98);
+            backdrop-filter: blur(12px);
+            border: 1px solid #2f4a60;
+            border-radius: 24px;
+            padding: 12px 8px;
+            margin-bottom: 6px;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 -8px 20px rgba(0,0,0,0.8);
+        }
+        .dropdown-menu.show { display: flex; }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            border-radius: 30px;
+            background: #1e2635;
+            border: 1px solid #2f4055;
+            color: #ddd;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .radio-option:hover { background: #2a3448; border-color: #5a7a9a; }
+        .radio-option input[type="radio"] { accent-color: #ffbb33; }
+        
+        /* Кнопки управления */
+        .action-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .action-btn {
+            flex: 1;
+            background: #1e4a6b;
+            border: 1px solid #3a6d8c;
+            border-radius: 40px;
+            padding: 12px 0;
+            color: white;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .action-btn#resetBtn { background: #5a2d2d; border-color: #8c4a4a; }
+        .action-btn:hover { filter: brightness(1.2); }
+        
+        .counter-badge {
+            margin-left: auto;
+            background: #1e3240;
+            border-radius: 40px;
+            padding: 3px 12px;
+            font-size: 12px;
+            color: #bbddff;
+            border: 1px solid #3a5f78;
+        }
+        
+        /* Правый верхний угол */
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 15, 22, 0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 40px;
+            padding: 8px 24px;
+            border: 1px solid #2e4a5a;
+            color: #eee;
+            font-size: 15px;
+            z-index: 1000;
+            display: flex;
+            gap: 24px;
+        }
+        .info-panel i { color: #ffbb33; margin-right: 8px; }
+        
+        /* ===== КНОПКИ ЗУМА СПРАВА, ВЫРОВНЕНЫ ПО ВЕРХНЕМУ КРАЮ КНОПКИ ПВО ===== */
+        .zoom-ui-right {
+            position: absolute;
+            right: 20px;
+            /* Выравниваем по верхнему краю кнопки ПВО: кнопка ПВО находится на 20px от низа, высота ~50px, 
+               значит верх кнопки ПВО на уровне (высота экрана - 20px - 50px). Но проще задать фиксированно: 
+               пусть верхняя кнопка зума будет на том же уровне, что и верх кнопки ПВО. 
+               Используем bottom: auto; top: calc(100vh - 20px - 50px - 8px)? Но проще через JS подстройка, 
+               однако сделаем приблизительно: отступ сверху 70% – нет. Лучше через JS при загрузке. 
+               Пока поставим top: calc(100vh - 150px); но это грубо. Реализуем точное позиционирование позже.
+               Сейчас сделаем так, чтобы кнопки были справа и их позиция подстроена под кнопку ПВО через JS.*/
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+            pointer-events: none; /* контейнер не перехватывает клики */
+        }
+        .zoom-ui-right button {
+            pointer-events: auto;
+            width: 48px;
+            height: 48px;
+            border-radius: 48px;
+            background: rgba(20, 28, 38, 0.9);
+            backdrop-filter: blur(6px);
+            border: 1px solid #3a5068;
+            color: #f0f0f0;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px black;
+            transition: 0.2s;
+        }
+        .zoom-ui-right button:hover { background: #1e2b3c; }
+        
+        /* Маркеры целей и ракет */
+        .target-marker { border: 2px solid white; box-shadow: 0 0 12px currentColor; }
+        .missile-marker { background: #ffaa00; border-radius: 50%; border: 1px solid white; box-shadow: 0 0 20px #ffaa00; }
+        
+        /* Тулбары: прозрачность 40% и без обводки */
+        .toolbar-div {
+            position: absolute;
+            background: rgba(10, 15, 25, 0.4);
+            backdrop-filter: blur(4px);
+            border: none;
+            border-radius: 30px;
+            padding: 4px 14px;
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 2000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .toolbar-div i {
+            margin-right: 5px;
+            color: #ffbb33;
+            font-size: 10px;
+        }
+    </style>
 </head>
 <body>
 
@@ -216,512 +198,671 @@ html, body { height: 100%; background: #0a0c10; font-family: 'Segoe UI', Roboto,
 
 <!-- Левая панель -->
 <div class="toolbar-left">
-  <!-- ПВО -->
-  <div style="position: relative;">
-    <div class="tool-btn" id="pvoBtn"><i class="fas fa-shield-alt"></i> ПВО <span class="counter-badge" id="pvoCount">0</span></div>
-    <div class="dropdown-menu" id="pvoMenu">
-      <label class="radio-option"><input type="radio" name="pvoRange" value="100" checked> d100 (100 км)</label>
-      <label class="radio-option"><input type="radio" name="pvoRange" value="250"> d250 (250 км)</label>
-      <label class="radio-option"><input type="radio" name="pvoRange" value="550"> d550 (550 км)</label>
+    <!-- ПВО -->
+    <div style="position: relative;" id="pvoBlock">
+        <div class="tool-btn" id="pvoBtn"><i class="fas fa-shield-alt"></i> ПВО <span class="counter-badge" id="pvoCount">0</span></div>
+        <div class="dropdown-menu" id="pvoMenu">
+            <label class="radio-option"><input type="radio" name="pvoRange" value="100" checked> D100 (100 км)</label>
+            <label class="radio-option"><input type="radio" name="pvoRange" value="250"> D250 (250 км)</label>
+            <label class="radio-option"><input type="radio" name="pvoRange" value="550"> D550 (550 км)</label>
+        </div>
     </div>
-  </div>
-
-  <!-- Цели -->
-  <div style="position: relative;">
-    <div class="tool-btn" id="targetBtn"><i class="fas fa-bullseye"></i> Цели <span class="counter-badge" id="targetCount">0</span></div>
-    <div class="dropdown-menu" id="targetMenu">
-      <label class="radio-option"><input type="radio" name="targetType" value="drone" checked> БПЛА (250 км/ч, 5 км)</label>
-      <label class="radio-option"><input type="radio" name="targetType" value="cr"> КР (900 км/ч, 50 м)</label>
-      <label class="radio-option"><input type="radio" name="targetType" value="br"> БР (7000 км/ч, 300 км)</label>
+    
+    <!-- Цели -->
+    <div style="position: relative;" id="targetBlock">
+        <div class="tool-btn" id="targetBtn"><i class="fas fa-bullseye"></i> Цели <span class="counter-badge" id="targetCount">0</span></div>
+        <div class="dropdown-menu" id="targetMenu">
+            <label class="radio-option"><input type="radio" name="targetType" value="drone" checked> БПЛА (100 км/ч, 100 м – 5 км)</label>
+            <label class="radio-option"><input type="radio" name="targetType" value="cr"> КР (700 км/ч, 50 м)</label>
+            <label class="radio-option"><input type="radio" name="targetType" value="br"> БР (3000 км/ч, 1 – 100 км)</label>
+        </div>
     </div>
-  </div>
+    
+    <!-- Кнопки управления -->
+    <div class="action-row">
+        <div class="action-btn" id="playPauseBtn"><i class="fas fa-play"></i> ПУСК</div>
+        <div class="action-btn" id="resetBtn"><i class="fas fa-stop"></i> СБРОС</div>
+    </div>
+</div>
 
-  <!-- Кнопки управления -->
-  <div class="action-row">
-    <div class="action-btn" id="playPauseBtn"><i class="fas fa-play"></i> ПУСК</div>
-    <div class="action-btn" id="resetBtn"><i class="fas fa-stop"></i> СБРОС</div>
-  </div>
+<!-- КНОПКИ ЗУМА СПРАВА -->
+<div class="zoom-ui-right" id="zoomRight">
+    <button onclick="map.zoomIn()" title="Приблизить"><i class="fas fa-plus"></i></button>
+    <button onclick="map.zoomOut()" title="Отдалить"><i class="fas fa-minus"></i></button>
 </div>
 
 <!-- Правый верхний угол -->
 <div class="info-panel">
-  <span><i class="far fa-clock"></i> <span id="simTime">00:00</span></span>
-  <span><i class="fas fa-crosshairs"></i> цели: <span id="targetCountInfo">0</span></span>
-</div>
-
-<!-- Кнопки зума -->
-<div class="zoom-ui">
-  <button onclick="map.zoomIn()"><i class="fas fa-plus"></i></button>
-  <button onclick="map.zoomOut()"><i class="fas fa-minus"></i></button>
+    <span><i class="far fa-clock"></i> <span id="simTime">00:00</span></span>
+    <span><i class="fas fa-crosshairs"></i> цели: <span id="targetCountInfo">0</span></span>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ========== НАСТРОЙКИ ==========
-const TIME_SCALE = 30;
-const map = L.map('map', { zoomControl: false }).setView([50, 30], 5);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '' }).addTo(map);
-
-// ========== ГЛОБАЛЬНЫЕ ДАННЫЕ ==========
-let currentTool = null;
-let pvoDiameters = { selected: 100 };
-
-// Типы целей с высотой (для тулбара)
-const targetTypes = {
-  drone: { name: 'БПЛА', speed: 250, altitude: '5 км', color: '#88ccff', maxPoints: 99, icon: 'fa-drone' },
-  cr:    { name: 'КР', speed: 900, altitude: '50 м', color: '#ffaa33', maxPoints: 99, icon: 'fa-rocket' },
-  br:    { name: 'БР', speed: 7000, altitude: '300 км', color: '#ff5555', maxPoints: 2, icon: 'fa-bomb' }
-};
-let selectedTargetType = 'drone';
-
-let pvoZones = [];
-let targets = [];
-let pendingWaypoints = { drone: [], cr: [], br: [] };
-let pendingMarkers = { drone: [], cr: [], br: [] };
-let missiles = [];
-let simulationActive = false;
-let simStartTime = null;
-let animFrame = null;
-let missileAnimationFrame = null;
-
-// Хранилище тулбаров (чтобы обновлять позиции)
-let toolbars = [];
-
-// ========== ЭЛЕМЕНТЫ ИНТЕРФЕЙСА ==========
-const pvoBtn = document.getElementById('pvoBtn');
-const pvoMenu = document.getElementById('pvoMenu');
-const targetBtn = document.getElementById('targetBtn');
-const targetMenu = document.getElementById('targetMenu');
-const playPauseBtn = document.getElementById('playPauseBtn');
-const resetBtn = document.getElementById('resetBtn');
-const pvoCountSpan = document.getElementById('pvoCount');
-const targetCountSpan = document.getElementById('targetCount');
-const targetCountInfo = document.getElementById('targetCountInfo');
-const simTimeSpan = document.getElementById('simTime');
-
-// Радио-кнопки ПВО
-document.querySelectorAll('input[name="pvoRange"]').forEach(r => {
-  r.addEventListener('change', e => pvoDiameters.selected = parseInt(e.target.value));
-});
-
-// Радио-кнопки типа цели
-document.querySelectorAll('input[name="targetType"]').forEach(r => {
-  r.addEventListener('change', e => {
-    selectedTargetType = e.target.value;
-    updatePendingCount();
-  });
-});
-
-// Открытие/закрытие меню
-pvoBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  targetMenu.classList.remove('show');
-  pvoMenu.classList.toggle('show');
-  currentTool = pvoMenu.classList.contains('show') ? 'pvo' : null;
-});
-targetBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  pvoMenu.classList.remove('show');
-  targetMenu.classList.toggle('show');
-  currentTool = targetMenu.classList.contains('show') ? 'target' : null;
-});
-
-map.on('click', () => {
-  pvoMenu.classList.remove('show');
-  targetMenu.classList.remove('show');
-});
-
-// ========== КЛИК ПО КАРТЕ ==========
-map.on('click', (e) => {
-  const latlng = [e.latlng.lat, e.latlng.lng];
-
-  if (currentTool === 'pvo') {
-    const diameter = pvoDiameters.selected;
-    const radius = diameter / 2;
-    const circle = L.circle(latlng, {
-      radius: radius * 1000,
-      color: '#55aaff',
-      weight: 2,
-      fillColor: '#2a6f9c',
-      fillOpacity: 0.25
-    }).addTo(map);
-    const marker = L.circleMarker(latlng, {
-      radius: 6, color: '#aaddff', weight: 2, fillColor: '#2266aa', fillOpacity: 0.9
-    }).addTo(map);
-    pvoZones.push({ latlng, diameter, radius, marker, circle });
-    updateCounters();
-    return;
-  }
-
-  if (currentTool === 'target') {
-    const type = selectedTargetType;
-    const maxPoints = targetTypes[type].maxPoints;
+    // ========== НАСТРОЙКИ ==========
+    const TIME_SCALE = 30;
+    const map = L.map('map', { zoomControl: false }).setView([50, 30], 5);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '' }).addTo(map);
     
-    if (pendingWaypoints[type].length >= maxPoints) {
-      alert(`Максимум точек для ${targetTypes[type].name}: ${maxPoints}`);
-      return;
-    }
+    // ========== ГЛОБАЛЬНЫЕ ДАННЫЕ ==========
+    let currentTool = null;
+    let pvoDiameters = { selected: 100 };
     
-    // Цветной маркер (цвет линии)
-    const marker = L.circleMarker(latlng, {
-      radius: 7,
-      color: 'white',
-      weight: 2,
-      fillColor: targetTypes[type].color,
-      fillOpacity: 1,
-      className: 'target-marker'
-    }).addTo(map);
-    
-    pendingWaypoints[type].push(latlng);
-    pendingMarkers[type].push(marker);
-    updatePendingCount();
-  }
-});
-
-// ========== СОЗДАНИЕ ЦЕЛИ ==========
-function commitTarget(type) {
-  const waypoints = pendingWaypoints[type];
-  if (waypoints.length < 2) return false;
-  
-  const typeInfo = targetTypes[type];
-  const speed = typeInfo.speed;
-  const color = typeInfo.color;
-  const waypts = [...waypoints];
-  
-  // Создаем тулбар для цели
-  const toolbar = createToolbarElement(`${typeInfo.name} | ${speed} км/ч | ${typeInfo.altitude}`, color);
-  
-  const target = {
-    id: Date.now() + Math.random() + type,
-    type, waypoints: waypts, speed, color,
-    altitude: typeInfo.altitude,
-    typeName: typeInfo.name,
-    position: waypts[0],
-    marker: L.circleMarker(waypts[0], { 
-      radius: 7,
-      color: 'white',
-      weight: 2,
-      fillColor: color,
-      fillOpacity: 1,
-      className: 'target-marker'
-    }).addTo(map),
-    line: L.polyline(waypts, { color, weight: 3, opacity: 0.9 }), // только сплошная линия
-    totalDistance: calculateDistance(waypts),
-    progress: 0, active: true, lastUpdate: null, finished: false,
-    intercepted: false,
-    toolbar: toolbar
-  };
-  
-  target.line.addTo(map);
-  targets.push(target);
-  toolbars.push({ element: toolbar, targetId: target.id, type: 'target' });
-  
-  // Очищаем точки для этого типа
-  pendingMarkers[type].forEach(m => map.removeLayer(m));
-  pendingMarkers[type] = [];
-  pendingWaypoints[type] = [];
-  
-  updatePendingCount();
-  updateCounters();
-  
-  if (simulationActive) startTargetMovement(target);
-  return true;
-}
-
-function commitAllTargets() {
-  ['drone', 'cr', 'br'].forEach(type => commitTarget(type));
-}
-
-// ========== СОЗДАНИЕ ТУЛБАРА ==========
-function createToolbarElement(text, color) {
-  const div = document.createElement('div');
-  div.className = 'toolbar-div';
-  div.style.borderLeft = `3px solid ${color}`;
-  div.innerHTML = `<i class="fas fa-info-circle"></i> ${text}`;
-  document.body.appendChild(div);
-  return div;
-}
-
-function updateToolbarPosition(element, latlng) {
-  const point = map.latLngToContainerPoint(latlng);
-  element.style.left = (point.x + 15) + 'px';
-  element.style.top = (point.y - 25) + 'px';
-}
-
-// ========== ДВИЖЕНИЕ ЦЕЛИ ==========
-function startTargetMovement(t) {
-  if (t.finished || !t.active || t.intercepted) return;
-  t.lastUpdate = performance.now();
-  function step() {
-    if (!simulationActive || t.finished || t.intercepted) return;
-    const now = performance.now();
-    const dtHours = ((now - t.lastUpdate) / 1000 / 3600) * TIME_SCALE;
-    t.lastUpdate = now;
-    const segKm = t.speed * dtHours;
-    t.progress += segKm;
-    if (t.progress >= t.totalDistance) {
-      t.progress = t.totalDistance; t.finished = true; t.active = false;
-      createBlast(t.position, t.color);
-      if (t.toolbar) t.toolbar.remove();
-      setTimeout(() => { removeTarget(t); }, 2000);
-      return;
-    }
-    updateTargetPosition(t);
-    updateToolbarPosition(t.toolbar, t.position);
-    requestAnimationFrame(step);
-  }
-  step();
-}
-
-function updateTargetPosition(t) {
-  let accumulated = 0;
-  for (let i=0; i<t.waypoints.length-1; i++) {
-    const segDist = getDistance(t.waypoints[i], t.waypoints[i+1]);
-    if (accumulated + segDist >= t.progress) {
-      const ratio = (t.progress - accumulated) / segDist;
-      const lat = t.waypoints[i][0] + (t.waypoints[i+1][0] - t.waypoints[i][0]) * ratio;
-      const lng = t.waypoints[i][1] + (t.waypoints[i+1][1] - t.waypoints[i][1]) * ratio;
-      t.position = [lat, lng];
-      t.marker.setLatLng([lat, lng]);
-      
-      // Обновляем линию (вся траектория сплошная, но можно показывать пройденную часть другим цветом?)
-      // По условию оставляем сплошную линию всей траектории, без изменений
-      break;
-    }
-    accumulated += segDist;
-  }
-}
-
-// ========== ПВО: РАКЕТЫ С ТУЛБАРАМИ ==========
-function launchMissilesFromAllPvo() {
-  if (!simulationActive) return;
-  
-  targets.forEach(target => {
-    if (target.finished || target.intercepted) return;
-    
-    pvoZones.forEach(pvo => {
-      const distToPvo = getDistance(target.position, pvo.latlng);
-      if (distToPvo <= pvo.radius) {
-        const alreadyLaunched = missiles.some(m => 
-          m.targetId === target.id && 
-          m.pvoId === pvo.latlng.toString() + pvo.radius
-        );
-        if (!alreadyLaunched) {
-          createHomingMissile(pvo.latlng, target, pvo);
+    // Типы целей с расширенной информацией о высоте (динамика)
+    const targetTypes = {
+        drone: { 
+            name: 'БПЛА', speed: 100, 
+            altitudeMin: 0.1,   // 100 м
+            altitudeMax: 5,      // 5 км
+            color: '#88ccff', 
+            maxPoints: 99,
+            getAltitude: (progress, total) => {
+                // от 0.1 до 5 км: старт и финиш на 0.1, середина на 5
+                const t = Math.sin(progress / total * Math.PI); // 0 в начале/конце, 1 в середине
+                return 0.1 + (5 - 0.1) * t;
+            }
+        },
+        cr: { 
+            name: 'КР', speed: 700, 
+            altitudeMin: 0.05,   // 50 м
+            altitudeMax: 0.05,   // постоянная
+            color: '#ffaa33', 
+            maxPoints: 99,
+            getAltitude: () => 0.05
+        },
+        br: { 
+            name: 'БР', speed: 3000, 
+            altitudeMin: 1,       // 1 км старт/финиш
+            altitudeMax: 100,      // 100 км в апогее
+            color: '#ff5555', 
+            maxPoints: 2,
+            getAltitude: (progress, total) => {
+                // от 1 до 100 км: старт и финиш 1, середина 100
+                const t = Math.sin(progress / total * Math.PI);
+                return 1 + (100 - 1) * t;
+            }
         }
-      }
+    };
+    let selectedTargetType = 'drone';
+    
+    let pvoZones = [];
+    let targets = [];
+    let pendingWaypoints = { drone: [], cr: [], br: [] };
+    let pendingMarkers = { drone: [], cr: [], br: [] };
+    let missiles = [];
+    let toolbars = [];
+    
+    let simulationActive = false;
+    let simStartTime = null;
+    let animFrame = null;
+    let missileFrame = null;
+    let pvoCheckFrame = null;
+    
+    // ========== ЭЛЕМЕНТЫ ИНТЕРФЕЙСА ==========
+    const pvoBtn = document.getElementById('pvoBtn');
+    const pvoMenu = document.getElementById('pvoMenu');
+    const targetBtn = document.getElementById('targetBtn');
+    const targetMenu = document.getElementById('targetMenu');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const pvoCountSpan = document.getElementById('pvoCount');
+    const targetCountSpan = document.getElementById('targetCount');
+    const targetCountInfo = document.getElementById('targetCountInfo');
+    const simTimeSpan = document.getElementById('simTime');
+    const zoomRight = document.getElementById('zoomRight');
+    
+    // Радио ПВО (теперь с D)
+    document.querySelectorAll('input[name="pvoRange"]').forEach(r => {
+        r.addEventListener('change', e => pvoDiameters.selected = parseInt(e.target.value));
     });
-  });
-}
-
-function createHomingMissile(startPos, target, pvo) {
-  // Тулбар для ракеты
-  const toolbar = createToolbarElement(`ПВО | 5000 км/ч | 15 км`, '#ffaa00');
-  
-  const missile = {
-    id: 'm_' + Date.now() + Math.random(),
-    targetId: target.id,
-    pvoId: pvo.latlng.toString() + pvo.radius,
-    position: [...startPos],
-    speed: 5000,
-    marker: L.circleMarker(startPos, {
-      radius: 6, color: '#ffaa00', fillColor: '#ff8800', fillOpacity: 1,
-      className: 'missile-marker'
-    }).addTo(map),
-    active: true,
-    lastUpdate: performance.now(),
-    toolbar: toolbar
-  };
-  
-  missiles.push(missile);
-  toolbars.push({ element: toolbar, missileId: missile.id, type: 'missile' });
-  updateToolbarPosition(toolbar, startPos);
-}
-
-function moveHomingMissiles() {
-  if (!simulationActive) return;
-  const now = performance.now();
-  
-  missiles = missiles.filter(m => {
-    if (!m.active) return false;
     
-    const target = targets.find(t => t.id === m.targetId && !t.intercepted && !t.finished);
-    if (!target) {
-      map.removeLayer(m.marker);
-      if (m.toolbar) m.toolbar.remove();
-      return false;
+    // Радио тип цели
+    document.querySelectorAll('input[name="targetType"]').forEach(r => {
+        r.addEventListener('change', e => {
+            selectedTargetType = e.target.value;
+            updatePendingCount();
+        });
+    });
+    
+    // Открытие меню
+    pvoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        targetMenu.classList.remove('show');
+        pvoMenu.classList.toggle('show');
+        currentTool = pvoMenu.classList.contains('show') ? 'pvo' : null;
+    });
+    
+    targetBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pvoMenu.classList.remove('show');
+        targetMenu.classList.toggle('show');
+        currentTool = targetMenu.classList.contains('show') ? 'target' : null;
+    });
+    
+    map.on('click', () => {
+        pvoMenu.classList.remove('show');
+        targetMenu.classList.remove('show');
+    });
+    
+    // ========== КЛИК ПО КАРТЕ ==========
+    map.on('click', (e) => {
+        const latlng = [e.latlng.lat, e.latlng.lng];
+        
+        if (currentTool === 'pvo') {
+            const diameter = pvoDiameters.selected;
+            const radius = diameter / 2;
+            const circle = L.circle(latlng, {
+                radius: radius * 1000,
+                color: '#55aaff',
+                weight: 2,
+                fillColor: '#2a6f9c',
+                fillOpacity: 0.25
+            }).addTo(map);
+            const marker = L.circleMarker(latlng, {
+                radius: 6, color: '#aaddff', weight: 2, fillColor: '#2266aa', fillOpacity: 0.9
+            }).addTo(map);
+            pvoZones.push({ latlng, diameter, radius, marker, circle });
+            updateCounters();
+            return;
+        }
+        
+        if (currentTool === 'target') {
+            const type = selectedTargetType;
+            const maxPoints = targetTypes[type].maxPoints;
+            
+            if (pendingWaypoints[type].length >= maxPoints) {
+                alert(`Максимум точек для ${targetTypes[type].name}: ${maxPoints}`);
+                return;
+            }
+            
+            const marker = L.circleMarker(latlng, {
+                radius: 7,
+                color: 'white',
+                weight: 2,
+                fillColor: targetTypes[type].color,
+                fillOpacity: 1,
+                className: 'target-marker'
+            }).addTo(map);
+            
+            pendingWaypoints[type].push(latlng);
+            pendingMarkers[type].push(marker);
+            updatePendingCount();
+        }
+    });
+    
+    // ========== СОЗДАНИЕ ЦЕЛИ ==========
+    function commitTarget(type) {
+        const waypoints = pendingWaypoints[type];
+        if (waypoints.length < 2) return false;
+        
+        const typeInfo = targetTypes[type];
+        const waypts = [...waypoints];
+        
+        // Формируем текст с динамической высотой
+        let altText = '';
+        if (type === 'drone') altText = '100м-5км';
+        else if (type === 'cr') altText = '50м';
+        else if (type === 'br') altText = '1-100км';
+        
+        const toolbar = createToolbarElement(`${typeInfo.name} | ${typeInfo.speed} км/ч | ${altText}`, typeInfo.color);
+        
+        const lineFuture = L.polyline(waypts, { 
+            color: typeInfo.color, 
+            weight: 3, 
+            opacity: 0.9,
+            dashArray: '5, 8'
+        }).addTo(map);
+        
+        const linePast = L.polyline([], {
+            color: typeInfo.color,
+            weight: 3,
+            opacity: 0.9,
+            dashArray: null
+        }).addTo(map);
+        
+        const target = {
+            id: Date.now() + Math.random() + type,
+            type, waypoints: waypts, 
+            speed: typeInfo.speed,
+            color: typeInfo.color,
+            typeName: typeInfo.name,
+            position: waypts[0],
+            marker: L.circleMarker(waypts[0], { 
+                radius: 7,
+                color: 'white',
+                weight: 2,
+                fillColor: typeInfo.color,
+                fillOpacity: 1,
+                className: 'target-marker'
+            }).addTo(map),
+            linePast: linePast,
+            lineFuture: lineFuture,
+            totalDistance: calculateDistance(waypts),
+            progress: 0, 
+            active: true, 
+            finished: false,
+            intercepted: false,
+            toolbar: toolbar,
+            getAltitude: typeInfo.getAltitude  // функция высоты
+        };
+        
+        targets.push(target);
+        toolbars.push({ element: toolbar, targetId: target.id, type: 'target' });
+        
+        pendingMarkers[type].forEach(m => map.removeLayer(m));
+        pendingMarkers[type] = [];
+        pendingWaypoints[type] = [];
+        
+        updatePendingCount();
+        updateCounters();
+        
+        if (simulationActive) startTargetMovement(target);
+        return true;
     }
     
-    const dtHours = ((now - m.lastUpdate) / 1000 / 3600) * TIME_SCALE;
-    m.lastUpdate = now;
-    
-    const distToTarget = getDistance(m.position, target.position);
-    
-    if (distToTarget < 5) {
-      m.active = false;
-      map.removeLayer(m.marker);
-      if (m.toolbar) m.toolbar.remove();
-      
-      target.intercepted = true;
-      target.active = false;
-      target.finished = true;
-      if (target.toolbar) target.toolbar.remove();
-      createBlast(target.position, '#ffaa00');
-      removeTarget(target);
-      return false;
+    function commitAllTargets() {
+        ['drone', 'cr', 'br'].forEach(type => commitTarget(type));
     }
     
-    const segKm = m.speed * dtHours;
-    const totalDist = distToTarget;
-    
-    if (segKm >= totalDist) {
-      m.active = false;
-      map.removeLayer(m.marker);
-      if (m.toolbar) m.toolbar.remove();
-      
-      target.intercepted = true;
-      target.active = false;
-      target.finished = true;
-      if (target.toolbar) target.toolbar.remove();
-      createBlast(target.position, '#ffaa00');
-      removeTarget(target);
-      return false;
+    // ========== ОБНОВЛЕНИЕ ЛИНИИ ==========
+    function updateTargetLine(target) {
+        if (target.finished || target.intercepted) {
+            target.linePast.setStyle({ opacity: 0.3 });
+            target.lineFuture.setStyle({ opacity: 0.3, dashArray: null });
+            return;
+        }
+        
+        const waypts = target.waypoints;
+        const progress = target.progress;
+        
+        let accumulated = 0;
+        let targetPos = null;
+        let segmentIdx = 0;
+        for (let i = 0; i < waypts.length - 1; i++) {
+            const segDist = getDistance(waypts[i], waypts[i+1]);
+            if (accumulated + segDist >= progress || i === waypts.length - 2) {
+                const ratio = (progress - accumulated) / segDist;
+                const lat = waypts[i][0] + (waypts[i+1][0] - waypts[i][0]) * ratio;
+                const lng = waypts[i][1] + (waypts[i+1][1] - waypts[i][1]) * ratio;
+                targetPos = [lat, lng];
+                segmentIdx = i;
+                break;
+            }
+            accumulated += segDist;
+        }
+        
+        if (!targetPos) return;
+        
+        const pastCoords = [];
+        for (let i = 0; i <= segmentIdx; i++) pastCoords.push(waypts[i]);
+        pastCoords.push(targetPos);
+        
+        const futureCoords = [targetPos];
+        for (let i = segmentIdx + 1; i < waypts.length; i++) futureCoords.push(waypts[i]);
+        
+        target.linePast.setLatLngs(pastCoords);
+        target.lineFuture.setLatLngs(futureCoords);
+        
+        target.linePast.setStyle({ opacity: 0.9, dashArray: null });
+        target.lineFuture.setStyle({ opacity: 0.9, dashArray: '5, 8' });
     }
     
-    const ratio = segKm / totalDist;
-    const lat = m.position[0] + (target.position[0] - m.position[0]) * ratio;
-    const lng = m.position[1] + (target.position[1] - m.position[1]) * ratio;
-    m.position = [lat, lng];
-    m.marker.setLatLng([lat, lng]);
-    updateToolbarPosition(m.toolbar, m.position);
-    
-    return true;
-  });
-  
-  missileAnimationFrame = requestAnimationFrame(moveHomingMissiles);
-}
-
-function removeTarget(t) {
-  map.removeLayer(t.marker);
-  map.removeLayer(t.line);
-  if (t.toolbar) t.toolbar.remove();
-  targets = targets.filter(x => x !== t);
-  updateCounters();
-}
-
-// ========== ВСПОМОГАТЕЛЬНЫЕ ==========
-function getDistance(a, b) {
-  const R = 6371;
-  const dLat = (b[0]-a[0])*Math.PI/180;
-  const dLon = (b[1]-a[1])*Math.PI/180;
-  const lat1 = a[0]*Math.PI/180, lat2 = b[0]*Math.PI/180;
-  const x = Math.sin(dLat/2)**2 + Math.sin(dLon/2)**2 * Math.cos(lat1)*Math.cos(lat2);
-  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
-}
-
-function calculateDistance(pts) {
-  let sum = 0;
-  for (let i=0; i<pts.length-1; i++) sum += getDistance(pts[i], pts[i+1]);
-  return sum;
-}
-
-function createBlast(pos, color) {
-  for (let i=0; i<12; i++) {
-    const a = Math.random()*2*Math.PI;
-    const d = (Math.random()*10)/111;
-    const p = L.circleMarker([pos[0]+Math.sin(a)*d, pos[1]+Math.cos(a)*d], {
-      radius: 2+Math.random()*8, color: '#fff', fillColor: color, fillOpacity: 0.8
-    }).addTo(map);
-    setTimeout(() => map.removeLayer(p), 300);
-  }
-}
-
-function updateCounters() {
-  pvoCountSpan.innerText = pvoZones.length;
-  targetCountSpan.innerText = targets.length;
-  targetCountInfo.innerText = targets.length;
-}
-
-function updatePendingCount() {
-  const total = pendingWaypoints.drone.length + pendingWaypoints.cr.length + pendingWaypoints.br.length;
-  targetBtn.querySelector('.counter-badge').innerText = total;
-}
-
-// ========== PLAY/PAUSE ==========
-playPauseBtn.addEventListener('click', () => {
-  if (!simulationActive) {
-    commitAllTargets();
-    
-    simulationActive = true;
-    simStartTime = performance.now();
-    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> ПАУЗА';
-    
-    targets.forEach(t => { if (!t.finished && !t.intercepted) startTargetMovement(t); });
-    
-    function pvoLoop() {
-      if (!simulationActive) return;
-      launchMissilesFromAllPvo();
-      requestAnimationFrame(pvoLoop);
+    // ========== ТУЛБАРЫ ==========
+    function createToolbarElement(text, color) {
+        const div = document.createElement('div');
+        div.className = 'toolbar-div';
+        div.innerHTML = `<i class="fas fa-info-circle"></i> ${text}`;
+        document.body.appendChild(div);
+        return div;
     }
-    requestAnimationFrame(pvoLoop);
     
-    moveHomingMissiles();
-    
-    function updateTime() {
-      if (!simulationActive) return;
-      const now = performance.now();
-      const simHours = ((now - simStartTime) / 1000 / 3600) * TIME_SCALE;
-      const totalSec = Math.floor(simHours * 3600);
-      const h = Math.floor(totalSec/3600), m = Math.floor((totalSec%3600)/60);
-      simTimeSpan.innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-      animFrame = requestAnimationFrame(updateTime);
+    function updateToolbarPosition(element, latlng) {
+        if (!element) return;
+        const point = map.latLngToContainerPoint(latlng);
+        element.style.left = (point.x + 15) + 'px';
+        element.style.top = (point.y - 25) + 'px';
     }
-    animFrame = requestAnimationFrame(updateTime);
     
-  } else {
-    simulationActive = false;
-    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> ПУСК';
-    if (animFrame) cancelAnimationFrame(animFrame);
-    if (missileAnimationFrame) cancelAnimationFrame(missileAnimationFrame);
-  }
-});
-
-// ========== СБРОС ==========
-resetBtn.addEventListener('click', () => {
-  if (!confirm('Сбросить всё?')) return;
-  simulationActive = false;
-  playPauseBtn.innerHTML = '<i class="fas fa-play"></i> ПУСК';
-  if (animFrame) cancelAnimationFrame(animFrame);
-  if (missileAnimationFrame) cancelAnimationFrame(missileAnimationFrame);
-  
-  // Удаление всех тулбаров
-  toolbars.forEach(t => t.element.remove());
-  toolbars = [];
-  
-  [...pvoZones, ...targets, ...missiles].forEach(obj => {
-    if (obj.marker) map.removeLayer(obj.marker);
-    if (obj.circle) map.removeLayer(obj.circle);
-    if (obj.line) map.removeLayer(obj.line);
-  });
-  targets.forEach(t => {
-    if (t.marker) map.removeLayer(t.marker);
-    if (t.line) map.removeLayer(t.line);
-    if (t.toolbar) t.toolbar.remove();
-  });
-  
-  Object.keys(pendingMarkers).forEach(type => {
-    pendingMarkers[type].forEach(m => map.removeLayer(m));
-    pendingMarkers[type] = [];
-    pendingWaypoints[type] = [];
-  });
-  
-  pvoZones = []; targets = []; missiles = [];
-  updateCounters(); updatePendingCount();
-  simTimeSpan.innerText = '00:00';
-});
-
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
-updateCounters(); updatePendingCount();
+    // ========== ДВИЖЕНИЕ ЦЕЛИ ==========
+    function startTargetMovement(target) {
+        if (target.finished || !target.active || target.intercepted) return;
+        
+        target.lastUpdate = performance.now();
+        
+        function moveStep() {
+            if (!simulationActive || target.finished || target.intercepted) return;
+            
+            const now = performance.now();
+            const dtHours = ((now - target.lastUpdate) / 1000 / 3600) * TIME_SCALE;
+            target.lastUpdate = now;
+            
+            const stepKm = target.speed * dtHours;
+            target.progress += stepKm;
+            
+            if (target.progress >= target.totalDistance) {
+                target.progress = target.totalDistance;
+                target.finished = true;
+                target.active = false;
+                
+                target.position = target.waypoints[target.waypoints.length - 1];
+                target.marker.setLatLng(target.position);
+                
+                createBlast(target.position, target.color);
+                
+                if (target.linePast) target.linePast.setStyle({ opacity: 0.3 });
+                if (target.lineFuture) target.lineFuture.setStyle({ opacity: 0.3 });
+                
+                if (target.toolbar) { target.toolbar.remove(); target.toolbar = null; }
+                
+                setTimeout(() => removeTarget(target), 2000);
+                return;
+            }
+            
+            updateTargetPosition(target);
+            updateTargetLine(target);
+            
+            if (target.toolbar) updateToolbarPosition(target.toolbar, target.position);
+            
+            requestAnimationFrame(moveStep);
+        }
+        
+        requestAnimationFrame(moveStep);
+    }
+    
+    function updateTargetPosition(target) {
+        let accumulated = 0;
+        for (let i = 0; i < target.waypoints.length - 1; i++) {
+            const segDist = getDistance(target.waypoints[i], target.waypoints[i+1]);
+            if (accumulated + segDist >= target.progress) {
+                const ratio = (target.progress - accumulated) / segDist;
+                const lat = target.waypoints[i][0] + (target.waypoints[i+1][0] - target.waypoints[i][0]) * ratio;
+                const lng = target.waypoints[i][1] + (target.waypoints[i+1][1] - target.waypoints[i][1]) * ratio;
+                target.position = [lat, lng];
+                target.marker.setLatLng([lat, lng]);
+                break;
+            }
+            accumulated += segDist;
+        }
+    }
+    
+    // ========== ПВО ==========
+    function launchMissilesFromAllPvo() {
+        if (!simulationActive) return;
+        
+        for (const target of targets) {
+            if (target.finished || target.intercepted) continue;
+            
+            for (const pvo of pvoZones) {
+                const distToPvo = getDistance(target.position, pvo.latlng);
+                if (distToPvo <= pvo.radius) {
+                    const already = missiles.some(m => 
+                        m.targetId === target.id && 
+                        m.pvoId === pvo.latlng.toString() + pvo.radius
+                    );
+                    if (!already) {
+                        createHomingMissile(pvo.latlng, target, pvo);
+                    }
+                }
+            }
+        }
+    }
+    
+    function createHomingMissile(startPos, target, pvo) {
+        const toolbar = createToolbarElement(`ПВО | 5000 км/ч`, '#ffaa00');
+        
+        const missile = {
+            id: 'm_' + Date.now() + Math.random(),
+            targetId: target.id,
+            pvoId: pvo.latlng.toString() + pvo.radius,
+            pvoCenter: pvo.latlng,
+            pvoRadius: pvo.radius,
+            position: [...startPos],
+            speed: 5000,
+            marker: L.circleMarker(startPos, {
+                radius: 6, color: '#ffaa00', fillColor: '#ff8800', fillOpacity: 1,
+                className: 'missile-marker'
+            }).addTo(map),
+            active: true,
+            lastUpdate: performance.now(),
+            toolbar: toolbar
+        };
+        
+        missiles.push(missile);
+        toolbars.push({ element: toolbar, missileId: missile.id, type: 'missile' });
+        updateToolbarPosition(toolbar, startPos);
+    }
+    
+    function moveHomingMissiles() {
+        if (!simulationActive) return;
+        
+        const now = performance.now();
+        const newMissiles = [];
+        
+        for (const missile of missiles) {
+            if (!missile.active) {
+                if (missile.marker) map.removeLayer(missile.marker);
+                if (missile.toolbar) missile.toolbar.remove();
+                continue;
+            }
+            
+            const distFromPvo = getDistance(missile.position, missile.pvoCenter);
+            if (distFromPvo > missile.pvoRadius) {
+                if (missile.marker) map.removeLayer(missile.marker);
+                if (missile.toolbar) missile.toolbar.remove();
+                continue;
+            }
+            
+            const target = targets.find(t => t.id === missile.targetId && !t.intercepted && !t.finished);
+            if (!target) {
+                if (missile.marker) map.removeLayer(missile.marker);
+                if (missile.toolbar) missile.toolbar.remove();
+                continue;
+            }
+            
+            const dtHours = ((now - missile.lastUpdate) / 1000 / 3600) * TIME_SCALE;
+            missile.lastUpdate = now;
+            
+            const distToTarget = getDistance(missile.position, target.position);
+            
+            if (distToTarget < 5) {
+                if (missile.marker) map.removeLayer(missile.marker);
+                if (missile.toolbar) missile.toolbar.remove();
+                
+                target.intercepted = true;
+                target.active = false;
+                target.finished = true;
+                
+                if (target.toolbar) { target.toolbar.remove(); target.toolbar = null; }
+                
+                if (target.linePast) target.linePast.setStyle({ opacity: 0.3 });
+                if (target.lineFuture) target.lineFuture.setStyle({ opacity: 0.3 });
+                
+                createBlast(target.position, '#ffaa00');
+                removeTarget(target);
+                continue;
+            }
+            
+            const stepKm = missile.speed * dtHours;
+            const ratio = Math.min(1, stepKm / distToTarget);
+            
+            missile.position[0] += (target.position[0] - missile.position[0]) * ratio;
+            missile.position[1] += (target.position[1] - missile.position[1]) * ratio;
+            
+            missile.marker.setLatLng(missile.position);
+            updateToolbarPosition(missile.toolbar, missile.position);
+            
+            newMissiles.push(missile);
+        }
+        
+        missiles = newMissiles;
+        missileFrame = requestAnimationFrame(moveHomingMissiles);
+    }
+    
+    function removeTarget(target) {
+        if (target.marker) map.removeLayer(target.marker);
+        if (target.linePast) map.removeLayer(target.linePast);
+        if (target.lineFuture) map.removeLayer(target.lineFuture);
+        
+        targets = targets.filter(t => t.id !== target.id);
+        updateCounters();
+    }
+    
+    // ========== ВСПОМОГАТЕЛЬНЫЕ ==========
+    function getDistance(a, b) {
+        const R = 6371;
+        const dLat = (b[0] - a[0]) * Math.PI / 180;
+        const dLon = (b[1] - a[1]) * Math.PI / 180;
+        const lat1 = a[0] * Math.PI / 180;
+        const lat2 = b[0] * Math.PI / 180;
+        const x = Math.sin(dLat/2) ** 2 + Math.sin(dLon/2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+        return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    }
+    
+    function calculateDistance(pts) {
+        let sum = 0;
+        for (let i = 0; i < pts.length - 1; i++) {
+            sum += getDistance(pts[i], pts[i+1]);
+        }
+        return sum;
+    }
+    
+    function createBlast(pos, color) {
+        for (let i = 0; i < 8; i++) {
+            const a = Math.random() * 2 * Math.PI;
+            const d = (Math.random() * 5) / 111;
+            const p = L.circleMarker([pos[0] + Math.sin(a) * d, pos[1] + Math.cos(a) * d], {
+                radius: 2 + Math.random() * 6,
+                color: '#fff',
+                fillColor: color,
+                fillOpacity: 0.8
+            }).addTo(map);
+            setTimeout(() => map.removeLayer(p), 200);
+        }
+    }
+    
+    function updateCounters() {
+        pvoCountSpan.innerText = pvoZones.length;
+        targetCountSpan.innerText = targets.length;
+        targetCountInfo.innerText = targets.length;
+    }
+    
+    function updatePendingCount() {
+        const total = pendingWaypoints.drone.length + pendingWaypoints.cr.length + pendingWaypoints.br.length;
+        targetBtn.querySelector('.counter-badge').innerText = total;
+    }
+    
+    // ========== PLAY/PAUSE ==========
+    playPauseBtn.addEventListener('click', () => {
+        if (!simulationActive) {
+            commitAllTargets();
+            
+            simulationActive = true;
+            simStartTime = performance.now();
+            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> ПАУЗА';
+            
+            for (const target of targets) {
+                if (!target.finished && !target.intercepted) {
+                    startTargetMovement(target);
+                }
+            }
+            
+            function pvoLoop() {
+                if (!simulationActive) return;
+                launchMissilesFromAllPvo();
+                pvoCheckFrame = requestAnimationFrame(pvoLoop);
+            }
+            pvoCheckFrame = requestAnimationFrame(pvoLoop);
+            
+            moveHomingMissiles();
+            
+            function updateTime() {
+                if (!simulationActive) return;
+                const now = performance.now();
+                const simHours = ((now - simStartTime) / 1000 / 3600) * TIME_SCALE;
+                const totalSec = Math.floor(simHours * 3600);
+                const h = Math.floor(totalSec / 3600);
+                const m = Math.floor((totalSec % 3600) / 60);
+                simTimeSpan.innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                animFrame = requestAnimationFrame(updateTime);
+            }
+            animFrame = requestAnimationFrame(updateTime);
+            
+        } else {
+            simulationActive = false;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i> ПУСК';
+            
+            if (animFrame) cancelAnimationFrame(animFrame);
+            if (missileFrame) cancelAnimationFrame(missileFrame);
+            if (pvoCheckFrame) cancelAnimationFrame(pvoCheckFrame);
+        }
+    });
+    
+    // ========== СБРОС ==========
+    resetBtn.addEventListener('click', () => {
+        if (!confirm('Сбросить всё?')) return;
+        
+        simulationActive = false;
+        playPauseBtn.innerHTML = '<i class="fas fa-play"></i> ПУСК';
+        
+        if (animFrame) cancelAnimationFrame(animFrame);
+        if (missileFrame) cancelAnimationFrame(missileFrame);
+        if (pvoCheckFrame) cancelAnimationFrame(pvoCheckFrame);
+        
+        toolbars.forEach(t => t.element?.remove());
+        toolbars = [];
+        
+        pvoZones.forEach(obj => {
+            if (obj.marker) map.removeLayer(obj.marker);
+            if (obj.circle) map.removeLayer(obj.circle);
+        });
+        
+        targets.forEach(t => {
+            if (t.marker) map.removeLayer(t.marker);
+            if (t.linePast) map.removeLayer(t.linePast);
+            if (t.lineFuture) map.removeLayer(t.lineFuture);
+            if (t.toolbar) t.toolbar.remove();
+        });
+        
+        missiles.forEach(m => {
+            if (m.marker) map.removeLayer(m.marker);
+            if (m.toolbar) m.toolbar.remove();
+        });
+        
+        Object.keys(pendingMarkers).forEach(type => {
+            pendingMarkers[type].forEach(m => map.removeLayer(m));
+            pendingMarkers[type] = [];
+            pendingWaypoints[type] = [];
+        });
+        
+        pvoZones = [];
+        targets = [];
+        missiles = [];
+        
+        updateCounters();
+        updatePendingCount();
+        simTimeSpan.innerText = '00:00';
+    });
+    
+    // ========== ВЫРАВНИВАНИЕ КНОПОК ЗУМА ПО ВЕРХНЕМУ КРАЮ КНОПКИ ПВО ==========
+    function alignZoomButtons() {
+        const pvoBlock = document.getElementById('pvoBlock');
+        if (pvoBlock && zoomRight) {
+            const rect = pvoBlock.getBoundingClientRect();
+            // Верхний край кнопки ПВО = rect.top
+            zoomRight.style.position = 'absolute';
+            zoomRight.style.top = rect.top + 'px';
+            zoomRight.style.right = '20px';
+            zoomRight.style.bottom = 'auto';
+        }
+    }
+    
+    window.addEventListener('load', alignZoomButtons);
+    window.addEventListener('resize', alignZoomButtons);
+    // Также вызываем при изменении содержимого (например, после сброса)
+    setInterval(alignZoomButtons, 500); // для надежности
+    
+    updateCounters();
+    updatePendingCount();
 </script>
 </body>
 </html>
