@@ -3,128 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tactical Defense Elite v9.0</title>
+    <title>Tactical Defense Elite v11.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
     <style>
         :root { --primary: #ffbb33; --bg: #0a0c10; --panel-bg: rgba(15, 20, 30, 0.95); }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        
-        /* Исправленная яркость карты */
-        #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 1; filter: contrast(1.1); }
+        body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; }
+        #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 1; }
         
         .status-header { 
             position: absolute; top: 0; left: 0; width: 100%; z-index: 9999; 
-            background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent); 
-            padding: 15px; display: flex; justify-content: center; gap: 30px; color: white; pointer-events: none;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); 
+            padding: 12px; display: flex; justify-content: center; gap: 25px; color: white; pointer-events: none;
         }
-        .status-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
-        .status-item i { color: var(--primary); }
-        
-        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9998; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
-        .ui-layer > * { pointer-events: auto; }
-        
-        .tool-selection { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 600px; margin: 60px auto 0 auto; }
-        .tool-card { background: var(--panel-bg); border: 1px solid rgba(255,187,51,0.4); border-radius: 12px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
-        .card-label { font-size: 11px; color: var(--primary); font-weight: 900; margin-bottom: 8px; display: block; text-transform: uppercase; }
-        
-        .tool-card label { display: flex; align-items: center; gap: 10px; color: #eee; font-size: 12px; cursor: pointer; padding: 5px; border-radius: 4px; }
-        .tool-card input { accent-color: var(--primary); }
-        
-        .obj-toolbar { 
-            position: absolute; background: rgba(0, 10, 20, 0.9); color: #00ffaa; 
-            padding: 4px 10px; border-left: 3px solid #00ffaa; border-radius: 2px; 
-            font-family: 'Courier New', monospace; font-size: 10px; pointer-events: none; 
-            z-index: 10000; white-space: nowrap; transform: translate(15px, -15px);
-        }
+        .status-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; }
 
-        .bottom-nav { display: flex; justify-content: center; gap: 20px; margin-bottom: 25px; }
-        .btn { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: 0.2s; }
+        .ui-layer { position: absolute; top: 55px; width: 100%; z-index: 9998; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .ui-layer > * { pointer-events: auto; }
+
+        /* Возвращенный стиль карточек управления */
+        .tool-selection { display: flex; gap: 15px; justify-content: center; width: 100%; max-width: 600px; }
+        .tool-card { background: var(--panel-bg); border: 1px solid rgba(255,187,51,0.4); border-radius: 10px; padding: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); flex: 1; }
+        .card-label { font-size: 10px; color: var(--primary); font-weight: 900; margin-bottom: 6px; display: block; text-transform: uppercase; border-bottom: 1px solid rgba(255,187,51,0.2); padding-bottom: 3px; }
+        
+        select { background: #1a222d; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; font-size: 12px; cursor: pointer; outline: none; width: 100%; }
+
+        .mode-switch { background: var(--panel-bg); border: 1px solid var(--primary); border-radius: 20px; display: flex; overflow: hidden; padding: 2px; }
+        .mode-btn { padding: 6px 15px; color: #aaa; cursor: pointer; font-size: 11px; font-weight: bold; border-radius: 18px; transition: 0.3s; }
+        .mode-btn.active { background: var(--primary); color: #000; }
+
+        .obj-toolbar { position: absolute; background: rgba(0, 10, 20, 0.9); color: #00ffaa; padding: 4px 10px; border-left: 3px solid #00ffaa; font-family: monospace; font-size: 10px; pointer-events: none; z-index: 10000; white-space: nowrap; transform: translate(15px, -15px); box-shadow: 0 0 10px rgba(0,255,170,0.2); }
+
+        .bottom-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 9998; }
+        .btn { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: 0.2s; }
+        .btn-confirm { background: #28a745 !important; border: 3px solid #fff !important; transform: scale(1.1); box-shadow: 0 0 20px rgba(40,167,69,0.5); }
         #playBtn { background: #1a73e8; }
         #resetBtn { background: #444; }
-        .btn:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
 <div id="map"></div>
+
 <div class="status-header">
     <div class="status-item"><i class="far fa-clock"></i> <span id="simTime">00:00</span></div>
     <div class="status-item"><i class="fas fa-bullseye"></i> <span id="targetCount">0</span></div>
     <div class="status-item"><i class="fas fa-shield-alt"></i> <span id="pvoCount">0</span></div>
 </div>
+
 <div class="ui-layer">
+    <div class="mode-switch">
+        <div class="mode-btn active" id="modePVO" onclick="setMode('pvo')">РЕЖИМ ПВО</div>
+        <div class="mode-btn" id="modeTarget" onclick="setMode('target')">РЕЖИМ ЦЕЛЬ</div>
+    </div>
+    
     <div class="tool-selection">
-        <div class="tool-card">
+        <div class="tool-card" id="pvoBox">
             <span class="card-label">ОБОРОНА</span>
-            <label><input type="radio" name="tool" value="pvo_pancyr" checked> <span>Панцирь-С1 (20км)</span></label>
-            <label><input type="radio" name="tool" value="pvo_buk"> <span>Бук-М3 (70км)</span></label>
-            <label><input type="radio" name="tool" value="pvo_patriot"> <span>Patriot (160км)</span></label>
-            <label><input type="radio" name="tool" value="pvo_s400"> <span>С-400 (400км)</span></label>
+            <select id="pvoSelect">
+                <option value="pvo_pancyr">Панцирь-С1 (20 км)</option>
+                <option value="pvo_iris">IRIS-T SLM (40 км)</option>
+                <option value="pvo_buk">Бук-М3 (70 км)</option>
+                <option value="pvo_samp">SAMP/T (100 км)</option>
+                <option value="pvo_patriot">Patriot PAC-3 (160 км)</option>
+                <option value="pvo_s400">С-400 (400 км)</option>
+            </select>
         </div>
-        <div class="tool-card">
+        <div class="tool-card" id="targetBox" style="opacity: 0.5;">
             <span class="card-label">УГРОЗЫ</span>
-            <label><input type="radio" name="tool" value="drone_mavic"> <span>Mavic (70км/ч)</span></label>
-            <label><input type="radio" name="tool" value="drone_shahed"> <span>Shahed (185км/ч)</span></label>
-            <label><input type="radio" name="tool" value="missile_kalibr"> <span>Калибр (850км/ч)</span></label>
-            <label><input type="radio" name="tool" value="missile_iskander"> <span>Искандер (7500км/ч)</span></label>
+            <select id="targetSelect">
+                <option value="drone_shahed">Shahed-136 (185 км/ч)</option>
+                <option value="missile_x101">Х-101 (850 км/ч)</option>
+                <option value="missile_iskander">Искандер-М (7500 км/ч)</option>
+                <option value="missile_x32">Х-32 (5400 км/ч)</option>
+                <option value="missile_zircon">Циркон (11000 км/ч)</option>
+            </select>
         </div>
     </div>
-    <div class="bottom-nav">
-        <button class="btn" id="resetBtn"><i class="fas fa-sync-alt"></i></button>
-        <button class="btn" id="playBtn"><i class="fas fa-play"></i></button>
-    </div>
+</div>
+
+<div class="bottom-nav">
+    <button class="btn" id="resetBtn"><i class="fas fa-sync-alt"></i></button>
+    <button class="btn" id="playBtn"><i class="fas fa-play"></i></button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.8, 36.5], 6);
-    // Светлая подложка
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // Четкая граница
-    const borderCoords = [[52.3, 33.0], [52.1, 34.2], [51.5, 34.6], [51.2, 35.3], [50.8, 35.6], [50.4, 36.5], [50.1, 37.9], [49.5, 38.6], [49.2, 39.8], [48.5, 39.4], [47.8, 40.1], [47.1, 39.2]];
-    L.polyline(borderCoords, { color: '#ff4444', weight: 4, opacity: 0.8, dashArray: '10, 10', interactive: false }).addTo(map);
-
     const CONFIG = {
-        drone_mavic: { name: 'MAVIC', speed: 70, baseAlt: 100, color: '#00e5ff' },
-        drone_shahed: { name: 'SHAHED', speed: 185, baseAlt: 150, color: '#00ff88' },
-        missile_kalibr: { name: 'KALIBR', speed: 850, baseAlt: 60, color: '#ffbb33' },
-        missile_iskander: { name: 'ISKANDER', speed: 7500, baseAlt: 40000, color: '#ff4444' },
-        pvo_pancyr: { r: 20, c: '#00ff88' }, pvo_buk: { r: 70, c: '#3b82f6' }, 
+        drone_shahed: { name: 'SHAHED-136', speed: 185, baseAlt: 150, color: '#00ff88' },
+        missile_x101: { name: 'KH-101', speed: 850, baseAlt: 60, color: '#ffbb33' },
+        missile_iskander: { name: 'ISKANDER-M', speed: 7500, baseAlt: 40000, color: '#ff4444' },
+        missile_x32: { name: 'KH-32', speed: 5400, baseAlt: 30000, color: '#ff00ff' },
+        missile_zircon: { name: 'ZIRCON', speed: 11000, baseAlt: 35000, color: '#ff0000' },
+        pvo_pancyr: { r: 20, c: '#00ff88' }, pvo_iris: { r: 40, c: '#ff00ff' },
+        pvo_buk: { r: 70, c: '#3b82f6' }, pvo_samp: { r: 100, c: '#00e5ff' },
         pvo_patriot: { r: 160, c: '#ffffff' }, pvo_s400: { r: 400, c: '#ff4444' },
-        interceptor: { speed: 8500 } // Увеличенная скорость ЗУР
+        interceptor: { speed: 9500 }
     };
 
-    let state = { isSimulating: false, targets: [], pvo: [], missiles: [], pendingPath: [], tempMarkers: [], activeFutureLine: null, simSeconds: 0, lastFrame: 0 };
+    let state = { currentMode: 'pvo', isSimulating: false, targets: [], pvo: [], missiles: [], pendingPath: [], tempMarkers: [], activeFutureLine: null, simSeconds: 0, lastFrame: 0 };
 
-    function getTerrainAlt(lat, lng) { return (Math.abs(Math.sin(lat * 5) * Math.cos(lng * 5)) * 200); }
+    function setMode(m) {
+        state.currentMode = m;
+        document.getElementById('modePVO').classList.toggle('active', m === 'pvo');
+        document.getElementById('modeTarget').classList.toggle('active', m === 'target');
+        document.getElementById('pvoBox').style.opacity = m === 'pvo' ? '1' : '0.5';
+        document.getElementById('targetBox').style.opacity = m === 'target' ? '1' : '0.5';
+    }
 
     map.on('click', (e) => {
-        const tool = document.querySelector('input[name="tool"]:checked').value;
+        if (state.isSimulating) return;
         const pos = [e.latlng.lat, e.latlng.lng];
-        if (tool.startsWith('pvo')) addPVO(pos, CONFIG[tool]);
-        else addWaypoint(pos, tool);
+        if (state.currentMode === 'pvo') {
+            addPVO(pos, CONFIG[document.getElementById('pvoSelect').value]);
+        } else {
+            addWaypoint(pos);
+        }
     });
 
     function addPVO(pos, cfg) {
         L.circle(pos, { radius: cfg.r * 1000, color: cfg.c, weight: 1, fillOpacity: 0.1 }).addTo(map);
         L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: cfg.c, fillOpacity: 1 }).addTo(map);
         state.pvo.push({ id: Math.random(), pos, radius: cfg.r });
-        document.getElementById('pvoCount').innerText = state.pvo.length;
+        updateCounters();
     }
 
-    function addWaypoint(pos, tool) {
-        const marker = L.circleMarker(pos, { radius: 4, color: CONFIG[tool].color, fillOpacity: 1 }).addTo(map);
+    function addWaypoint(pos) {
+        const type = document.getElementById('targetSelect').value;
+        const marker = L.circleMarker(pos, { radius: 4, color: CONFIG[type].color, fillOpacity: 1 }).addTo(map);
         state.pendingPath.push(pos); state.tempMarkers.push(marker);
         if (state.activeFutureLine) map.removeLayer(state.activeFutureLine);
         state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
+        
+        const btn = document.getElementById('playBtn');
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        btn.className = 'btn btn-confirm';
     }
 
-    function spawnTarget() {
+    function finalizeTarget() {
         if (state.pendingPath.length < 2) return;
-        const type = document.querySelector('input[name="tool"]:checked').value;
+        const type = document.getElementById('targetSelect').value;
         const info = CONFIG[type];
         const target = {
             id: Math.random(), type, path: [...state.pendingPath], speed: info.speed, color: info.color, progressKm: 0,
@@ -135,8 +156,10 @@
         };
         for(let i=0; i<target.path.length-1; i++) target.totalDist += map.distance(target.path[i], target.path[i+1]) / 1000;
         state.targets.push(target);
-        state.pendingPath = []; state.tempMarkers.forEach(m => map.removeLayer(m)); state.tempMarkers = []; state.activeFutureLine = null;
+        state.pendingPath = []; state.tempMarkers = []; state.activeFutureLine = null;
         updateCounters();
+        const btn = document.getElementById('playBtn');
+        btn.innerHTML = '<i class="fas fa-play"></i>'; btn.className = 'btn';
     }
 
     function createTB() { const div = document.createElement('div'); div.className = 'obj-toolbar'; document.body.appendChild(div); return div; }
@@ -144,7 +167,7 @@
     function simLoop(time) {
         if (!state.isSimulating) return;
         const dt = (time - state.lastFrame) / 1000; state.lastFrame = time;
-        const stepHours = (dt * 12) / 3600; // Симуляция 12x
+        const stepHours = (dt * 15) / 3600;
 
         state.targets.forEach(t => {
             if (!t.active) return;
@@ -154,11 +177,8 @@
                 t.currentPos = interpolate(t.path, t.progressKm);
                 t.marker.setLatLng(t.currentPos);
                 t.linePast.setLatLngs(getPoints(t.path, t.progressKm, t.currentPos, true));
-                if(t.lineFuture) t.lineFuture.setLatLngs(getPoints(t.path, t.progressKm, t.currentPos, false));
-                
-                let alt = CONFIG[t.type].baseAlt + getTerrainAlt(t.currentPos[0], t.currentPos[1]);
-                if(t.type === 'missile_iskander') alt += Math.sin(t.progressKm/t.totalDist * Math.PI) * 60000;
-                
+                let alt = CONFIG[t.type].baseAlt + (Math.abs(Math.sin(t.currentPos[0]*5))*200);
+                if(['missile_iskander', 'missile_zircon', 'missile_x32'].includes(t.type)) alt += Math.sin(t.progressKm/t.totalDist * Math.PI) * 45000;
                 t.toolbar.innerHTML = `${CONFIG[t.type].name} | ${t.speed} KM/H | ${Math.round(alt)} M`;
                 const p = map.latLngToContainerPoint(t.currentPos);
                 t.toolbar.style.left = p.x + 'px'; t.toolbar.style.top = p.y + 'px';
@@ -186,31 +206,26 @@
             const move = (CONFIG.interceptor.speed * stepHours * 1000) / d;
             m.pos = [m.pos[0] + (t.currentPos[0] - m.pos[0]) * move, m.pos[1] + (t.currentPos[1] - m.pos[1]) * move];
             m.marker.setLatLng(m.pos);
-            m.toolbar.innerHTML = `ЗУР | LOCK`;
             const p = map.latLngToContainerPoint(m.pos);
-            m.toolbar.style.left = p.x + 'px'; m.toolbar.style.top = p.y + 'px';
+            m.toolbar.style.left = p.x + 'px'; m.toolbar.style.top = p.y + 'px'; m.toolbar.innerHTML = `ЗУР | LOCK`;
             return true;
         });
 
-        state.simSeconds += dt * 12; updateUI();
+        state.simSeconds += dt * 15; updateUI();
         requestAnimationFrame(simLoop);
     }
 
     function markEvent(pos, type) {
-        const icon = L.divIcon({
-            html: type === 'hit' ? '<i class="fas fa-skull" style="color:#ff4444;font-size:22px;"></i>' : '<i class="fas fa-certificate" style="color:#fff;font-size:22px;"></i>',
-            className: 'event-icon', iconSize: [25, 25]
-        });
+        const icon = L.divIcon({ html: type === 'hit' ? '<i class="fas fa-skull" style="color:#ff4444;font-size:22px;"></i>' : '<i class="fas fa-certificate" style="color:#fff;font-size:22px;"></i>', className: 'event-icon', iconSize: [25, 25] });
         L.marker(pos, { icon }).addTo(map);
-        if (type === 'intercept') confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 }, colors: ['#fff', '#ffbb33'] });
+        if (type === 'intercept') confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 } });
     }
 
     function getPoints(path, dist, current, past) {
-        let acc = 0; let res = past ? [] : [current]; let found = false;
+        let acc = 0; let res = past ? [] : [current];
         for(let i=0; i<path.length-1; i++) {
             const d = map.distance(path[i], path[i+1]) / 1000;
             if (past) { res.push(path[i]); if (acc + d > dist) break; }
-            else { if (acc + d > dist) found = true; if (found) res.push(path[i+1]); }
             acc += d;
         }
         if (past) res.push(current); return res;
@@ -227,10 +242,19 @@
     }
 
     function removeT(t) { t.active = false; map.removeLayer(t.marker); map.removeLayer(t.linePast); if(t.lineFuture) map.removeLayer(t.lineFuture); t.toolbar.remove(); updateCounters(); }
-    function setSim(val) { state.isSimulating = val; const btn = document.getElementById('playBtn'); if (state.isSimulating) { spawnTarget(); state.lastFrame = performance.now(); btn.innerHTML = '<i class="fas fa-pause"></i>'; requestAnimationFrame(simLoop); } else btn.innerHTML = '<i class="fas fa-play"></i>'; }
+    
+    document.getElementById('playBtn').onclick = () => {
+        if (state.pendingPath.length > 0) finalizeTarget();
+        else {
+            state.isSimulating = !state.isSimulating;
+            const btn = document.getElementById('playBtn');
+            if (state.isSimulating) { state.lastFrame = performance.now(); btn.innerHTML = '<i class="fas fa-pause"></i>'; requestAnimationFrame(simLoop); }
+            else btn.innerHTML = '<i class="fas fa-play"></i>';
+        }
+    };
+
     function updateUI() { const m = Math.floor(state.simSeconds/60); const s = Math.floor(state.simSeconds%60); document.getElementById('simTime').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }
-    function updateCounters() { document.getElementById('targetCount').innerText = state.targets.filter(t => t.active).length; }
-    document.getElementById('playBtn').onclick = () => setSim(!state.isSimulating);
+    function updateCounters() { document.getElementById('targetCount').innerText = state.targets.filter(t => t.active).length; document.getElementById('pvoCount').innerText = state.pvo.length; }
     document.getElementById('resetBtn').onclick = () => location.reload();
 </script>
 </body>
