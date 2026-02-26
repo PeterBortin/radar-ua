@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тактический симулятор – зум справа, высоты целей, D400 и т.д.</title>
+    <title>Тактический симулятор – реалистичные взрывы + замедление</title>
     
-    <!-- Leaflet & Fonts -->
+    <!-- Leaflet & Fonts & Particles (canvas-confetti для взрывов) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -130,22 +131,15 @@
         }
         .info-panel i { color: #ffbb33; margin-right: 8px; }
         
-        /* ===== КНОПКИ ЗУМА СПРАВА, ВЫРОВНЕНЫ ПО ВЕРХНЕМУ КРАЮ КНОПКИ ПВО ===== */
+        /* КНОПКИ ЗУМА СПРАВА, ВЫРОВНЕНЫ ПО ВЕРХНЕМУ КРАЮ КНОПКИ ПВО */
         .zoom-ui-right {
             position: absolute;
             right: 20px;
-            /* Выравниваем по верхнему краю кнопки ПВО: кнопка ПВО находится на 20px от низа, высота ~50px, 
-               значит верх кнопки ПВО на уровне (высота экрана - 20px - 50px). Но проще задать фиксированно: 
-               пусть верхняя кнопка зума будет на том же уровне, что и верх кнопки ПВО. 
-               Используем bottom: auto; top: calc(100vh - 20px - 50px - 8px)? Но проще через JS подстройка, 
-               однако сделаем приблизительно: отступ сверху 70% – нет. Лучше через JS при загрузке. 
-               Пока поставим top: calc(100vh - 150px); но это грубо. Реализуем точное позиционирование позже.
-               Сейчас сделаем так, чтобы кнопки были справа и их позиция подстроена под кнопку ПВО через JS.*/
             display: flex;
             flex-direction: column;
             gap: 8px;
             z-index: 1000;
-            pointer-events: none; /* контейнер не перехватывает клики */
+            pointer-events: none;
         }
         .zoom-ui-right button {
             pointer-events: auto;
@@ -240,7 +234,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // ========== НАСТРОЙКИ ==========
-    const TIME_SCALE = 30;
+    // РЕЗКО УМЕНЬШАЕМ TIME_SCALE для замедления (было 30, ставим 2)
+    const TIME_SCALE = 2;  // теперь время течет в 2 раза быстрее реального, но объекты двигаются медленнее
     const map = L.map('map', { zoomControl: false }).setView([50, 30], 5);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '' }).addTo(map);
     
@@ -248,7 +243,7 @@
     let currentTool = null;
     let pvoDiameters = { selected: 100 };
     
-    // Типы целей с расширенной информацией о высоте (динамика)
+    // Типы целей с расширенной информацией о высоте
     const targetTypes = {
         drone: { 
             name: 'БПЛА', speed: 100, 
@@ -257,27 +252,25 @@
             color: '#88ccff', 
             maxPoints: 99,
             getAltitude: (progress, total) => {
-                // от 0.1 до 5 км: старт и финиш на 0.1, середина на 5
-                const t = Math.sin(progress / total * Math.PI); // 0 в начале/конце, 1 в середине
+                const t = Math.sin(progress / total * Math.PI);
                 return 0.1 + (5 - 0.1) * t;
             }
         },
         cr: { 
             name: 'КР', speed: 700, 
             altitudeMin: 0.05,   // 50 м
-            altitudeMax: 0.05,   // постоянная
+            altitudeMax: 0.05,   
             color: '#ffaa33', 
             maxPoints: 99,
             getAltitude: () => 0.05
         },
         br: { 
             name: 'БР', speed: 3000, 
-            altitudeMin: 1,       // 1 км старт/финиш
-            altitudeMax: 100,      // 100 км в апогее
+            altitudeMin: 1,       // 1 км
+            altitudeMax: 100,      // 100 км
             color: '#ff5555', 
             maxPoints: 2,
             getAltitude: (progress, total) => {
-                // от 1 до 100 км: старт и финиш 1, середина 100
                 const t = Math.sin(progress / total * Math.PI);
                 return 1 + (100 - 1) * t;
             }
@@ -311,7 +304,7 @@
     const simTimeSpan = document.getElementById('simTime');
     const zoomRight = document.getElementById('zoomRight');
     
-    // Радио ПВО (теперь с D)
+    // Радио ПВО
     document.querySelectorAll('input[name="pvoRange"]').forEach(r => {
         r.addEventListener('change', e => pvoDiameters.selected = parseInt(e.target.value));
     });
@@ -398,7 +391,6 @@
         const typeInfo = targetTypes[type];
         const waypts = [...waypoints];
         
-        // Формируем текст с динамической высотой
         let altText = '';
         if (type === 'drone') altText = '100м-5км';
         else if (type === 'cr') altText = '50м';
@@ -443,7 +435,7 @@
             finished: false,
             intercepted: false,
             toolbar: toolbar,
-            getAltitude: typeInfo.getAltitude  // функция высоты
+            getAltitude: typeInfo.getAltitude
         };
         
         targets.push(target);
@@ -547,7 +539,8 @@
                 target.position = target.waypoints[target.waypoints.length - 1];
                 target.marker.setLatLng(target.position);
                 
-                createBlast(target.position, target.color);
+                // РЕАЛИСТИЧНЫЙ ВЗРЫВ
+                createRealisticBlast(target.position, target.color);
                 
                 if (target.linePast) target.linePast.setStyle({ opacity: 0.3 });
                 if (target.lineFuture) target.lineFuture.setStyle({ opacity: 0.3 });
@@ -583,6 +576,55 @@
             }
             accumulated += segDist;
         }
+    }
+    
+    // ========== РЕАЛИСТИЧНЫЙ ВЗРЫВ С ИСПОЛЬЗОВАНИЕМ CANVAS-CONFETTI ==========
+    function createRealisticBlast(position, color) {
+        // Конвертируем координаты в пиксели экрана для конфетти
+        const point = map.latLngToContainerPoint(position);
+        
+        // Определяем цвета взрыва на основе цвета цели
+        let colors = ['#ffaa00', '#ff5500', '#ff0000', '#ffff00'];
+        if (color === '#88ccff') colors = ['#88ccff', '#ffffff', '#aaddff', '#66aaff'];
+        else if (color === '#ffaa33') colors = ['#ffaa33', '#ff8800', '#ff5500', '#ffffaa'];
+        else if (color === '#ff5555') colors = ['#ff5555', '#ff0000', '#ff8800', '#ffff00'];
+        
+        // Основной взрыв - множество частиц
+        confetti({
+            particleCount: 150,
+            spread: 100,
+            origin: { x: point.x / window.innerWidth, y: point.y / window.innerHeight },
+            colors: colors,
+            startVelocity: 30,
+            decay: 0.9,
+            ticks: 200
+        });
+        
+        // Дополнительная ударная волна
+        setTimeout(() => {
+            confetti({
+                particleCount: 80,
+                spread: 150,
+                origin: { x: point.x / window.innerWidth, y: point.y / window.innerHeight },
+                colors: ['#ffffff', '#ffffaa', '#ffaa00'],
+                startVelocity: 20,
+                decay: 0.8,
+                ticks: 150
+            });
+        }, 50);
+        
+        // Искры
+        setTimeout(() => {
+            confetti({
+                particleCount: 60,
+                spread: 200,
+                origin: { x: point.x / window.innerWidth, y: point.y / window.innerHeight },
+                colors: ['#ffaa00', '#ff5500'],
+                startVelocity: 15,
+                decay: 0.7,
+                ticks: 100
+            });
+        }, 100);
     }
     
     // ========== ПВО ==========
@@ -677,7 +719,8 @@
                 if (target.linePast) target.linePast.setStyle({ opacity: 0.3 });
                 if (target.lineFuture) target.lineFuture.setStyle({ opacity: 0.3 });
                 
-                createBlast(target.position, '#ffaa00');
+                // РЕАЛИСТИЧНЫЙ ВЗРЫВ ПРИ ПЕРЕХВАТЕ
+                createRealisticBlast(target.position, '#ffaa00');
                 removeTarget(target);
                 continue;
             }
@@ -724,20 +767,6 @@
             sum += getDistance(pts[i], pts[i+1]);
         }
         return sum;
-    }
-    
-    function createBlast(pos, color) {
-        for (let i = 0; i < 8; i++) {
-            const a = Math.random() * 2 * Math.PI;
-            const d = (Math.random() * 5) / 111;
-            const p = L.circleMarker([pos[0] + Math.sin(a) * d, pos[1] + Math.cos(a) * d], {
-                radius: 2 + Math.random() * 6,
-                color: '#fff',
-                fillColor: color,
-                fillOpacity: 0.8
-            }).addTo(map);
-            setTimeout(() => map.removeLayer(p), 200);
-        }
     }
     
     function updateCounters() {
@@ -848,7 +877,6 @@
         const pvoBlock = document.getElementById('pvoBlock');
         if (pvoBlock && zoomRight) {
             const rect = pvoBlock.getBoundingClientRect();
-            // Верхний край кнопки ПВО = rect.top
             zoomRight.style.position = 'absolute';
             zoomRight.style.top = rect.top + 'px';
             zoomRight.style.right = '20px';
@@ -858,8 +886,7 @@
     
     window.addEventListener('load', alignZoomButtons);
     window.addEventListener('resize', alignZoomButtons);
-    // Также вызываем при изменении содержимого (например, после сброса)
-    setInterval(alignZoomButtons, 500); // для надежности
+    setInterval(alignZoomButtons, 500);
     
     updateCounters();
     updatePendingCount();
