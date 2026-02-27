@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tactical Defense Elite v11.3</title>
+    <title>Tactical Defense Elite v11.4</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
@@ -88,16 +88,21 @@
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.8, 36.5], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
+    // Улучшенные характеристики с учетом скоростей ЗУР (зенитных управляемых ракет)
     const CONFIG = {
         drone_shahed: { name: 'SHAHED-136', speed: 185, baseAlt: 150, color: '#00ff88' },
         missile_x101: { name: 'KH-101', speed: 850, baseAlt: 60, color: '#ffbb33' },
         missile_iskander: { name: 'ISKANDER-M', speed: 7500, baseAlt: 40000, color: '#ff4444' },
         missile_x32: { name: 'KH-32', speed: 5400, baseAlt: 30000, color: '#ff00ff' },
         missile_zircon: { name: 'ZIRCON', speed: 11000, baseAlt: 35000, color: '#ff0000' },
-        pvo_pancyr: { r: 20, c: '#00ff88' }, pvo_iris: { r: 40, c: '#ff00ff' },
-        pvo_buk: { r: 70, c: '#3b82f6' }, pvo_samp: { r: 100, c: '#00e5ff' },
-        pvo_patriot: { r: 160, c: '#ffffff' }, pvo_s400: { r: 400, c: '#ff4444' },
-        interceptor: { speed: 9500 }
+        
+        // pvo: r - радиус (км), c - цвет, s - скорость ракеты перехватчика (км/ч)
+        pvo_pancyr: { r: 20, c: '#00ff88', s: 4600 }, 
+        pvo_iris: { r: 40, c: '#ff00ff', s: 3700 },
+        pvo_buk: { r: 70, c: '#3b82f6', s: 5600 }, 
+        pvo_samp: { r: 100, c: '#00e5ff', s: 5000 },
+        pvo_patriot: { r: 160, c: '#ffffff', s: 6000 }, 
+        pvo_s400: { r: 400, c: '#ff4444', s: 9000 }
     };
 
     let state = { currentMode: 'pvo', isSimulating: false, targets: [], pvo: [], missiles: [], pendingPath: [], tempMarkers: [], activeFutureLine: null, simSeconds: 0, lastFrame: 0 };
@@ -112,17 +117,18 @@
         if (state.isSimulating) return;
         const pos = [e.latlng.lat, e.latlng.lng];
         if (state.currentMode === 'pvo') {
-            addPVO(pos, CONFIG[document.getElementById('pvoSelect').value]);
+            const type = document.getElementById('pvoSelect').value;
+            addPVO(pos, CONFIG[type], type);
         } else {
             addWaypoint(pos);
         }
         updateNavButtons();
     });
 
-    function addPVO(pos, cfg) {
+    function addPVO(pos, cfg, type) {
         const circle = L.circle(pos, { radius: cfg.r * 1000, color: cfg.c, weight: 1, fillOpacity: 0.1 }).addTo(map);
         const marker = L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: cfg.c, fillOpacity: 1 }).addTo(map);
-        state.pvo.push({ id: Math.random(), pos, radius: cfg.r, layers: [circle, marker] });
+        state.pvo.push({ id: Math.random(), pos, radius: cfg.r, mSpeed: cfg.s, layers: [circle, marker] });
         updateCounters();
     }
 
@@ -161,7 +167,6 @@
         const hasPending = state.pendingPath.length > 0;
         const hasPvo = state.pvo.length > 0;
 
-        // Если есть что отменять (точки цели или установки ПВО)
         if (hasPending || (state.currentMode === 'pvo' && hasPvo)) {
             resetBtn.innerHTML = '<i class="fas fa-undo"></i>';
             resetBtn.onclick = undoAction;
@@ -192,7 +197,7 @@
             currentPos: state.pendingPath[0], totalDist: 0, active: true, toolbar: createTB(),
             marker: L.circleMarker(state.pendingPath[0], { radius: 6, color: '#fff', fillColor: info.color, fillOpacity: 1 }).addTo(map),
             linePast: L.polyline([], { color: info.color, weight: 3 }).addTo(map),
-            lineFuture: state.activeFutureLine, // Оставляем ссылку на пунктир
+            lineFuture: state.activeFutureLine,
             engagedBy: new Set()
         };
         for(let i=0; i<target.path.length-1; i++) target.totalDist += map.distance(target.path[i], target.path[i+1]) / 1000;
@@ -231,7 +236,7 @@
                 const d = map.distance(p.pos, t.currentPos) / 1000;
                 if (d < p.radius && !t.engagedBy.has(p.id)) {
                     t.engagedBy.add(p.id);
-                    state.missiles.push({ targetId: t.id, pos: [...p.pos], toolbar: createTB(),
+                    state.missiles.push({ targetId: t.id, pos: [...p.pos], toolbar: createTB(), speed: p.mSpeed,
                         marker: L.circleMarker(p.pos, { radius: 3, color: '#fff', fillColor: '#ffbb33', fillOpacity: 1 }).addTo(map)
                     });
                 }
@@ -243,11 +248,11 @@
             if (!t) { map.removeLayer(m.marker); if(m.toolbar) m.toolbar.remove(); return false; }
             const d = map.distance(m.pos, t.currentPos);
             if (d < 1000) { markEvent(t.currentPos, 'intercept'); removeT(t); map.removeLayer(m.marker); m.toolbar.remove(); return false; }
-            const move = (CONFIG.interceptor.speed * stepHours * 1000) / d;
+            const move = (m.speed * stepHours * 1000) / d;
             m.pos = [m.pos[0] + (t.currentPos[0] - m.pos[0]) * move, m.pos[1] + (t.currentPos[1] - m.pos[1]) * move];
             m.marker.setLatLng(m.pos);
             const p = map.latLngToContainerPoint(m.pos);
-            m.toolbar.style.left = p.x + 'px'; m.toolbar.style.top = p.y + 'px'; m.toolbar.innerHTML = `ЗУР | LOCK`;
+            m.toolbar.style.left = p.x + 'px'; m.toolbar.style.top = p.y + 'px'; m.toolbar.innerHTML = `ЗУР | ${m.speed} KM/H`;
             return true;
         });
 
@@ -256,10 +261,17 @@
     }
 
     function markEvent(pos, type) {
+        let html, color;
+        if (type === 'intercept') {
+            html = '<i class="fas fa-skull"></i>'; 
+            color = '#ffffff'; // Белый череп для сбития
+        } else {
+            html = '<i class="fas fa-certificate"></i>'; 
+            color = '#ffbb33'; // Желтая звезда для попадания
+        }
+        
         const icon = L.divIcon({ 
-            html: type === 'hit' ? 
-                '<i class="fas fa-skull" style="color:rgba(255,68,68,0.2);font-size:22px;"></i>' : 
-                '<i class="fas fa-certificate" style="color:rgba(255,255,255,0.2);font-size:22px;"></i>', 
+            html: `<div style="color:${color}; font-size:22px; filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));">${html}</div>`, 
             className: 'event-icon', 
             iconSize: [25, 25] 
         });
@@ -287,14 +299,7 @@
         return path[path.length-1];
     }
 
-    function removeT(t) { 
-        t.active = false; 
-        map.removeLayer(t.marker); 
-        // Линию linePast НЕ удаляем (пунктир остается)
-        // Линию lineFuture НЕ удаляем (весь маршрут виден)
-        t.toolbar.remove(); 
-        updateCounters(); 
-    }
+    function removeT(t) { t.active = false; map.removeLayer(t.marker); t.toolbar.remove(); updateCounters(); }
     
     document.getElementById('playBtn').onclick = () => {
         if (state.pendingPath.length > 0) finalizeTarget();
