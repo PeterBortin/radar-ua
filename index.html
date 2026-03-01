@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tactical Elite v16.2 - Fixed Gradients & Map</title>
+    <title>Tactical Elite v16.4 - Radar Inside Dash</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
@@ -12,7 +12,6 @@
         body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; color: white; }
         #map { position: absolute; inset: 0; z-index: 1; }
         
-        /* UI Стиль */
         #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 20000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
         .menu-card { background: var(--panel); padding: 30px; border-radius: 20px; border: 2px solid var(--primary); text-align: center; width: 320px; box-shadow: 0 0 30px rgba(0,255,136,0.2); }
         .menu-btn { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #444; background: #1a222d; color: white; cursor: pointer; border-radius: 8px; font-weight: bold; }
@@ -25,40 +24,41 @@
         .tool-card { background: var(--panel); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; width: 90%; max-width: 450px; pointer-events: auto; }
         .tool-card.active { border-color: var(--primary); }
         
-        /* Тулбары и маркеры */
         .obj-toolbar { position: absolute; background: rgba(0, 10, 20, 0.95); color: var(--primary); padding: 6px 12px; border-left: 4px solid var(--primary); font-family: 'Courier New', monospace; font-size: 11px; pointer-events: none; z-index: 10000; transform: translate(15px, -15px); white-space: nowrap; line-height: 1.4; border-radius: 0 4px 4px 0; box-shadow: 0 0 15px rgba(0,255,136,0.3); text-shadow: 0 0 5px rgba(0,255,136,0.5); }
         .enemy-toolbar { border-left-color: var(--danger); color: var(--danger); box-shadow: 0 0 15px rgba(255,68,68,0.3); text-shadow: 0 0 5px rgba(255,68,68,0.5); }
         
-        /* Радар - градиент строго внутри круга с правильным центрированием */
+        /* Радар - градиент вращается против часовой, центр строго по середине */
         .radar-sweep {
             position: absolute;
             border-radius: 50%;
             width: 100%;
             height: 100%;
-            background: conic-gradient(from 0deg at 50% 50%, rgba(0, 255, 136, 0.35) 0deg, transparent 90deg);
-            animation: rotateRadar 4s linear infinite;
+            background: conic-gradient(from 0deg at 50% 50%, rgba(0, 255, 136, 0.5) 0deg, transparent 90deg);
+            animation: rotateRadarReverse 4s linear infinite;
             pointer-events: none;
             top: 0;
             left: 0;
-            box-shadow: 0 0 30px rgba(0,255,136,0.2);
+            box-shadow: 0 0 30px rgba(0,255,136,0.3);
+            transform-origin: center center;
         }
-        .radar-green { background: conic-gradient(from 0deg at 50% 50%, rgba(0, 255, 136, 0.35) 0deg, transparent 90deg); }
-        .radar-red { background: conic-gradient(from 0deg at 50% 50%, rgba(255, 68, 68, 0.35) 0deg, transparent 90deg); box-shadow: 0 0 30px rgba(255,68,68,0.2); }
-        @keyframes rotateRadar { 
+        .radar-red { background: conic-gradient(from 0deg at 50% 50%, rgba(255, 68, 68, 0.5) 0deg, transparent 90deg); box-shadow: 0 0 30px rgba(255,68,68,0.3); }
+        @keyframes rotateRadarReverse { 
             from { transform: rotate(0deg); } 
-            to { transform: rotate(360deg); } 
+            to { transform: rotate(-360deg); }
         }
 
-        /* Контейнер радара */
+        /* Контейнер радара - размер зависит от дальности, чтобы градиент был внутри пунктира */
         .radar-container {
             position: relative;
             width: 100%;
             height: 100%;
             border-radius: 50%;
             overflow: visible;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* Взрыв */
         .explosion {
             position: absolute;
             width: 80px;
@@ -78,7 +78,6 @@
             100% { transform: translate(-50%, -50%) scale(3); opacity: 0; filter: blur(8px); }
         }
 
-        /* Пуск ракеты */
         .launch-flare {
             position: absolute;
             width: 20px;
@@ -96,7 +95,6 @@
             100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
         }
 
-        /* След ракеты */
         .missile-trail {
             position: absolute;
             width: 4px;
@@ -113,7 +111,6 @@
             100% { opacity: 0; transform: scale(0.2); }
         }
 
-        /* Маркер события */
         .event-marker {
             display: flex;
             align-items: center;
@@ -127,7 +124,6 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Импульс при обнаружении */
         .detection-pulse {
             position: absolute;
             border-radius: 50%;
@@ -230,7 +226,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Звуковой движок с расширенными эффектами
+    // Звуковой движок
     const Snd = {
         ctx: null,
         init() { 
@@ -248,8 +244,6 @@
             o.start(); 
             o.stop(this.ctx.currentTime + d);
         },
-        
-        // Пуск ракеты (свист нарастающий)
         launch() { 
             this.init(); 
             const now = this.ctx.currentTime;
@@ -265,86 +259,61 @@
             o.start();
             o.stop(now + 0.4);
         },
-        
-        // Перехват (звук удара + эхо)
         intercept() { 
             this.init(); 
             this.osc(60, 'triangle', 0.4, 0.3);
             setTimeout(() => this.osc(40, 'sine', 0.6, 0.2), 50);
             setTimeout(() => this.osc(1200, 'sine', 0.1, 0.1), 100);
         },
-        
-        // Обнаружение цели (радарный писк)
         lock() { 
             this.init(); 
             this.osc(1200, 'sine', 0.05, 0.1);
             setTimeout(() => this.osc(1000, 'sine', 0.05, 0.08), 100);
             setTimeout(() => this.osc(800, 'sine', 0.05, 0.06), 200);
         },
-        
-        // Попадание по земле (глухой удар)
         hit() { 
             this.init(); 
             this.osc(40, 'triangle', 0.8, 0.5);
             this.osc(30, 'sine', 1.0, 0.3);
         },
-        
-        // Писк радара
         ping() { 
             this.init(); 
             this.osc(1500, 'sine', 0.03, 0.05);
         },
-        
-        // Звук при расстановке ПВО
         deploy() {
             this.init();
             this.osc(600, 'sine', 0.1, 0.1);
             this.osc(400, 'sine', 0.15, 0.1);
         },
-        
-        // Звук при клике на карту
         click() {
             this.init();
             this.osc(800, 'sine', 0.05, 0.03);
         }
     };
 
-    // Расширенная конфигурация
+    // Конфигурация
     const CONFIG = {
-        // Дроны
         drone_Shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88', icon: '🚁' },
         drone_Lancet: { name: 'ЛАНЦЕТ-3', speed: 300, color: '#88ff88', icon: '✈️' },
         drone_Bayraktar: { name: 'BAYRAKTAR TB2', speed: 220, color: '#44ff44', icon: '🛩️' },
-        
-        // Крылатые ракеты
         missile_StormShadow: { name: 'STORM SHADOW', speed: 1000, color: '#ffaa00', icon: '⚡' },
         missile_x101: { name: 'Х-101', speed: 850, color: '#ffbb33', icon: '🔥' },
         missile_Kalibr: { name: 'КАЛИБР-НК', speed: 900, color: '#ffcc00', icon: '💥' },
-        
-        // Баллистические/гиперзвуковые
         missile_Iskander: { name: 'ИСКАНДЕР-М', speed: 7500, color: '#ff4444', icon: '☄️' },
         missile_Kinzhal: { name: 'КИНЖАЛ', speed: 12300, color: '#ff0000', icon: '⚡' },
         missile_Zircon: { name: 'ЦИРКОН', speed: 11000, color: '#ff0088', icon: '🌠' },
         missile_ATACMS: { name: 'ATACMS', speed: 3200, color: '#ff8800', icon: '🎯' },
         missile_Mars: { name: 'MARS II', speed: 3000, color: '#ff6600', icon: '💫' },
-        
-        // ПВО малой дальности
         pvo_Strela10: { r: 5, s: 1800, ammo: 4, icon: '🔹' },
         pvo_Osa: { r: 15, s: 2200, ammo: 6, icon: '🔸' },
-        
-        // ПВО средней дальности
         pvo_Tor: { r: 25, s: 2800, ammo: 8, icon: '🛡️' },
         pvo_pancyr: { r: 30, s: 4600, ammo: 12, icon: '🔰' },
         pvo_Buk: { r: 70, s: 5600, ammo: 8, icon: '⚡' },
         pvo_IRIS: { r: 40, s: 3700, ammo: 8, icon: '🎯' },
-        
-        // ПВО большой дальности
         pvo_SAMP: { r: 100, s: 5000, ammo: 6, icon: '🛡️' },
         pvo_patriot: { r: 160, s: 6000, ammo: 4, icon: '🇺🇸' },
         pvo_S300: { r: 200, s: 5500, ammo: 6, icon: '🇷🇺' },
         pvo_S400: { r: 400, s: 9000, ammo: 4, icon: '⭐' },
-        
-        // Стратегическая ПРО
         pvo_Arrow: { r: 2400, s: 12000, ammo: 2, icon: '🇮🇱' },
         pvo_THAAD: { r: 200, s: 8000, ammo: 3, icon: '🇺🇸' }
     };
@@ -355,7 +324,7 @@
         pendingPath: [], tempMarkers: [], activeFutureLine: null,
         simSeconds: 0, lastFrame: 0, aiTimer: 0, maxPvo: 8,
         isDragging: false,
-        clickTimer: null // Для предотвращения двойных кликов
+        clickTimer: null
     };
 
     const map = L.map('map', { 
@@ -365,7 +334,6 @@
     }).setView([48.8, 36.5], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // Отслеживаем начало и конец перетаскивания
     map.on('dragstart', () => { state.isDragging = true; });
     map.on('dragend', () => { 
         setTimeout(() => { state.isDragging = false; }, 100);
@@ -393,9 +361,16 @@
     }
 
     function spawnAiPVO() {
-        for(let i=0; i<10; i++) {
-            const pos = [47 + Math.random()*3, state.side === 'UA' ? 38.5 + Math.random() : 33.5 + Math.random()];
-            addPVO(pos, 'pvo_S400', true);
+        // ПВО противника рандомно по всей территории (условная страна: Украина в границах примерно 44-52° с.ш., 22-40° в.д.)
+        for(let i=0; i<12; i++) {
+            // Случайные координаты в пределах Украины
+            const lat = 44 + Math.random() * 8; // от 44 до 52
+            const lng = 22 + Math.random() * 18; // от 22 до 40
+            const pos = [lat, lng];
+            // Случайный тип ПВО для разнообразия
+            const pvoTypes = ['pvo_S400', 'pvo_patriot', 'pvo_S300', 'pvo_Buk', 'pvo_Tor', 'pvo_pancyr'];
+            const type = pvoTypes[Math.floor(Math.random() * pvoTypes.length)];
+            addPVO(pos, type, true);
         }
     }
 
@@ -425,18 +400,23 @@
         document.body.appendChild(flare);
         setTimeout(() => flare.remove(), 300);
         
+        // Размер градиента пропорционален дальности, но ограничен, чтобы не вылезать за пределы экрана
+        // Берем логарифмическую шкалу, чтобы градиент был виден для всех типов
+        const baseSize = 40; // базовый размер для малой дальности
+        const radarPxSize = Math.min(300, Math.max(60, Math.floor(cfg.r * 0.8))); // адаптивный размер, но не больше 300px
+        
         // Создаем элемент для градиента
         const radarDiv = document.createElement('div');
         radarDiv.className = `radar-sweep ${isAi ? 'radar-red' : 'radar-green'}`;
-        radarDiv.style.width = (cfg.r * 2.2) + 'px';
-        radarDiv.style.height = (cfg.r * 2.2) + 'px';
-        radarDiv.style.display = isAi ? 'none' : 'block';
+        radarDiv.style.width = '100%';
+        radarDiv.style.height = '100%';
+        radarDiv.style.display = 'block';
         
-        // Создаем контейнер для радара
+        // Создаем контейнер для радара с адаптивным размером
         const radarContainer = document.createElement('div');
         radarContainer.className = 'radar-container';
-        radarContainer.style.width = (cfg.r * 2.2) + 'px';
-        radarContainer.style.height = (cfg.r * 2.2) + 'px';
+        radarContainer.style.width = radarPxSize + 'px';
+        radarContainer.style.height = radarPxSize + 'px';
         radarContainer.style.position = 'relative';
         radarContainer.appendChild(radarDiv);
         
@@ -455,17 +435,17 @@
                 range: L.circle(pos, { 
                     radius: cfg.r * 1000, 
                     color: isAi ? '#ff4444' : '#00ff88', 
-                    weight: 1, 
+                    weight: 1.5, 
                     fillOpacity: 0, 
-                    opacity: isAi ? 0.1 : 0.3,
-                    dashArray: '5, 10'
+                    opacity: isAi ? 0.4 : 0.5,
+                    dashArray: '8, 12' // пунктир
                 }).addTo(map),
                 radar: L.marker(pos, { 
                     icon: L.divIcon({ 
                         className: 'radar-marker',
                         html: radarContainer.outerHTML,
-                        iconSize: [cfg.r*2.2, cfg.r*2.2],
-                        iconAnchor: [cfg.r*1.1, cfg.r*1.1] // Якорь в центр
+                        iconSize: [radarPxSize, radarPxSize],
+                        iconAnchor: [radarPxSize/2, radarPxSize/2] // Якорь в центр - градиент строго по центру позиции, внутри пунктира
                     })
                 }).addTo(map)
             }
@@ -487,12 +467,8 @@
     }
 
     map.on('click', (e) => {
-        // Предотвращаем клики во время перетаскивания
-        if (state.isDragging) {
-            return;
-        }
+        if (state.isDragging) return;
         
-        // Защита от двойных кликов
         if (state.clickTimer) {
             clearTimeout(state.clickTimer);
             state.clickTimer = null;
@@ -561,10 +537,13 @@
 
         if(state.role === 'defense') {
             state.aiTimer += dt;
-            if(state.aiTimer > 6) {
-                const startPos = [47+Math.random()*3, state.side==='UA'?39:34];
-                const endPos = [48.8, 36.5];
-                const types = ['drone_Shahed', 'missile_x101', 'missile_Kalibr', 'missile_Iskander', 'missile_Zircon'];
+            if(state.aiTimer > 5) { // Чаще для теста
+                // Рандомные стартовые позиции для целей (со стороны противника)
+                const startLat = state.side === 'UA' ? 52 + Math.random()*2 : 44 + Math.random()*2;
+                const startLng = state.side === 'UA' ? 30 + Math.random()*5 : 30 + Math.random()*5;
+                const startPos = [startLat, startLng];
+                const endPos = [48.8, 36.5]; // Центр
+                const types = ['drone_Shahed', 'missile_x101', 'missile_Kalibr', 'missile_Iskander', 'missile_Zircon', 'missile_StormShadow'];
                 const type = types[Math.floor(Math.random() * types.length)];
                 createTarget([startPos, endPos], type);
                 state.aiTimer = 0;
@@ -603,7 +582,7 @@
                         
                         if(p.isAi && p.visual?.radarElement) {
                             p.visual.radarElement.style.display = 'block';
-                            p.visual.range.setStyle({opacity: 0.2});
+                            p.visual.range.setStyle({opacity: 0.4, color: '#ff8888'});
                             
                             const pulse = document.createElement('div');
                             pulse.className = 'detection-pulse';
@@ -815,7 +794,6 @@
         }
     }
 
-    // Обновляем позиции тулбаров и эффектов при перемещении карты
     map.on('moveend', () => {
         state.targets.forEach(t => {
             if(t.active) {
@@ -826,7 +804,6 @@
         });
     });
 
-    // Дополнительная защита от случайных кликов
     map.on('mousedown', () => {
         if (state.clickTimer) {
             clearTimeout(state.clickTimer);
