@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tactical Defense Elite v12.1</title>
+    <title>Tactical Defense Elite v12.5</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
@@ -12,6 +12,12 @@
         body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; color: white; }
         #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 1; }
         
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 20000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .menu-card { background: var(--panel-bg); padding: 30px; border-radius: 20px; border: 2px solid var(--primary); text-align: center; width: 320px; box-shadow: 0 0 30px rgba(0,255,136,0.2); }
+        .menu-btn { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #444; background: #1a222d; color: white; cursor: pointer; border-radius: 8px; font-weight: bold; transition: 0.2s; }
+        .menu-btn.active { border-color: var(--primary); background: rgba(0,255,136,0.1); color: var(--primary); }
+        .start-btn { background: var(--primary); color: #000; margin-top: 20px; border: none; font-size: 1.1em; }
+
         .radar-sweep {
             position: absolute; border-radius: 50%;
             background: conic-gradient(from 0deg at 50% 50%, rgba(0, 255, 136, 0.15) 0deg, transparent 90deg);
@@ -38,6 +44,7 @@
         .tool-card { background: var(--panel-bg); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; flex: 1; cursor: pointer; }
         .tool-card.active { border-color: var(--primary); }
         .obj-toolbar { position: absolute; background: rgba(0, 10, 20, 0.9); color: #00ffaa; padding: 4px 10px; border-left: 3px solid #00ffaa; font-family: monospace; font-size: 10px; pointer-events: none; z-index: 10000; transform: translate(15px, -15px); white-space: nowrap; }
+        .missile-toolbar { border-left-color: #ffaa00; color: #ffaa00; }
         .bottom-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 9998; }
         .btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; background: #333; }
         .btn-confirm { background: #28a745 !important; transform: scale(1.1); }
@@ -45,32 +52,50 @@
     </style>
 </head>
 <body>
+
+<div id="overlay">
+    <div class="menu-card">
+        <h2 style="margin:0 0 15px 0; color:var(--primary); letter-spacing: 2px;">TACTICAL ELITE</h2>
+        <div style="margin-bottom: 20px;">
+            <p style="font-size: 10px; color: #888; margin-bottom: 5px;">СТОРОНА КОНФЛИКТА</p>
+            <div style="display:flex; gap:10px;">
+                <button class="menu-btn active" id="side_UA" onclick="selectSide('UA')">UA</button>
+                <button class="menu-btn" id="side_RU" onclick="selectSide('RU')">RU</button>
+            </div>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <p style="font-size: 10px; color: #888; margin-bottom: 5px;">ВАША РОЛЬ</p>
+            <button class="menu-btn active" id="mode_defense" onclick="selectRole('defense')">ОБОРОНА</button>
+            <button class="menu-btn" id="mode_attack" onclick="selectRole('attack')">АТАКА</button>
+        </div>
+        <button class="menu-btn start-btn" onclick="startGame()">ЗАПУСК СИСТЕМ</button>
+    </div>
+</div>
+
 <div id="map"></div>
 <div class="status-header">
+    <div class="status-item"><i class="fas fa-flag"></i> <span id="sideDisplay">UA</span></div>
     <div class="status-item"><i class="far fa-clock"></i> <span id="simTime">00:00</span></div>
     <div class="status-item"><i class="fas fa-bullseye"></i> <span id="targetCount">0</span></div>
     <div class="status-item"><i class="fas fa-shield-alt"></i> <span id="pvoCount">0</span></div>
 </div>
-<div class="ui-layer">
+<div class="ui-layer" id="uiMain" style="display:none;">
     <div style="display: flex; gap: 10px; width: 95%; max-width: 600px;">
         <div class="tool-card active" id="pvoCard" onclick="setMode('pvo')">
-            <span style="font-size:9px; color:#888;">СИСТЕМА ОБОРОНЫ</span>
+            <span style="font-size:9px; color:#888;">ОБОРОНА</span>
             <select id="pvoSelect">
                 <option value="pvo_pancyr">Панцирь-С1 (20 км)</option>
-                <option value="pvo_iris">IRIS-T SLM (40 км)</option>
-                <option value="pvo_buk">Бук-М3 (70 км)</option>
-                <option value="pvo_samp">SAMP/T (100 км)</option>
+                <option value="pvo_nasams">NASAMS-3 (50 км)</option>
                 <option value="pvo_patriot">Patriot PAC-3 (160 км)</option>
                 <option value="pvo_s400">С-400 (400 км)</option>
             </select>
         </div>
         <div class="tool-card" id="targetCard" onclick="setMode('target')">
-            <span style="font-size:9px; color:#888;">ТИП УГРОЗЫ</span>
+            <span style="font-size:9px; color:#888;">АТАКА</span>
             <select id="targetSelect">
                 <option value="drone_shahed">Shahed-136 (185 км/ч)</option>
-                <option value="missile_x101">Х-101 (850 км/ч)</option>
+                <option value="missile_kalibr">Калибр-НК (900 км/ч)</option>
                 <option value="missile_iskander">Искандер-М (7500 км/ч)</option>
-                <option value="missile_x32">Х-32 (5400 км/ч)</option>
                 <option value="missile_zircon">Циркон (11000 км/ч)</option>
             </select>
         </div>
@@ -104,17 +129,43 @@
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
     const CONFIG = {
-        drone_shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88' },
-        missile_x101: { name: 'KH-101', speed: 850, color: '#ffbb33' },
-        missile_iskander: { name: 'ISKANDER-M', speed: 7500, color: '#ff4444' },
-        missile_x32: { name: 'KH-32', speed: 5400, color: '#ff00ff' },
-        missile_zircon: { name: 'ZIRCON', speed: 11000, color: '#ff0000' },
-        pvo_pancyr: { r: 20, s: 4600 }, pvo_iris: { r: 40, s: 3700 },
-        pvo_buk: { r: 70, s: 5600 }, pvo_samp: { r: 100, s: 5000 },
-        pvo_patriot: { r: 160, s: 6000 }, pvo_s400: { r: 400, s: 9000 }
+        drone_shahed: { name: 'SHAHED', speed: 185, alt: '120m', color: '#00ff88' },
+        missile_kalibr: { name: 'KALIBR', speed: 900, alt: '50m', color: '#33ff33' },
+        missile_iskander: { name: 'ISKANDER', speed: 7500, alt: '50km', color: '#ff4444' },
+        missile_zircon: { name: 'ZIRCON', speed: 11000, alt: '35km', color: '#ff0000' },
+        pvo_pancyr: { r: 20, s: 4600 }, pvo_nasams: { r: 50, s: 4200 },
+        pvo_patriot: { r: 160, s: 7800 }, pvo_s400: { r: 400, s: 9000 }
     };
 
-    let state = { currentMode: 'pvo', isSimulating: false, targets: [], pvo: [], missiles: [], pendingPath: [], tempMarkers: [], activeFutureLine: null, simSeconds: 0, lastFrame: 0 };
+    let state = { side: 'UA', role: 'defense', currentMode: 'pvo', isSimulating: false, targets: [], pvo: [], missiles: [], pendingPath: [], tempMarkers: [], activeFutureLine: null, simSeconds: 0, lastFrame: 0, aiTimer: 0 };
+
+    function selectSide(s) { state.side = s; updateMenuBtns('side', s); }
+    function selectRole(r) { state.role = r; updateMenuBtns('mode', r); }
+    function updateMenuBtns(prefix, val) { document.querySelectorAll(`[id^="${prefix}_"]`).forEach(b => b.classList.remove('active')); document.getElementById(`${prefix}_${val}`).classList.add('active'); }
+
+    function startGame() {
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('uiMain').style.display = 'flex';
+        document.getElementById('sideDisplay').innerText = state.side;
+        
+        if(state.role === 'defense') {
+            setMode('pvo');
+            document.getElementById('targetCard').style.display = 'none';
+        } else {
+            setMode('target');
+            document.getElementById('pvoCard').style.display = 'none';
+            spawnAiPVO();
+        }
+    }
+
+    function spawnAiPVO() {
+        // Противник всегда с другой стороны
+        const enemyLng = state.side === 'UA' ? 38.5 : 34.5;
+        for(let i=0; i<8; i++) {
+            const pos = [47 + Math.random()*4, enemyLng + (Math.random()-0.5)*2];
+            addPVO(pos, 'pvo_s400', true);
+        }
+    }
 
     function setMode(m) {
         state.currentMode = m;
@@ -124,80 +175,108 @@
 
     map.on('click', (e) => {
         Snd.init();
-        const pos = [e.latlng.lat, e.latlng.lng];
         if (state.currentMode === 'pvo') {
-            const cfg = CONFIG[document.getElementById('pvoSelect').value];
-            const rMarker = L.marker(pos, { icon: L.divIcon({ className: 'radar-container', html: `<div class="radar-sweep" style="width:${cfg.r*2.4}px; height:${cfg.r*2.4}px;"></div>`, iconSize:[0,0] }), interactive: false }).addTo(map);
-            const dot = L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: '#00ff88', fillOpacity: 1 }).addTo(map);
-            const range = L.circle(pos, { radius: cfg.r * 1000, color: '#00ff88', weight: 1, fillOpacity: 0.03, dashArray: '5, 10' }).addTo(map);
-            state.pvo.push({ id: Math.random(), pos, radius: cfg.r, mSpeed: cfg.s, layers: [rMarker, dot, range] });
+            addPVO([e.latlng.lat, e.latlng.lng], document.getElementById('pvoSelect').value, false);
         } else {
-            state.pendingPath.push(pos);
-            state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
+            state.pendingPath.push([e.latlng.lat, e.latlng.lng]);
+            state.tempMarkers.push(L.circleMarker(e.latlng, { radius: 4, color: '#fff' }).addTo(map));
             if(state.activeFutureLine) map.removeLayer(state.activeFutureLine);
             state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
         }
         updateCounters(); updateNav();
     });
 
+    function addPVO(pos, type, isAi) {
+        const cfg = CONFIG[type];
+        const visual = {
+            dot: L.circleMarker(pos, { radius: 6, color: isAi?'transparent':'#fff', fillColor: isAi?'transparent':'#00ff88', fillOpacity: isAi?0:1 }).addTo(map),
+            range: L.circle(pos, { radius: cfg.r * 1000, color: isAi?'#ff4444':'#00ff88', weight: 1, fillOpacity: 0, opacity: isAi?0:0.1 }).addTo(map)
+        };
+        if(!isAi) visual.radar = L.marker(pos, { icon: L.divIcon({ className: 'radar-container', html: `<div class="radar-sweep" style="width:${cfg.r*2.4}px; height:${cfg.r*2.4}px;"></div>`, iconSize:[0,0] }) }).addTo(map);
+        state.pvo.push({ id: Math.random(), pos, radius: cfg.r, mSpeed: cfg.s, isAi, visual, ammo: 4 }); // Лимит 4 ракеты
+    }
+
     function simLoop(time) {
         if (!state.isSimulating) return;
         const dt = (time - state.lastFrame) / 1000; state.lastFrame = time;
-        const stepHours = (dt * 15) / 3600;
+        const stepHours = (dt * 18) / 3600;
+
+        if(state.role === 'defense') {
+            state.aiTimer += dt;
+            if(state.aiTimer > 8) {
+                const spawnLng = state.side === 'UA' ? 39 : 34;
+                createTarget([[47+Math.random()*3, spawnLng], [48.8, 36.5]], 'missile_kalibr');
+                state.aiTimer = 0;
+            }
+        }
 
         state.targets.forEach(t => {
             if (!t.active) return;
             t.progressKm += t.speed * stepHours;
-            if (t.progressKm >= t.totalDist) { 
-                Snd.hit(); 
-                markEvent(t.currentPos, 'hit'); 
-                removeT(t); 
-            } else {
+            if (t.progressKm >= t.totalDist) { Snd.hit(); markEvent(t.currentPos, 'hit'); removeT(t); } 
+            else {
                 t.currentPos = interpolate(t.path, t.progressKm);
                 t.marker.setLatLng(t.currentPos);
                 t.linePast.setLatLngs(getPastPoints(t.path, t.progressKm, t.currentPos));
                 const p = map.latLngToContainerPoint(t.currentPos);
                 t.toolbar.style.left = p.x + 'px'; t.toolbar.style.top = p.y + 'px';
-                t.toolbar.innerHTML = `${t.name} | ${Math.round(t.speed)} KM/H`;
+                t.toolbar.innerHTML = `<b>${t.name}</b> | ALT: ${t.alt}`;
             }
         });
 
         state.pvo.forEach(p => {
+            if (p.ammo <= 0) return;
             state.targets.forEach(t => {
                 if (t.active && !t.engagedBy.has(p.id)) {
                     if ((map.distance(p.pos, t.currentPos) / 1000) < p.radius) {
-                        t.engagedBy.add(p.id); Snd.ping(); Snd.launch();
-                        const mMarker = L.circleMarker(p.pos, { radius: 3, color: '#fff', fillColor: '#ffbb33', fillOpacity: 1 }).addTo(map);
-                        state.missiles.push({ target: t, pos: [...p.pos], speed: p.mSpeed, marker: mMarker });
+                        t.engagedBy.add(p.id); p.ammo--; Snd.ping(); Snd.launch();
+                        if(p.isAi) { p.visual.dot.setStyle({color:'#ff4444', fillOpacity:1}); p.visual.range.setStyle({opacity:0.2}); }
+                        const mMarker = L.circleMarker(p.pos, { radius: 3, color: '#ffaa00', fillOpacity: 1 }).addTo(map);
+                        const mtb = Object.assign(document.createElement('div'), {className:'obj-toolbar missile-toolbar'});
+                        document.body.appendChild(mtb);
+                        state.missiles.push({ target: t, pos: [...p.pos], speed: p.mSpeed, marker: mMarker, toolbar: mtb });
+                        if(p.ammo <= 0) setTimeout(() => { map.removeLayer(p.visual.dot); map.removeLayer(p.visual.range); }, 2000);
                     }
                 }
             });
         });
 
         state.missiles = state.missiles.filter(m => {
-            if (!m.target.active) { map.removeLayer(m.marker); return false; }
+            if (!m.target.active) { map.removeLayer(m.marker); m.toolbar.remove(); return false; }
             const d = map.distance(m.pos, m.target.currentPos);
-            if (d < 1200) { 
-                Snd.intercept(); 
-                markEvent(m.target.currentPos, 'intercept'); 
-                removeT(m.target); map.removeLayer(m.marker); 
-                confetti({ particleCount: 40, origin: { y: 0.7 } }); return false; 
+            if (d < 1000) { 
+                Snd.intercept(); markEvent(m.target.currentPos, 'intercept'); 
+                removeT(m.target); map.removeLayer(m.marker); m.toolbar.remove();
+                confetti({ particleCount: 30, origin: { y: 0.7 } }); return false; 
             }
             const move = (m.speed * stepHours * 1000) / d;
             m.pos = [m.pos[0] + (m.target.currentPos[0] - m.pos[0]) * move, m.pos[1] + (m.target.currentPos[1] - m.pos[1]) * move];
-            m.marker.setLatLng(m.pos); return true;
+            m.marker.setLatLng(m.pos);
+            const p = map.latLngToContainerPoint(m.pos);
+            m.toolbar.style.left = p.x + 'px'; m.toolbar.style.top = p.y + 'px';
+            m.toolbar.innerText = `INTCPTR`;
+            return true;
         });
 
-        state.simSeconds += dt * 15; updateClock();
+        state.simSeconds += dt * 18; updateClock();
         requestAnimationFrame(simLoop);
     }
 
+    function createTarget(path, type) {
+        const cfg = CONFIG[type];
+        const t = {
+            id: Math.random(), name: cfg.name, path: [...path], speed: cfg.speed, alt: cfg.alt, currentPos: path[0], progressKm: 0, totalDist: 0, active: true, engagedBy: new Set(),
+            toolbar: Object.assign(document.createElement('div'), {className:'obj-toolbar'}),
+            marker: L.circleMarker(path[0], { radius: 6, color: '#fff', fillColor: cfg.color, fillOpacity: 1 }).addTo(map),
+            linePast: L.polyline([], { color: cfg.color, weight: 3 }).addTo(map)
+        };
+        document.body.appendChild(t.toolbar);
+        for(let i=0; i<t.path.length-1; i++) t.totalDist += map.distance(t.path[i], t.path[i+1])/1000;
+        state.targets.push(t);
+    }
+
     function markEvent(pos, type) {
-        const icon = L.divIcon({
-            className: 'event-marker',
-            html: type === 'intercept' ? '<i class="fas fa-skull" style="color:white; font-size:20px;"></i>' : '<i class="fas fa-certificate" style="color:#ffbb33; font-size:20px;"></i>',
-            iconSize: [24, 24]
-        });
+        const icon = L.divIcon({ className: 'event-marker', html: type === 'intercept' ? '<i class="fas fa-skull" style="color:white; font-size:20px;"></i>' : '<i class="fas fa-certificate" style="color:#ffbb33; font-size:20px;"></i>' });
         L.marker(pos, { icon }).addTo(map);
         const p = map.latLngToContainerPoint(pos);
         const d = document.createElement('div'); d.className = 'explosion'; d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
@@ -223,23 +302,15 @@
         return path[path.length-1];
     }
 
-    function removeT(t) { t.active = false; map.removeLayer(t.marker); if(t.lineFuture) map.removeLayer(t.lineFuture); t.toolbar.remove(); updateCounters(); }
+    function removeT(t) { t.active = false; map.removeLayer(t.marker); t.toolbar.remove(); updateCounters(); }
 
     document.getElementById('playBtn').onclick = () => {
         Snd.init();
         if (state.pendingPath.length > 1) {
-            const type = document.getElementById('targetSelect').value;
-            const t = {
-                id: Math.random(), name: CONFIG[type].name, path: [...state.pendingPath], speed: CONFIG[type].speed, currentPos: state.pendingPath[0], progressKm: 0, totalDist: 0, active: true, engagedBy: new Set(),
-                toolbar: Object.assign(document.createElement('div'), {className:'obj-toolbar'}),
-                marker: L.circleMarker(state.pendingPath[0], { radius: 6, color: '#fff', fillColor: CONFIG[type].color, fillOpacity: 1 }).addTo(map),
-                linePast: L.polyline([], { color: CONFIG[type].color, weight: 3 }).addTo(map),
-                lineFuture: state.activeFutureLine
-            };
-            document.body.appendChild(t.toolbar);
-            for(let i=0; i<t.path.length-1; i++) t.totalDist += map.distance(t.path[i], t.path[i+1])/1000;
-            state.targets.push(t); state.tempMarkers.forEach(m => map.removeLayer(m));
-            state.pendingPath = []; state.tempMarkers = []; state.activeFutureLine = null;
+            createTarget(state.pendingPath, document.getElementById('targetSelect').value);
+            state.tempMarkers.forEach(m => map.removeLayer(m));
+            if(state.activeFutureLine) map.removeLayer(state.activeFutureLine);
+            state.pendingPath = []; state.activeFutureLine = null;
             updateNav(); updateCounters();
         } else {
             state.isSimulating = !state.isSimulating; state.lastFrame = performance.now();
