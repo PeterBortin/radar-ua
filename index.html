@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>radar-ua</title>
+    <title>radar-ua - Naval Update</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
     <style>
-        :root { --primary: #00ff88; --bg: #0a0c10; --panel-bg: rgba(15, 20, 30, 0.9); --ua-gold: #ffd700; --ru-red: #ff4444; }
+        :root { --primary: #00ff88; --bg: #0a0c10; --panel-bg: rgba(15, 20, 30, 0.9); --ua-gold: #ffd700; --ru-red: #ff4444; --sea-blue: #0088ff; }
         body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; color: white; }
         #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 1; }
         
-        /* Тулбары с подложкой */
         .obj-toolbar { 
             position: absolute; background: rgba(255,255,255,0); color: #fff; padding: 3px 8px; 
             backdrop-filter: blur(4px); border-radius: 4px; font-family: 'Roboto Mono', monospace; 
@@ -39,10 +38,10 @@
         }
         @keyframes explode { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(3); opacity: 0; } }
 
-        .status-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 9999; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); padding: 12px; display: flex; justify-content: center; gap: 20px; pointer-events: none; }
-        .status-item { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: bold; }
+        .status-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 9999; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); padding: 12px; display: flex; justify-content: center; gap: 20px; pointer-events: none; flex-wrap: wrap; }
+        .status-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold; }
         
-        .ui-layer { position: absolute; top: 50px; width: 100%; z-index: 9998; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .ui-layer { position: absolute; top: 70px; width: 100%; z-index: 9998; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .ui-layer > * { pointer-events: auto; }
         .tool-card { background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; flex: 1; cursor: pointer; }
         .tool-card.active { border-color: var(--primary); }
@@ -62,6 +61,7 @@
     <div class="status-item"><i class="fas fa-bullseye"></i> <span id="targetCount">0</span></div>
     <div class="status-item"><i class="fas fa-shield-alt"></i> <span id="pvoCount">0</span></div>
     <div class="status-item"><i class="fas fa-plane" style="color:var(--ru-red)"></i> <span id="planeCount">0</span></div>
+    <div class="status-item"><i class="fas fa-ship" style="color:var(--ru-red)"></i> <span id="shipCount">0</span></div>
     <div class="status-item"><i class="fas fa-fighter-jet" style="color:var(--ua-gold)"></i> <span id="uaPlaneCount">0</span></div>
 </div>
 
@@ -137,12 +137,9 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Объект для управления звуковыми эффектами через Web Audio API
     const Snd = {
         ctx: null,
-        // Инициализация аудио-контекста (требуется жест пользователя в браузере)
         init() { if(!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } if(this.ctx.state === 'suspended') this.ctx.resume(); },
-        // Универсальная функция для генерации звуков (осциллятор)
         osc(f, t, d, v) {
             const o = this.ctx.createOscillator(), g = this.ctx.createGain();
             o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
@@ -151,29 +148,33 @@
             o.connect(g); g.connect(this.ctx.destination);
             o.start(); o.stop(this.ctx.currentTime + d);
         },
-        // Пресеты звуков
-        launch() { this.init(); this.osc(300, 'sawtooth', 0.4, 0.05); }, // Пуск ракеты
-        intercept() { this.init(); this.osc(60, 'sine', 0.8, 0.3); },   // Перехват цели
-        hit() { this.init(); this.osc(40, 'triangle', 1.0, 0.4); },      // Попадание в цель
-        ping() { this.init(); this.osc(1000, 'sine', 0.05, 0.02); },    // Сигнал радара
-        warning() { this.init(); this.osc(200, 'sawtooth', 0.3, 0.1); } // Предупреждение
+        launch() { this.init(); this.osc(300, 'sawtooth', 0.4, 0.05); },
+        intercept() { this.init(); this.osc(60, 'sine', 0.8, 0.3); },
+        hit() { this.init(); this.osc(40, 'triangle', 1.0, 0.4); },
+        ping() { this.init(); this.osc(1000, 'sine', 0.05, 0.02); },
+        warning() { this.init(); this.osc(200, 'sawtooth', 0.3, 0.1); }
     };
 
-    // Инициализация карты Leaflet
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.8, 36.5], 6);
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([47.5, 35.0], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // Координаты российских авиабаз
     const AIRBASES = [
         { name: "Энгельс-2", pos: [51.48, 46.21] },
         { name: "Шайковка", pos: [54.22, 34.36] },
         { name: "Саваслейка", pos: [55.44, 42.30] }
     ];
 
-    // Конфигурация характеристик объектов
+    const NAVAL_BASES = [
+        { name: "Севастополь", pos: [44.61, 33.52], type: 'sub' },
+        { name: "Новороссийск", pos: [44.72, 37.77], type: 'ship' },
+        { name: "Азов", pos: [45.35, 36.65], type: 'ship' }
+    ];
+
     const CONFIG = {
         drone_shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88', altMin: 50, altMax: 2000 },
         missile_x101: { name: 'X-101', speed: 850, color: '#ffbb33', altMin: 100, altMax: 8000 },
+        missile_kalibr: { name: 'Калибр', speed: 900, color: '#33bbff', altMin: 50, altMax: 500 },
+        missile_zircon: { name: 'Циркон', speed: 11000, color: '#ff00ff', altMin: 30000, altMax: 40000 },
         missile_iskander: { name: 'Искандер-M', speed: 7500, color: '#ff4444', altMin: 20000, altMax: 70000 },
         missile_kinzhal: { name: 'Кинжал', speed: 12000, color: '#ff0000', altMin: 30000, altMax: 80000 },
         missile_neptune: { name: 'Нептун', speed: 900, color: '#00aaff', altMin: 50, altMax: 1000 },
@@ -186,36 +187,32 @@
         ua_mig29: { name: 'МиГ-29', speed: 1100, mSpeed: 4000, ammo: 4, range: 80, type: 'fighter' }
     };
 
-    // Глобальное состояние симуляции
     let state = { 
         currentMode: 'pvo', isSimulating: false, 
-        targets: [], pvo: [], missiles: [], planes: [], uaPlanes: [],
+        targets: [], pvo: [], missiles: [], planes: [], uaPlanes: [], ships: [],
         pendingPath: [], tempMarkers: [], activeFutureLine: null, 
-        simSeconds: 0, lastFrame: 0, lastRuSpawn: 0
+        simSeconds: 0, lastFrame: 0, lastRuSpawn: 0, lastShipSpawn: 0
     };
 
-    // Отображение всплывающих текстовых предупреждений
     function showWarning(m) {
         const w = document.createElement('div'); w.className = 'warning-message'; w.textContent = m;
         document.body.appendChild(w); setTimeout(() => w.remove(), 2500);
     }
 
-    // Переключение режимов (ПВО / Цель)
     function setMode(m) {
         state.currentMode = m;
         document.getElementById('pvoCard').classList.toggle('active', m === 'pvo');
         document.getElementById('targetCard').classList.toggle('active', m === 'target');
     }
 
-    // Обновление счетчиков в верхней панели управления
     function updateCounters() { 
         document.getElementById('targetCount').innerText = state.targets.filter(x => x.active).length; 
         document.getElementById('pvoCount').innerText = state.pvo.filter(x=>x.type==='sam').length; 
         document.getElementById('planeCount').innerText = state.planes.filter(x => x.active).length;
+        document.getElementById('shipCount').innerText = state.ships.filter(x => x.active).length;
         document.getElementById('uaPlaneCount').innerText = state.uaPlanes.filter(x => x.active).length;
     }
 
-    // Создание стационарной установки ПВО
     function createPVO(pos) {
         const typeKey = document.getElementById('pvoSelect').value;
         const cfg = CONFIG[typeKey];
@@ -228,7 +225,6 @@
         updateCounters();
     }
 
-    // Создание украинского истребителя
     function createUAFighter(pos, cfg) {
         const p = {
             id: Math.random(), name: cfg.name, currentPos: pos, patrolTarget: pos,
@@ -243,7 +239,6 @@
         updateCounters();
     }
 
-    // Создание российского самолета-носителя ракет
     function spawnRuPlane() {
         const types = [
             { name: 'Tu-95MS', speed: 750, missile: 'missile_x101', count: 2, alt: 9000 },
@@ -266,7 +261,29 @@
         state.planes.push(p);
     }
 
-    // Создание летящей цели (ракеты или БПЛА)
+    function spawnRuShip() {
+        const types = [
+            { name: 'Frigate', speed: 50, missile: 'missile_kalibr', count: 4, icon: 'fa-ship' },
+            { name: 'Submarine', speed: 30, missile: 'missile_kalibr', count: 2, icon: 'fa-anchor' },
+            { name: 'Project 22350', speed: 55, missile: 'missile_zircon', count: 1, icon: 'fa-ship' }
+        ];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const base = NAVAL_BASES[Math.floor(Math.random()*NAVAL_BASES.length)];
+        const launchPoint = [base.pos[0] - 0.5 - Math.random(), base.pos[1] + (Math.random()-0.5)*2];
+        const path = [base.pos, launchPoint, base.pos];
+
+        const s = {
+            id: Math.random(), cfg: type, path: path, currentPos: [...base.pos], progressKm: 0, totalDist: 0,
+            active: true, launched: false, side: 'RU', engagedBy: new Set(), history: [[...base.pos]],
+            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar ru-plane-toolbar'}),
+            marker: L.marker(base.pos, { icon: L.divIcon({ html: `<i class="fas ${type.icon}" style="color:var(--sea-blue); font-size:16px;"></i>`, className: 'event-marker' }) }).addTo(map),
+            line: L.polyline([base.pos], {color: 'var(--sea-blue)', weight: 2, opacity: 0.4}).addTo(map)
+        };
+        for(let i=0; i<path.length-1; i++) s.totalDist += map.distance(path[i], path[i+1])/1000;
+        document.body.appendChild(s.toolbar);
+        state.ships.push(s);
+    }
+
     function createTarget(cfgOverride = null, pathOverride = null) {
         const type = cfgOverride || document.getElementById('targetSelect').value;
         const cfg = CONFIG[type];
@@ -293,16 +310,33 @@
         }
     }
 
-    // Главный цикл симуляции
     function simLoop(time) {
         if (!state.isSimulating) return;
         const dt = (time - state.lastFrame) / 1000; state.lastFrame = time;
-        const stepHours = (dt * 4) / 3600; // Ускорение времени в 4 раза
+        const stepHours = (dt * 10) / 3600; // Ускорение времени для наглядности кораблей
 
-        // Логика автоматического спавна вражеской авиации
-        if (time - state.lastRuSpawn > 5000) { spawnRuPlane(); state.lastRuSpawn = time; }
+        if (time - state.lastRuSpawn > 8000) { spawnRuPlane(); state.lastRuSpawn = time; }
+        if (time - state.lastShipSpawn > 15000) { spawnRuShip(); state.lastShipSpawn = time; }
 
-        // Логика движения российских самолетов
+        // Движение кораблей
+        state.ships.forEach(s => {
+            if(!s.active) return;
+            s.progressKm += s.cfg.speed * stepHours;
+            if(s.progressKm >= s.totalDist) { removeObj(s); return; }
+            s.currentPos = interpolate(s.path, s.progressKm);
+            s.marker.setLatLng(s.currentPos);
+            s.history.push([...s.currentPos]);
+            s.line.setLatLngs(s.history);
+            
+            if(!s.launched && s.progressKm > s.totalDist / 2.2) {
+                s.launched = true;
+                for(let i=0; i<s.cfg.count; i++) {
+                    setTimeout(() => createTarget(s.cfg.missile, [s.currentPos, [46+Math.random()*3, 30+Math.random()*4]]), i*1500);
+                }
+            }
+            updateToolbar(s, `<b style="color:var(--sea-blue)">${s.cfg.name}</b><br>SPD: ${Math.round(s.cfg.speed)} км/ч`);
+        });
+
         state.planes.forEach(p => {
             if(!p.active) return;
             p.progressKm += p.cfg.speed * stepHours;
@@ -311,7 +345,6 @@
             p.marker.setLatLng(p.currentPos);
             p.history.push([...p.currentPos]);
             p.line.setLatLngs(p.history);
-            // Пуск ракет при подлете к определенной долготе
             if(!p.launched && p.currentPos[1] < 39.5) {
                 p.launched = true;
                 for(let i=0; i<p.cfg.count; i++) {
@@ -321,10 +354,8 @@
             updateToolbar(p, `<b>${p.cfg.name}</b><br>SPD: ${Math.round(p.cfg.speed)} км/ч<br>ALT: ${p.altitude}м`);
         });
 
-        // Логика патрулирования и боя украинских истребителей
         state.uaPlanes.forEach(p => {
             if(!p.active) return;
-            // Смена цели патрулирования при достижении текущей
             if (map.distance(p.currentPos, p.patrolTarget) < 8000) {
                 p.patrolTarget = [46 + Math.random() * 4, 30 + Math.random() * 6];
             }
@@ -336,15 +367,12 @@
             if(p.history.length > 50) p.history.shift();
             p.line.setLatLngs(p.history);
 
-            // Риск быть сбитым при заходе в опасную зону
             if (p.currentPos[1] > 39.5 && Math.random() < 0.008) {
                 showWarning(`ПОТЕРЯ СВЯЗИ: ${p.name} СБИТ ПВО РФ`);
                 markEvent(p.currentPos, 'hit'); removeObj(p); return;
             }
-
             updateToolbar(p, `<b style="color:var(--ua-gold)">${p.name} (UA)</b><br>SPD: ${p.speed} км/ч<br>AMMO: ${p.ammo}`);
 
-            // Атака вражеских целей, если есть боезапас
             if (p.ammo > 0) {
                 [...state.targets, ...state.planes].forEach(t => {
                     if (t.active && t.side === 'RU' && !t.engagedBy.has(p.id)) {
@@ -356,7 +384,6 @@
             }
         });
 
-        // Логика движения ракет и БПЛА
         state.targets.forEach(t => {
             if (!t.active) return;
             t.progressKm += t.speed * stepHours;
@@ -371,7 +398,6 @@
             }
         });
 
-        // Логика работы наземных систем ПВО (захват целей)
         state.pvo.forEach(sys => {
             [...state.targets, ...state.planes].forEach(t => {
                 if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
@@ -382,7 +408,6 @@
             });
         });
 
-        // Логика полета зенитных ракет
         state.missiles = state.missiles.filter(m => {
             if (!m.target.active) { m.marker.remove(); m.line.remove(); return false; }
             const d = map.distance(m.pos, m.target.currentPos);
@@ -402,7 +427,6 @@
         requestAnimationFrame(simLoop);
     }
 
-    // Запуск ракеты-перехватчика
     function launchMissile(launcher, target) {
         Snd.ping(); Snd.launch();
         const startPos = launcher.type === 'fighter' ? launcher.currentPos : launcher.pos;
@@ -415,7 +439,6 @@
         state.missiles.push(m);
     }
 
-    // Полное удаление объекта и его графических слоев
     function removeObj(obj) {
         obj.active = false; 
         if(obj.marker) map.removeLayer(obj.marker); 
@@ -426,13 +449,11 @@
         updateCounters();
     }
 
-    // Обновление положения и текста тулбара (плашки данных) над объектом
     function updateToolbar(obj, text) {
         const pt = map.latLngToContainerPoint(obj.currentPos);
         obj.toolbar.style.left = pt.x + 'px'; obj.toolbar.style.top = pt.y + 'px'; obj.toolbar.innerHTML = text;
     }
 
-    // Визуализация события (взрыв или перехват)
     function markEvent(pos, type) {
         const icon = L.divIcon({ className: 'event-marker', html: type === 'intercept' ? '<i class="fas fa-skull" style="color:white; font-size:18px;"></i>' : '<i class="fas fa-certificate" style="color:#ffbb33; font-size:20px;"></i>' });
         L.marker(pos, { icon }).addTo(map);
@@ -442,7 +463,6 @@
         if(type === 'hit') Snd.hit(); else Snd.intercept();
     }
 
-    // Математическая интерполяция координат объекта на маршруте на основе пройденного расстояния
     function interpolate(path, dist) {
         let acc = 0;
         for (let i = 0; i < path.length - 1; i++) {
@@ -456,20 +476,17 @@
         return path[path.length-1];
     }
 
-    // Расчет размера радиуса радара в пикселях в зависимости от широты и уровня зума
     function getRadarSizeInPixels(radiusKm, lat) {
         const zoom = map.getZoom();
         const metersPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
         return ((radiusKm * 1000) / metersPerPixel) * 2;
     }
 
-    // Обработчик клика по карте
     map.on('click', (e) => {
         Snd.init();
         const pos = [e.latlng.lat, e.latlng.lng];
-        if (state.currentMode === 'pvo') createPVO(pos); // Ставим ПВО
+        if (state.currentMode === 'pvo') createPVO(pos);
         else {
-            // Рисуем путь для новой цели
             state.pendingPath.push(pos);
             state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
             if(state.activeFutureLine) state.activeFutureLine.remove();
@@ -478,7 +495,6 @@
         updateNav();
     });
 
-    // Обработчик кнопки Play/Pause и подтверждения создания цели
     document.getElementById('playBtn').onclick = () => {
         Snd.init();
         if (state.pendingPath.length > 1) createTarget();
@@ -490,20 +506,17 @@
         }
     };
 
-    // Обновление игровых часов
     function updateClock() {
         const m = Math.floor(state.simSeconds/60), s = Math.floor(state.simSeconds%60);
         document.getElementById('simTime').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
     }
     
-    // Смена иконок и состояния главной кнопки управления
     function updateNav() {
         const btn = document.getElementById('playBtn');
         if(state.pendingPath.length > 0) { btn.innerHTML = '<i class="fas fa-check"></i>'; btn.className = 'btn btn-confirm'; }
         else { btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; btn.className = 'btn'; }
     }
 
-    // Пересчет визуальных кругов радаров при изменении масштаба карты
     map.on('zoomend', () => {
         state.pvo.forEach(p => {
             if(p.type === 'sam') {
