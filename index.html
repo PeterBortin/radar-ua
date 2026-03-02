@@ -3,94 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tactical Defense Elite v13.7</title>
+    <title>radar-ua</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
     <style>
-        :root { --primary: #00ff88; --bg: #0a0c10; --panel-bg: rgba(15, 20, 30, 0.95); }
+        :root { --primary: #00ff88; --bg: #0a0c10; --panel-bg: rgba(15, 20, 30, 0.9); --ua-gold: #ffd700; --ru-red: #ff4444; }
         body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; color: white; }
         #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 1; }
         
+        /* Тулбары с подложкой */
+        .obj-toolbar { 
+            position: absolute; background: rgba(255,255,255,0); color: #fff; padding: 3px 8px; 
+            backdrop-filter: blur(4px); border-radius: 4px; font-family: 'Roboto Mono', monospace; 
+            font-size: 10px; pointer-events: none; z-index: 10000; transform: translate(15px, -15px);
+            white-space: nowrap; border: 1px solid rgba(255,255,255,0);
+        }
+        .ua-plane-toolbar { border-left: 0px solid var(--ua-gold); }
+        .ru-plane-toolbar { border-left: 0px solid var(--ru-red); }
+        .target-toolbar { border-left: 0px solid #fff; }
+
         .radar-sweep {
-            position: absolute;
-            border-radius: 50%;
-            background: conic-gradient(from 0deg at 50% 50%, rgba(0, 255, 136, 0.2) 0deg, transparent 90deg);
-            animation: rotateRadarReverse 4s linear infinite;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            will-change: transform, width, height;
-            transition: width 0.1s ease-out, height 0.1s ease-out;
+            position: absolute; border-radius: 50%;
+            background: conic-gradient(from 0deg at 50% 50%, rgba(0, 255, 136, 0.15) 0deg, transparent 90deg);
+            animation: rotateRadarReverse 4s linear infinite; pointer-events: none;
+            transform: translate(-50%, -50%); will-change: transform;
         }
-        @keyframes rotateRadarReverse { 
-            from { transform: translate(-50%, -50%) rotate(360deg); } 
-            to { transform: translate(-50%, -50%) rotate(0deg); } 
-        }
+        @keyframes rotateRadarReverse { from { transform: translate(-50%, -50%) rotate(360deg); } to { transform: translate(-50%, -50%) rotate(0deg); } }
 
         .explosion {
             position: absolute; width: 60px; height: 60px;
-            background: radial-gradient(circle, #fff 10%, #00ff88 30%, transparent 70%);
+            background: radial-gradient(circle, #fff 10%, #ff4444 30%, transparent 70%);
             border-radius: 50%; z-index: 10001; animation: explode 0.5s ease-out forwards;
             pointer-events: none; transform: translate(-50%, -50%);
         }
         @keyframes explode { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(3); opacity: 0; } }
 
-        .event-marker { display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 0 5px rgba(0,0,0,0.8)); }
-
-        .status-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 9999; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); padding: 12px; display: flex; justify-content: center; gap: 25px; pointer-events: none; }
-        .status-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; }
+        .status-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 9999; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); padding: 12px; display: flex; justify-content: center; gap: 20px; pointer-events: none; }
+        .status-item { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: bold; }
+        
         .ui-layer { position: absolute; top: 50px; width: 100%; z-index: 9998; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .ui-layer > * { pointer-events: auto; }
-        .tool-card { background: var(--panel-bg); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; flex: 1; cursor: pointer; }
+        .tool-card { background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; flex: 1; cursor: pointer; }
         .tool-card.active { border-color: var(--primary); }
-        
-        .obj-toolbar { 
-            position: absolute; 
-            background: transparent;
-            color: #fff; 
-            padding: 2px 6px; 
-            border-left: 2px solid #00ffaa; 
-            font-family: monospace; 
-            font-size: 9px; 
-            pointer-events: none; 
-            z-index: 10000; 
-            transform: translate(12px, -12px); 
-            white-space: nowrap;
-            border-radius: 3px;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.8);
-            letter-spacing: 0.3px;
-            font-weight: 500;
-        }
-        
-        .obj-toolbar.missile-toolbar {
-            border-left-color: #ffbb33;
-            background: transparent;
-        }
         
         .bottom-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 9998; }
         .btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; background: #333; }
         .btn-confirm { background: #28a745 !important; transform: scale(1.1); }
         select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; }
-        
-        .warning-message {
-            position: absolute;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 50, 50, 0.9);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 10002;
-            animation: fadeOut 2s ease-out forwards;
-        }
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            70% { opacity: 1; }
-            100% { opacity: 0; }
-        }
+        .warning-message { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(255, 50, 50, 0.9); color: white; padding: 8px 16px; border-radius: 20px; font-size: 11px; font-weight: bold; z-index: 10002; animation: fadeOut 2s forwards; }
+        @keyframes fadeOut { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
     </style>
 </head>
 <body>
@@ -99,37 +61,75 @@
     <div class="status-item"><i class="far fa-clock"></i> <span id="simTime">00:00</span></div>
     <div class="status-item"><i class="fas fa-bullseye"></i> <span id="targetCount">0</span></div>
     <div class="status-item"><i class="fas fa-shield-alt"></i> <span id="pvoCount">0</span></div>
+    <div class="status-item"><i class="fas fa-plane" style="color:var(--ru-red)"></i> <span id="planeCount">0</span></div>
+    <div class="status-item"><i class="fas fa-fighter-jet" style="color:var(--ua-gold)"></i> <span id="uaPlaneCount">0</span></div>
 </div>
+
 <div class="ui-layer">
-    <div style="display: flex; gap: 10px; width: 95%; max-width: 600px;">
+    <div style="display: flex; gap: 20px; width: 95%; max-width: 600px;">
+
         <div class="tool-card active" id="pvoCard" onclick="setMode('pvo')">
-            <span style="font-size:9px; color:#888;">СИСТЕМА ОБОРОНЫ</span>
-            <select id="pvoSelect">
-                <option value="pvo_pancyr">Панцирь-С1 (20 км, 4600 км/ч)</option>
-                <option value="pvo_iris">IRIS-T SLM (40 км, 3700 км/ч)</option>
-                <option value="pvo_buk">Бук-М3 (70 км, 5600 км/ч)</option>
-                <option value="pvo_samp">SAMP/T (100 км, 5000 км/ч)</option>
-                <option value="pvo_patriot">Patriot PAC-3 (160 км, 6000 км/ч)</option>
-                <option value="pvo_s400">С-400 (400 км, 9000 км/ч)</option>
-                <option value="pvo_hawk">MIM-23 Hawk (40 км, 4200 км/ч)</option>
-                <option value="pvo_nasams">NASAMS (25 км, 4100 км/ч)</option>
-            </select>
+            <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">ПВО</span>
+
+            <div style="position:relative;">
+                <select id="pvoSelect" style="
+                    width:100%;
+                    padding:8px 35px 8px 10px;
+                    appearance:none;
+                    -webkit-appearance:none;
+                    -moz-appearance:none;
+                ">
+                    <option value="ua_f16">F-16 Fighting Falcon (Патруль)</option>
+                    <option value="ua_mig29">МиГ-29 (Патруль)</option>
+                    <option value="pvo_patriot">Patriot PAC-3 (160 км)</option>
+                    <option value="pvo_iris">IRIS-T SLM (40 км)</option>
+                    <option value="pvo_nasams">NASAMS (25 км)</option>
+                </select>
+
+                <span style="
+                    position:absolute;
+                    right:10px;
+                    top:50%;
+                    transform:translateY(-50%);
+                    pointer-events:none;
+                    font-size:12px;
+                ">▼</span>
+            </div>
         </div>
+
+
         <div class="tool-card" id="targetCard" onclick="setMode('target')">
-            <span style="font-size:9px; color:#888;">ТИП УГРОЗЫ</span>
-            <select id="targetSelect">
-                <option value="drone_shahed">Shahed-136 (185 км/ч)</option>
-                <option value="missile_x101">Х-101 (850 км/ч)</option>
-                <option value="missile_iskander">Искандер-М (7500 км/ч)</option>
-                <option value="missile_x32">Х-32 (5400 км/ч)</option>
-                <option value="missile_zircon">Циркон (11000 км/ч)</option>
-                <option value="missile_flamingo">Фламинго (950 км/ч)</option>
-                <option value="missile_grom">Гром-2 (5000 км/ч)</option>
-                <option value="missile_neptune">Нептун (900 км/ч)</option>
-            </select>
+            <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Цели</span>
+
+            <div style="position:relative;">
+                <select id="targetSelect" style="
+                    width:100%;
+                    padding:8px 35px 8px 10px;
+                    appearance:none;
+                    -webkit-appearance:none;
+                    -moz-appearance:none;
+                ">
+                    <option value="drone_shahed">Shahed-136 (185 км/ч)</option>
+                    <option value="missile_x101">Х-101 (850 км/ч)</option>
+                    <option value="missile_neptune">Нептун (900 км/ч)</option>
+                    <option value="missile_iskander">Искандер-М (7500 км/ч)</option>
+                    <option value="missile_kinzhal">Кинжал (12000 км/ч)</option>
+                </select>
+
+                <span style="
+                    position:absolute;
+                    right:10px;
+                    top:50%;
+                    transform:translateY(-50%);
+                    pointer-events:none;
+                    font-size:12px;
+                ">▼</span>
+            </div>
         </div>
+
     </div>
 </div>
+
 <div class="bottom-nav">
     <button class="btn" onclick="location.reload()"><i class="fas fa-sync-alt"></i></button>
     <button class="btn" id="playBtn" style="background:#1a73e8;"><i class="fas fa-play"></i></button>
@@ -137,9 +137,12 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // Объект для управления звуковыми эффектами через Web Audio API
     const Snd = {
         ctx: null,
+        // Инициализация аудио-контекста (требуется жест пользователя в браузере)
         init() { if(!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } if(this.ctx.state === 'suspended') this.ctx.resume(); },
+        // Универсальная функция для генерации звуков (осциллятор)
         osc(f, t, d, v) {
             const o = this.ctx.createOscillator(), g = this.ctx.createGain();
             o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
@@ -148,425 +151,368 @@
             o.connect(g); g.connect(this.ctx.destination);
             o.start(); o.stop(this.ctx.currentTime + d);
         },
-        launch() { this.init(); this.osc(300, 'sawtooth', 0.4, 0.05); this.osc(100, 'sine', 0.4, 0.1); },
-        intercept() { this.init(); this.osc(60, 'sine', 0.8, 0.3); this.osc(1200, 'sine', 0.1, 0.05); },
-        hit() { this.init(); this.osc(40, 'triangle', 1.0, 0.4); },
-        ping() { this.init(); this.osc(1000, 'sine', 0.05, 0.02); },
-        warning() { this.init(); this.osc(200, 'sawtooth', 0.3, 0.1); this.osc(400, 'sawtooth', 0.3, 0.1); }
+        // Пресеты звуков
+        launch() { this.init(); this.osc(300, 'sawtooth', 0.4, 0.05); }, // Пуск ракеты
+        intercept() { this.init(); this.osc(60, 'sine', 0.8, 0.3); },   // Перехват цели
+        hit() { this.init(); this.osc(40, 'triangle', 1.0, 0.4); },      // Попадание в цель
+        ping() { this.init(); this.osc(1000, 'sine', 0.05, 0.02); },    // Сигнал радара
+        warning() { this.init(); this.osc(200, 'sawtooth', 0.3, 0.1); } // Предупреждение
     };
 
+    // Инициализация карты Leaflet
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.8, 36.5], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
+    // Координаты российских авиабаз
+    const AIRBASES = [
+        { name: "Энгельс-2", pos: [51.48, 46.21] },
+        { name: "Шайковка", pos: [54.22, 34.36] },
+        { name: "Саваслейка", pos: [55.44, 42.30] }
+    ];
+
+    // Конфигурация характеристик объектов
     const CONFIG = {
-        // Цели с диапазонами высот
-        drone_shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88', altMin: 500, altMax: 2500 },
-        missile_x101: { name: 'KH-101', speed: 850, color: '#ffbb33', altMin: 2000, altMax: 8000 },
-        missile_iskander: { name: 'ISKANDER-M', speed: 7500, color: '#ff4444', altMin: 20000, altMax: 70000 },
-        missile_x32: { name: 'KH-32', speed: 5400, color: '#ff00ff', altMin: 100, altMax: 5000 },
-        missile_zircon: { name: 'ZIRCON', speed: 11000, color: '#ff0000', altMin: 10000, altMax: 40000 },
-        missile_flamingo: { name: 'ФЛАМИНГО', speed: 950, color: '#ffaa00', altMin: 2000, altMax: 8000 },
-        missile_grom: { name: 'ГРОМ-2', speed: 5000, color: '#ff5500', altMin: 20000, altMax: 70000 },
-        missile_neptune: { name: 'НЕПТУН', speed: 900, color: '#00aaff', altMin: 100, altMax: 5000 },
+        drone_shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88', altMin: 50, altMax: 2000 },
+        missile_x101: { name: 'X-101', speed: 850, color: '#ffbb33', altMin: 100, altMax: 8000 },
+        missile_iskander: { name: 'Искандер-M', speed: 7500, color: '#ff4444', altMin: 20000, altMax: 70000 },
+        missile_kinzhal: { name: 'Кинжал', speed: 12000, color: '#ff0000', altMin: 30000, altMax: 80000 },
+        missile_neptune: { name: 'Нептун', speed: 900, color: '#00aaff', altMin: 50, altMax: 1000 },
         
-        // Системы ПВО
-        pvo_pancyr: { r: 20, s: 4600, name: 'Панцирь-С1' },
-        pvo_iris: { r: 40, s: 3700, name: 'IRIS-T SLM' },
-        pvo_buk: { r: 70, s: 5600, name: 'Бук-М3' },
-        pvo_samp: { r: 100, s: 5000, name: 'SAMP/T' },
-        pvo_patriot: { r: 160, s: 6000, name: 'Patriot' },
-        pvo_s400: { r: 400, s: 9000, name: 'С-400' },
-        pvo_hawk: { r: 40, s: 4200, name: 'Hawk' },
-        pvo_nasams: { r: 25, s: 4100, name: 'NASAMS' }
+        pvo_iris: { r: 40, s: 3700, name: 'IRIS-T', type: 'sam' },
+        pvo_nasams: { r: 25, s: 4100, name: 'NASAMS', type: 'sam' },
+        pvo_patriot: { r: 160, s: 6000, name: 'Patriot', type: 'sam' },
+        
+        ua_f16: { name: 'F-16', speed: 1200, mSpeed: 4500, ammo: 6, range: 120, type: 'fighter' },
+        ua_mig29: { name: 'МиГ-29', speed: 1100, mSpeed: 4000, ammo: 4, range: 80, type: 'fighter' }
     };
 
-    // Логика совместимости ПВО с целями
-    const COMPATIBILITY = {
-        pvo_pancyr: (targetSpeed) => targetSpeed <= 4600 * 0.8,
-        pvo_iris: (targetSpeed) => targetSpeed <= 3700 * 0.8,
-        pvo_buk: (targetSpeed) => targetSpeed <= 5600 * 0.8,
-        pvo_samp: (targetSpeed) => targetSpeed <= 5000 * 0.8,
-        pvo_patriot: (targetSpeed) => targetSpeed <= 6000 * 0.8,
-        pvo_s400: (targetSpeed) => targetSpeed <= 9000 * 0.8,
-        pvo_hawk: (targetSpeed) => targetSpeed <= 4200 * 0.8,
-        pvo_nasams: (targetSpeed) => targetSpeed <= 4100 * 0.8
-    };
-
+    // Глобальное состояние симуляции
     let state = { 
-        currentMode: 'pvo', 
-        isSimulating: false, 
-        targets: [], 
-        pvo: [], 
-        missiles: [], 
-        pendingPath: [], 
-        tempMarkers: [], 
-        activeFutureLine: null, 
-        simSeconds: 0, 
-        lastFrame: 0, 
-        zoomTimeout: null
+        currentMode: 'pvo', isSimulating: false, 
+        targets: [], pvo: [], missiles: [], planes: [], uaPlanes: [],
+        pendingPath: [], tempMarkers: [], activeFutureLine: null, 
+        simSeconds: 0, lastFrame: 0, lastRuSpawn: 0
     };
 
-    // Функция для генерации случайной высоты в заданном диапазоне
-    function generateAltitude(min, max) {
-        return Math.floor(Math.random() * (max - min) + min);
+    // Отображение всплывающих текстовых предупреждений
+    function showWarning(m) {
+        const w = document.createElement('div'); w.className = 'warning-message'; w.textContent = m;
+        document.body.appendChild(w); setTimeout(() => w.remove(), 2500);
     }
 
-    // Функция для небольшого изменения высоты (симуляция набора/снижения)
-    function varyAltitude(current, min, max, step = 50) {
-        const variation = Math.random() * step * 2 - step;
-        let newAlt = current + variation;
-        // Ограничиваем диапазоном
-        if (newAlt < min) newAlt = min + (min - newAlt) * 0.5;
-        if (newAlt > max) newAlt = max - (newAlt - max) * 0.5;
-        return Math.round(newAlt);
-    }
-
-    function showWarning(message) {
-        const warning = document.createElement('div');
-        warning.className = 'warning-message';
-        warning.textContent = message;
-        document.body.appendChild(warning);
-        setTimeout(() => warning.remove(), 2000);
-    }
-
+    // Переключение режимов (ПВО / Цель)
     function setMode(m) {
         state.currentMode = m;
         document.getElementById('pvoCard').classList.toggle('active', m === 'pvo');
         document.getElementById('targetCard').classList.toggle('active', m === 'target');
     }
 
-    // Функция для расчета размера радара в пикселях
-    function getRadarSizeInPixels(radiusKm, lat) {
-        const zoom = map.getZoom();
-        const metersPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
-        const radiusMeters = radiusKm * 1000;
-        return (radiusMeters / metersPerPixel) * 2;
+    // Обновление счетчиков в верхней панели управления
+    function updateCounters() { 
+        document.getElementById('targetCount').innerText = state.targets.filter(x => x.active).length; 
+        document.getElementById('pvoCount').innerText = state.pvo.filter(x=>x.type==='sam').length; 
+        document.getElementById('planeCount').innerText = state.planes.filter(x => x.active).length;
+        document.getElementById('uaPlaneCount').innerText = state.uaPlanes.filter(x => x.active).length;
     }
 
-    function canIntercept(pvo, targetSpeed) {
-        const pvoId = Object.keys(CONFIG).find(key => CONFIG[key].name === pvo.name);
-        if (!pvoId || !COMPATIBILITY[pvoId]) return false;
-        return COMPATIBILITY[pvoId](targetSpeed);
-    }
-
+    // Создание стационарной установки ПВО
     function createPVO(pos) {
-        const cfg = CONFIG[document.getElementById('pvoSelect').value];
-        
+        const typeKey = document.getElementById('pvoSelect').value;
+        const cfg = CONFIG[typeKey];
+        if (cfg.type === 'fighter') { createUAFighter(pos, cfg); return; }
+
         const initialSize = getRadarSizeInPixels(cfg.r, pos[0]);
-        
-        const radarIcon = L.divIcon({
-            className: 'radar-container',
-            html: `<div class="radar-sweep" style="width:${initialSize}px; height:${initialSize}px;"></div>`,
-            iconSize: [0, 0]
-        });
-        
-        const rMarker = L.marker(pos, { icon: radarIcon, interactive: false, zIndexOffset: 1000 }).addTo(map);
-        
-        const updateRadarSize = () => {
-            if (state.zoomTimeout) clearTimeout(state.zoomTimeout);
-            state.zoomTimeout = setTimeout(() => {
-                const newSize = getRadarSizeInPixels(cfg.r, pos[0]);
-                rMarker.setIcon(L.divIcon({
-                    className: 'radar-container',
-                    html: `<div class="radar-sweep" style="width:${newSize}px; height:${newSize}px;"></div>`,
-                    iconSize: [0, 0]
-                }));
-                state.zoomTimeout = null;
-            }, 50);
-        };
-        
-        map.on('zoomend', updateRadarSize);
-        
-        const dot = L.circleMarker(pos, { 
-            radius: 6, 
-            color: '#fff', 
-            fillColor: '#00ff88', 
-            fillOpacity: 1,
-            weight: 2
-        }).addTo(map);
-        
-        const range = L.circle(pos, { 
-            radius: cfg.r * 1000, 
-            weight: 0,
-            fillColor: '#00ff88',
-            fillOpacity: 0.02
-        }).addTo(map);
-        
-        state.pvo.push({ 
-            id: Math.random(), 
-            pos, 
-            radius: cfg.r, 
-            mSpeed: cfg.s, 
-            name: cfg.name,
-            layers: [rMarker, dot, range],
-            updateRadarHandler: updateRadarSize
-        });
-        
+        const rMarker = L.marker(pos, { icon: L.divIcon({ className: 'radar-container', html: `<div class="radar-sweep" style="width:${initialSize}px; height:${initialSize}px;"></div>`, iconSize: [0, 0] }) }).addTo(map);
+        const dot = L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: '#00ff88', fillOpacity: 1 }).addTo(map);
+        state.pvo.push({ id: Math.random(), pos, radius: cfg.r, mSpeed: cfg.s, name: cfg.name, type: 'sam', layers: [rMarker, dot], side: 'UA' });
         updateCounters();
     }
 
-    function createTarget() {
-        const type = document.getElementById('targetSelect').value;
-        const targetConfig = CONFIG[type];
-        const altitude = generateAltitude(targetConfig.altMin, targetConfig.altMax);
+    // Создание украинского истребителя
+    function createUAFighter(pos, cfg) {
+        const p = {
+            id: Math.random(), name: cfg.name, currentPos: pos, patrolTarget: pos,
+            speed: cfg.speed, mSpeed: cfg.mSpeed, ammo: cfg.ammo, range: cfg.range,
+            active: true, side: 'UA', type: 'fighter', altitude: 8000, history: [pos],
+            marker: L.marker(pos, { icon: L.divIcon({ html: `<i class="fas fa-fighter-jet" style="color:var(--ua-gold); font-size:18px;"></i>`, className: 'event-marker' }) }).addTo(map),
+            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar ua-plane-toolbar'}),
+            line: L.polyline([pos], {color: 'var(--ua-gold)', weight: 2, opacity: 0.6}).addTo(map)
+        };
+        document.body.appendChild(p.toolbar);
+        state.uaPlanes.push(p);
+        updateCounters();
+    }
+
+    // Создание российского самолета-носителя ракет
+    function spawnRuPlane() {
+        const types = [
+            { name: 'Tu-95MS', speed: 750, missile: 'missile_x101', count: 2, alt: 9000 },
+            { name: 'MiG-31K', speed: 2500, missile: 'missile_kinzhal', count: 1, alt: 22000 }
+        ];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const startBase = AIRBASES[Math.floor(Math.random()*AIRBASES.length)];
+        const launchPoint = [48 + Math.random()*4, 38 + Math.random()*2]; 
+        const path = [startBase.pos, launchPoint, startBase.pos];
+        
+        const p = {
+            id: Math.random(), cfg: type, path: path, currentPos: [...startBase.pos], progressKm: 0, totalDist: 0,
+            active: true, launched: false, altitude: type.alt, side: 'RU', engagedBy: new Set(), history: [[...startBase.pos]],
+            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar ru-plane-toolbar'}),
+            marker: L.marker(startBase.pos, { icon: L.divIcon({ html: '<i class="fas fa-plane" style="color:var(--ru-red); font-size:18px;"></i>', className: 'event-marker' }) }).addTo(map),
+            line: L.polyline([startBase.pos], {color: 'var(--ru-red)', weight: 2, opacity: 0.6}).addTo(map)
+        };
+        for(let i=0; i<path.length-1; i++) p.totalDist += map.distance(path[i], path[i+1])/1000;
+        document.body.appendChild(p.toolbar);
+        state.planes.push(p);
+    }
+
+    // Создание летящей цели (ракеты или БПЛА)
+    function createTarget(cfgOverride = null, pathOverride = null) {
+        const type = cfgOverride || document.getElementById('targetSelect').value;
+        const cfg = CONFIG[type];
+        const path = pathOverride || [...state.pendingPath];
+        if (path.length < 2) return;
+
         const t = {
-            id: Math.random(), 
-            name: targetConfig.name, 
-            path: [...state.pendingPath], 
-            speed: targetConfig.speed, 
-            currentPos: state.pendingPath[0], 
-            progressKm: 0, 
-            totalDist: 0, 
-            active: true, 
-            engagedBy: new Set(),
-            color: targetConfig.color,
-            altitude: altitude,
-            altMin: targetConfig.altMin,
-            altMax: targetConfig.altMax,
-            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
-            marker: L.circleMarker(state.pendingPath[0], { radius: 6, color: '#fff', fillColor: targetConfig.color, fillOpacity: 1 }).addTo(map),
-            linePast: L.polyline([], { color: targetConfig.color, weight: 2, opacity: 0.7 }).addTo(map),
-            lineFuture: state.activeFutureLine
+            id: Math.random(), name: cfg.name, path: path, speed: cfg.speed, currentPos: [...path[0]],
+            progressKm: 0, totalDist: 0, active: true, engagedBy: new Set(), side: 'RU',
+            altitude: Math.floor(Math.random() * (cfg.altMax - cfg.altMin) + cfg.altMin), history: [[...path[0]]],
+            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar target-toolbar'}),
+            marker: L.circleMarker(path[0], { radius: 5, color: '#fff', fillColor: cfg.color, fillOpacity: 1 }).addTo(map),
+            linePassed: L.polyline([path[0]], {color: cfg.color, weight: 2}).addTo(map),
+            lineFuture: L.polyline(path, {color: cfg.color, weight: 1, dashArray: '5, 10', opacity: 0.5}).addTo(map)
         };
         document.body.appendChild(t.toolbar);
         for(let i=0; i<t.path.length-1; i++) t.totalDist += map.distance(t.path[i], t.path[i+1])/1000;
-        state.targets.push(t); 
-        state.tempMarkers.forEach(m => map.removeLayer(m));
-        state.pendingPath = []; 
-        state.tempMarkers = []; 
-        state.activeFutureLine = null;
-        updateNav(); 
-        updateCounters();
+        state.targets.push(t);
+        
+        if(!pathOverride) {
+            state.tempMarkers.forEach(m => map.removeLayer(m));
+            state.pendingPath = []; state.activeFutureLine?.remove();
+            updateNav();
+        }
     }
 
-    map.on('click', (e) => {
-        Snd.init();
-        const pos = [e.latlng.lat, e.latlng.lng];
-        if (state.currentMode === 'pvo') {
-            createPVO(pos);
-        } else {
-            state.pendingPath.push(pos);
-            state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
-            if(state.activeFutureLine) map.removeLayer(state.activeFutureLine);
-            state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
-        }
-        updateCounters(); 
-        updateNav();
-    });
-
+    // Главный цикл симуляции
     function simLoop(time) {
         if (!state.isSimulating) return;
         const dt = (time - state.lastFrame) / 1000; state.lastFrame = time;
-        const stepHours = (dt * 15) / 3600;
+        const stepHours = (dt * 4) / 3600; // Ускорение времени в 4 раза
 
-        // Обновление целей
-        state.targets.forEach(t => {
-            if (!t.active) return;
-            t.progressKm += t.speed * stepHours;
-            
-            // Динамическое изменение высоты
-            t.altitude = varyAltitude(t.altitude, t.altMin, t.altMax);
-            
-            if (t.progressKm >= t.totalDist) { 
-                Snd.hit(); 
-                markEvent(t.currentPos, 'hit'); 
-                // При достижении цели оставляем траекторию, но делаем её более прозрачной
-                if (t.linePast) {
-                    t.linePast.setStyle({ opacity: 0.3 });
+        // Логика автоматического спавна вражеской авиации
+        if (time - state.lastRuSpawn > 5000) { spawnRuPlane(); state.lastRuSpawn = time; }
+
+        // Логика движения российских самолетов
+        state.planes.forEach(p => {
+            if(!p.active) return;
+            p.progressKm += p.cfg.speed * stepHours;
+            if(p.progressKm >= p.totalDist) { removeObj(p); return; }
+            p.currentPos = interpolate(p.path, p.progressKm);
+            p.marker.setLatLng(p.currentPos);
+            p.history.push([...p.currentPos]);
+            p.line.setLatLngs(p.history);
+            // Пуск ракет при подлете к определенной долготе
+            if(!p.launched && p.currentPos[1] < 39.5) {
+                p.launched = true;
+                for(let i=0; i<p.cfg.count; i++) {
+                    setTimeout(() => createTarget(p.cfg.missile, [p.currentPos, [46+Math.random()*3, 30+Math.random()*4]]), i*1200);
                 }
-                removeT(t, true); // true означает, что траекторию нужно оставить
-            } else {
-                t.currentPos = interpolate(t.path, t.progressKm);
-                t.marker.setLatLng(t.currentPos);
-                t.linePast.setLatLngs(getPastPoints(t.path, t.progressKm, t.currentPos));
-                const p = map.latLngToContainerPoint(t.currentPos);
-                t.toolbar.style.left = p.x + 'px'; 
-                t.toolbar.style.top = p.y + 'px';
-                t.toolbar.innerHTML = `${t.name} | ${Math.round(t.speed)} км/ч | ${t.altitude} м`;
+            }
+            updateToolbar(p, `<b>${p.cfg.name}</b><br>SPD: ${Math.round(p.cfg.speed)} км/ч<br>ALT: ${p.altitude}м`);
+        });
+
+        // Логика патрулирования и боя украинских истребителей
+        state.uaPlanes.forEach(p => {
+            if(!p.active) return;
+            // Смена цели патрулирования при достижении текущей
+            if (map.distance(p.currentPos, p.patrolTarget) < 8000) {
+                p.patrolTarget = [46 + Math.random() * 4, 30 + Math.random() * 6];
+            }
+            const dist = map.distance(p.currentPos, p.patrolTarget);
+            const move = (p.speed * stepHours * 1000) / dist;
+            p.currentPos = [p.currentPos[0] + (p.patrolTarget[0] - p.currentPos[0]) * move, p.currentPos[1] + (p.patrolTarget[1] - p.currentPos[1]) * move];
+            p.marker.setLatLng(p.currentPos);
+            p.history.push([...p.currentPos]);
+            if(p.history.length > 50) p.history.shift();
+            p.line.setLatLngs(p.history);
+
+            // Риск быть сбитым при заходе в опасную зону
+            if (p.currentPos[1] > 39.5 && Math.random() < 0.008) {
+                showWarning(`ПОТЕРЯ СВЯЗИ: ${p.name} СБИТ ПВО РФ`);
+                markEvent(p.currentPos, 'hit'); removeObj(p); return;
+            }
+
+            updateToolbar(p, `<b style="color:var(--ua-gold)">${p.name} (UA)</b><br>SPD: ${p.speed} км/ч<br>AMMO: ${p.ammo}`);
+
+            // Атака вражеских целей, если есть боезапас
+            if (p.ammo > 0) {
+                [...state.targets, ...state.planes].forEach(t => {
+                    if (t.active && t.side === 'RU' && !t.engagedBy.has(p.id)) {
+                        if (map.distance(p.currentPos, t.currentPos)/1000 < p.range) {
+                            t.engagedBy.add(p.id); p.ammo--; launchMissile(p, t);
+                        }
+                    }
+                });
             }
         });
 
-        // Проверка на обнаружение целей ПВО
-        state.pvo.forEach(p => {
-            state.targets.forEach(t => {
-                if (t.active && !t.engagedBy.has(p.id)) {
-                    if ((map.distance(p.pos, t.currentPos) / 1000) < p.radius) {
-                        if (canIntercept(p, t.speed)) {
-                            t.engagedBy.add(p.id); 
-                            Snd.ping(); 
-                            Snd.launch();
-                            
-                            // Создаем тулбар для ракеты
-                            const missileToolbar = Object.assign(document.createElement('div'), {
-                                className: 'obj-toolbar missile-toolbar'
-                            });
-                            document.body.appendChild(missileToolbar);
-                            
-                            const mMarker = L.circleMarker(p.pos, { 
-                                radius: 4, 
-                                color: '#fff', 
-                                fillColor: '#ffbb33', 
-                                fillOpacity: 1,
-                                weight: 2
-                            }).addTo(map);
-                            
-                            // Ракета получает свое имя и диапазон высот
-                            const missileAlt = generateAltitude(2000, 10000);
-                            
-                            state.missiles.push({ 
-                                target: t, 
-                                pos: [...p.pos], 
-                                speed: p.mSpeed, 
-                                marker: mMarker,
-                                toolbar: missileToolbar,
-                                name: 'ЗУР',
-                                altitude: missileAlt,
-                                altMin: 2000,
-                                altMax: 10000
-                            });
-                        } else {
-                            if (!t.engagedBy.has(`warning_${p.id}`)) {
-                                t.engagedBy.add(`warning_${p.id}`);
-                                Snd.warning();
-                                showWarning(`${p.name} не может перехватить ${t.name} (${t.speed} км/ч)`);
-                            }
-                        }
+        // Логика движения ракет и БПЛА
+        state.targets.forEach(t => {
+            if (!t.active) return;
+            t.progressKm += t.speed * stepHours;
+            if (t.progressKm >= t.totalDist) { markEvent(t.currentPos, 'hit'); removeObj(t); } 
+            else {
+                t.currentPos = interpolate(t.path, t.progressKm);
+                t.marker.setLatLng(t.currentPos);
+                t.history.push([...t.currentPos]);
+                t.linePassed.setLatLngs(t.history);
+                t.lineFuture.setLatLngs([t.currentPos, ...t.path.slice(Math.floor(t.progressKm/t.totalDist * t.path.length)+1)]);
+                updateToolbar(t, `<b>${t.name}</b><br>SPD: ${Math.round(t.speed)} км/ч<br>ALT: ${Math.round(t.altitude)}м`);
+            }
+        });
+
+        // Логика работы наземных систем ПВО (захват целей)
+        state.pvo.forEach(sys => {
+            [...state.targets, ...state.planes].forEach(t => {
+                if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
+                    if (map.distance(sys.pos, t.currentPos)/1000 < sys.radius) {
+                        t.engagedBy.add(sys.id); launchMissile(sys, t);
                     }
                 }
             });
         });
 
-        // Обновление ракет
+        // Логика полета зенитных ракет
         state.missiles = state.missiles.filter(m => {
-            if (!m.target.active) { 
-                map.removeLayer(m.marker); 
-                if (m.toolbar) m.toolbar.remove();
-                return false; 
-            }
-            
+            if (!m.target.active) { m.marker.remove(); m.line.remove(); return false; }
             const d = map.distance(m.pos, m.target.currentPos);
-            
-            if (d < 1200) { 
-                Snd.intercept(); 
-                markEvent(m.target.currentPos, 'intercept'); 
-                // При перехвате оставляем траекторию цели, делаем её более прозрачной
-                if (m.target.linePast) {
-                    m.target.linePast.setStyle({ opacity: 0.3 });
-                }
-                removeT(m.target, true); // true означает, что траекторию нужно оставить
-                map.removeLayer(m.marker); 
-                if (m.toolbar) m.toolbar.remove();
-                confetti({ particleCount: 40, origin: { y: 0.7 } }); 
-                return false; 
+            if (d < 1500) { 
+                markEvent(m.target.currentPos, 'intercept'); removeObj(m.target);
+                m.marker.remove(); m.line.remove(); return false; 
             }
-            
             const move = (m.speed * stepHours * 1000) / d;
-            m.pos = [
-                m.pos[0] + (m.target.currentPos[0] - m.pos[0]) * move, 
-                m.pos[1] + (m.target.currentPos[1] - m.pos[1]) * move
-            ];
-            
+            m.pos = [m.pos[0] + (m.target.currentPos[0]-m.pos[0])*move, m.pos[1] + (m.target.currentPos[1]-m.pos[1])*move];
             m.marker.setLatLng(m.pos);
-            
-            // Динамическое изменение высоты ракеты
-            m.altitude = varyAltitude(m.altitude, m.altMin, m.altMax, 100);
-            
-            // Обновление тулбара ракеты
-            const p = map.latLngToContainerPoint(m.pos);
-            m.toolbar.style.left = p.x + 'px'; 
-            m.toolbar.style.top = p.y + 'px';
-            m.toolbar.innerHTML = `${m.name} | ${Math.round(m.speed)} км/ч | ${m.altitude} м`;
-            
+            m.history.push([...m.pos]);
+            m.line.setLatLngs(m.history);
             return true;
         });
 
-        state.simSeconds += dt * 15; 
-        updateClock();
+        state.simSeconds += dt * 15; updateClock();
         requestAnimationFrame(simLoop);
     }
 
+    // Запуск ракеты-перехватчика
+    function launchMissile(launcher, target) {
+        Snd.ping(); Snd.launch();
+        const startPos = launcher.type === 'fighter' ? launcher.currentPos : launcher.pos;
+        const m = {
+            target: target, pos: [...startPos], history: [[...startPos]],
+            speed: launcher.mSpeed || 5000,
+            marker: L.circleMarker(startPos, { radius: 3, color: '#fff', fillColor: '#ffbb33', fillOpacity: 1 }).addTo(map),
+            line: L.polyline([startPos], {color: '#ffbb33', weight: 1, opacity: 0.8}).addTo(map)
+        };
+        state.missiles.push(m);
+    }
+
+    // Полное удаление объекта и его графических слоев
+    function removeObj(obj) {
+        obj.active = false; 
+        if(obj.marker) map.removeLayer(obj.marker); 
+        if(obj.toolbar) obj.toolbar.remove();
+        if(obj.line) map.removeLayer(obj.line);
+        if(obj.linePassed) map.removeLayer(obj.linePassed);
+        if(obj.lineFuture) map.removeLayer(obj.lineFuture);
+        updateCounters();
+    }
+
+    // Обновление положения и текста тулбара (плашки данных) над объектом
+    function updateToolbar(obj, text) {
+        const pt = map.latLngToContainerPoint(obj.currentPos);
+        obj.toolbar.style.left = pt.x + 'px'; obj.toolbar.style.top = pt.y + 'px'; obj.toolbar.innerHTML = text;
+    }
+
+    // Визуализация события (взрыв или перехват)
     function markEvent(pos, type) {
-        const icon = L.divIcon({
-            className: 'event-marker',
-            html: type === 'intercept' ? '<i class="fas fa-skull" style="color:white; font-size:20px;"></i>' : '<i class="fas fa-certificate" style="color:#ffbb33; font-size:20px;"></i>',
-            iconSize: [24, 24]
-        });
+        const icon = L.divIcon({ className: 'event-marker', html: type === 'intercept' ? '<i class="fas fa-skull" style="color:white; font-size:18px;"></i>' : '<i class="fas fa-certificate" style="color:#ffbb33; font-size:20px;"></i>' });
         L.marker(pos, { icon }).addTo(map);
         const p = map.latLngToContainerPoint(pos);
         const d = document.createElement('div'); d.className = 'explosion'; d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
         document.body.appendChild(d); setTimeout(() => d.remove(), 500);
+        if(type === 'hit') Snd.hit(); else Snd.intercept();
     }
 
-    function getPastPoints(path, dist, current) {
-        let acc = 0, res = [];
-        for(let i=0; i<path.length-1; i++) {
-            const d = map.distance(path[i], path[i+1])/1000;
-            res.push(path[i]); if(acc+d > dist) break; acc += d;
-        }
-        res.push(current); return res;
-    }
-
+    // Математическая интерполяция координат объекта на маршруте на основе пройденного расстояния
     function interpolate(path, dist) {
         let acc = 0;
         for (let i = 0; i < path.length - 1; i++) {
             const d = map.distance(path[i], path[i+1]) / 1000;
             if (acc + d > dist) { 
                 const r = (dist - acc) / d; 
-                return [
-                    path[i][0] + (path[i+1][0] - path[i][0]) * r, 
-                    path[i][1] + (path[i+1][1] - path[i][1]) * r
-                ]; 
+                return [path[i][0] + (path[i+1][0] - path[i][0]) * r, path[i][1] + (path[i+1][1] - path[i][1]) * r]; 
             }
             acc += d;
         }
         return path[path.length-1];
     }
 
-    function removeT(t, keepTrajectory = false) { 
-        t.active = false; 
-        map.removeLayer(t.marker); 
-        if (!keepTrajectory) {
-            if(t.linePast) map.removeLayer(t.linePast);
-        }
-        if(t.lineFuture) map.removeLayer(t.lineFuture); 
-        t.toolbar.remove(); 
-        updateCounters(); 
+    // Расчет размера радиуса радара в пикселях в зависимости от широты и уровня зума
+    function getRadarSizeInPixels(radiusKm, lat) {
+        const zoom = map.getZoom();
+        const metersPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
+        return ((radiusKm * 1000) / metersPerPixel) * 2;
     }
 
+    // Обработчик клика по карте
+    map.on('click', (e) => {
+        Snd.init();
+        const pos = [e.latlng.lat, e.latlng.lng];
+        if (state.currentMode === 'pvo') createPVO(pos); // Ставим ПВО
+        else {
+            // Рисуем путь для новой цели
+            state.pendingPath.push(pos);
+            state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
+            if(state.activeFutureLine) state.activeFutureLine.remove();
+            state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
+        }
+        updateNav();
+    });
+
+    // Обработчик кнопки Play/Pause и подтверждения создания цели
     document.getElementById('playBtn').onclick = () => {
         Snd.init();
-        if (state.pendingPath.length > 1) {
-            createTarget();
-        } else {
-            state.isSimulating = !state.isSimulating; 
+        if (state.pendingPath.length > 1) createTarget();
+        else {
+            state.isSimulating = !state.isSimulating;
             state.lastFrame = performance.now();
             document.getElementById('playBtn').innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
             if (state.isSimulating) requestAnimationFrame(simLoop);
         }
     };
 
-    function updateCounters() { 
-        const activeTargets = state.targets.filter(x => x.active).length;
-        document.getElementById('targetCount').innerText = activeTargets; 
-        document.getElementById('pvoCount').innerText = state.pvo.length; 
-    }
-    
+    // Обновление игровых часов
     function updateClock() {
         const m = Math.floor(state.simSeconds/60), s = Math.floor(state.simSeconds%60);
         document.getElementById('simTime').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
     }
     
+    // Смена иконок и состояния главной кнопки управления
     function updateNav() {
         const btn = document.getElementById('playBtn');
-        if(state.pendingPath.length > 0) { 
-            btn.innerHTML = '<i class="fas fa-check"></i>'; 
-            btn.className = 'btn btn-confirm'; 
-        }
-        else { 
-            btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; 
-            btn.className = 'btn'; 
-        }
+        if(state.pendingPath.length > 0) { btn.innerHTML = '<i class="fas fa-check"></i>'; btn.className = 'btn btn-confirm'; }
+        else { btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; btn.className = 'btn'; }
     }
+
+    // Пересчет визуальных кругов радаров при изменении масштаба карты
+    map.on('zoomend', () => {
+        state.pvo.forEach(p => {
+            if(p.type === 'sam') {
+                const size = getRadarSizeInPixels(p.radius, p.pos[0]);
+                const sweep = p.layers[0].getElement()?.querySelector('.radar-sweep');
+                if(sweep) { sweep.style.width = size + 'px'; sweep.style.height = size + 'px'; }
+            }
+        });
+    });
 </script>
 </body>
 </html>
