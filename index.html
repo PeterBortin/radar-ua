@@ -12,23 +12,38 @@
         body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; color: white; }
         #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 1; }
         
-        .obj-toolbar { 
-            position: absolute; background: rgba(255,255,255,0); color: #fff; padding: 3px 8px; 
-            backdrop-filter: blur(4px); border-radius: 4px; font-family: 'Roboto Mono', monospace; 
-            font-size: 10px; pointer-events: none; z-index: 10000; transform: translate(15px, -15px);
-            white-space: nowrap; border: 1px solid rgba(255,255,255,0);
+        /* Стили для Радара - Фикс центрирования */
+        .radar-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
         }
-        .ua-plane-toolbar { border-left: 0px solid var(--ua-gold); }
-        .ru-plane-toolbar { border-left: 0px solid var(--ru-red); }
-        .target-toolbar { border-left: 0px solid #fff; }
 
         .radar-sweep {
-            position: absolute; border-radius: 50%;
+            position: absolute;
+            border-radius: 50%;
             background: conic-gradient(from 0deg at 50% 50%, rgba(0, 255, 136, 0.15) 0deg, transparent 90deg);
-            animation: rotateRadarReverse 4s linear infinite; pointer-events: none;
-            transform: translate(-50%, -50%); will-change: transform;
+            animation: rotateRadarReverse 4s linear infinite;
+            pointer-events: none;
+            will-change: transform;
+            /* Важно: центрируем через flex в контейнере и убираем сторонние смещения */
         }
-        @keyframes rotateRadarReverse { from { transform: translate(-50%, -50%) rotate(360deg); } to { transform: translate(-50%, -50%) rotate(0deg); } }
+
+        @keyframes rotateRadarReverse { 
+            from { transform: rotate(360deg); } 
+            to { transform: rotate(0deg); } 
+        }
+
+        .obj-toolbar { 
+            position: absolute; background: rgba(15, 20, 30, 0.85); color: #fff; padding: 3px 8px; 
+            backdrop-filter: blur(4px); border-radius: 4px; font-family: 'Roboto Mono', monospace; 
+            font-size: 10px; pointer-events: none; z-index: 10000; transform: translate(15px, -15px);
+            white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .ua-plane-toolbar { border-left: 2px solid var(--ua-gold); }
+        .ru-plane-toolbar { border-left: 2px solid var(--ru-red); }
+        .target-toolbar { border-left: 2px solid #fff; }
 
         .explosion {
             position: absolute; width: 60px; height: 60px;
@@ -175,7 +190,7 @@
         targets: [], pvo: [], missiles: [], planes: [], uaPlanes: [], ships: [],
         pendingPath: [], tempMarkers: [], activeFutureLine: null, 
         simSeconds: 0, lastFrame: 0, lastRuSpawn: 0, lastShipSpawn: 0,
-        history: [] // Для системы отмены
+        history: [] 
     };
 
     function notifyOnMap(pos, text, color) {
@@ -218,7 +233,16 @@
         if (cfg.type === 'fighter') { createUAFighter(pos, cfg); return; }
 
         const initialSize = getRadarSizeInPixels(cfg.r, pos[0]);
-        const rMarker = L.marker(pos, { icon: L.divIcon({ className: 'radar-container', html: `<div class="radar-sweep" style="width:${initialSize}px; height:${initialSize}px;"></div>`, iconSize: [0, 0] }) }).addTo(map);
+        // Центрированный маркер радара
+        const rMarker = L.marker(pos, { 
+            icon: L.divIcon({ 
+                className: 'radar-container', 
+                html: `<div class="radar-sweep" style="width:${initialSize}px; height:${initialSize}px;"></div>`, 
+                iconSize: [0, 0] 
+            }),
+            interactive: false 
+        }).addTo(map);
+
         const dot = L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: '#00ff88', fillOpacity: 1 }).addTo(map);
         const item = { id: Math.random(), pos, radius: cfg.r, mSpeed: cfg.s, name: cfg.name, type: 'sam', layers: [rMarker, dot], side: 'UA' };
         state.pvo.push(item);
@@ -323,7 +347,7 @@
             state.pendingPath = []; 
             if(state.activeFutureLine) state.activeFutureLine.remove();
             state.activeFutureLine = null;
-            state.history = []; // Очистка истории при запуске цели
+            state.history = []; 
             updateNav();
         }
     }
@@ -590,7 +614,6 @@
         const btn = document.getElementById('playBtn');
         const undo = document.getElementById('undoBtn');
         
-        // Показ кнопки Undo
         if (state.pendingPath.length > 0 || state.history.length > 0) {
             undo.style.display = 'flex';
         } else {
@@ -606,12 +629,18 @@
         }
     }
 
-    map.on('zoomend', () => {
+    map.on('zoom', () => {
         state.pvo.forEach(p => {
             if(p.type === 'sam') {
                 const size = getRadarSizeInPixels(p.radius, p.pos[0]);
-                const sweep = p.layers[0].getElement()?.querySelector('.radar-sweep');
-                if(sweep) { sweep.style.width = size + 'px'; sweep.style.height = size + 'px'; }
+                const el = p.layers[0].getElement();
+                if(el) {
+                    const sweep = el.querySelector('.radar-sweep');
+                    if(sweep) {
+                        sweep.style.width = size + 'px';
+                        sweep.style.height = size + 'px';
+                    }
+                }
             }
         });
     });
