@@ -62,10 +62,42 @@
         .tool-card { background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; flex: 1; cursor: pointer; }
         .tool-card.active { border-color: var(--primary); }
         
-        .bottom-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 9998; }
-        .btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; background: #333; }
+        /* ОБНОВЛЕННАЯ НАВИГАЦИЯ */
+        .bottom-nav { 
+            position: absolute; 
+            bottom: 30px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+            gap: 15px; 
+            z-index: 9998;
+            width: auto;
+            min-width: 280px;
+        }
+        .btn { 
+            width: 55px; 
+            height: 55px; 
+            border-radius: 50%; 
+            border: none; 
+            color: white; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 20px; 
+            background: #333; 
+            transition: all 0.2s; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            flex-shrink: 0;
+        }
+        .btn:active { transform: scale(0.9); }
         .btn-confirm { background: #28a745 !important; transform: scale(1.1); }
-        .btn-undo { background: #6c757d; display: none; }
+        .btn-undo { background: #6c757d; visibility: hidden; opacity: 0; }
+        .btn-undo.visible { visibility: visible; opacity: 1; }
+        .btn-layer { background: #444; }
+
         select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; }
         .warning-message { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(255, 50, 50, 0.9); color: white; padding: 8px 16px; border-radius: 20px; font-size: 11px; font-weight: bold; z-index: 10002; animation: fadeOut 2s forwards; }
         @keyframes fadeOut { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
@@ -108,6 +140,7 @@
 </div>
 
 <div class="bottom-nav">
+    <button class="btn btn-layer" id="layerBtn" onclick="toggleMapLayer()"><i class="fas fa-layer-group"></i></button>
     <button class="btn" onclick="location.reload()"><i class="fas fa-sync-alt"></i></button>
     <button class="btn btn-undo" id="undoBtn" onclick="undoLastAction()"><i class="fas fa-undo"></i></button>
     <button class="btn" id="playBtn" style="background:#1a73e8;"><i class="fas fa-play"></i></button>
@@ -135,7 +168,27 @@
     };
 
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([47.5, 35.0], 6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+    
+    const layers = {
+        dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'),
+        satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
+    };
+    layers.dark.addTo(map);
+    let currentLayer = 'dark';
+
+    function toggleMapLayer() {
+        if (currentLayer === 'dark') {
+            map.removeLayer(layers.dark);
+            layers.satellite.addTo(map);
+            currentLayer = 'satellite';
+        } else {
+            map.removeLayer(layers.satellite);
+            layers.dark.addTo(map);
+            currentLayer = 'dark';
+        }
+        Snd.init();
+        Snd.ping();
+    }
 
     const AIRBASES = [
         { name: "Энгельс-2", pos: [51.48, 46.21] },
@@ -582,7 +635,14 @@
     function updateNav() {
         const btn = document.getElementById('playBtn');
         const undo = document.getElementById('undoBtn');
-        undo.style.display = (state.pendingPath.length > 0 || state.history.length > 0) ? 'flex' : 'none';
+        
+        // Показываем кнопку отмены с плавным переходом
+        if (state.pendingPath.length > 0 || state.history.length > 0) {
+            undo.classList.add('visible');
+        } else {
+            undo.classList.remove('visible');
+        }
+
         if(state.pendingPath.length > 0) { 
             btn.innerHTML = '<i class="fas fa-check"></i>'; btn.className = 'btn btn-confirm'; 
         } else { 
