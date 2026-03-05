@@ -95,14 +95,18 @@
 
         select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; }
         
-        /* Плавность вращения иконок */
+        /* Исправлено: центрирование и вращение */
         .rotated-icon { 
-            transition: transform 0.2s linear; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
             width: 30px;
             height: 30px;
+            transform-origin: center center;
+            will-change: transform;
+        }
+        .rotated-icon i {
+            display: block;
         }
     </style>
 </head>
@@ -215,20 +219,20 @@
     ];
 
     const CONFIG = {
-        drone_shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88', altMin: 50, altMax: 2000, icon: 'fa-location-arrow' },
-        missile_x101: { name: 'X-101', speed: 850, color: '#ffbb33', altMin: 100, altMax: 8000, icon: 'fa-location-arrow' },
-        missile_kalibr: { name: 'Калибр', speed: 900, color: '#33bbff', altMin: 50, altMax: 500, icon: 'fa-location-arrow' },
-        missile_zircon: { name: 'Циркон', speed: 11000, color: '#ff00ff', altMin: 30000, altMax: 40000, icon: 'fa-location-arrow' },
-        missile_iskander: { name: 'Искандер-M', speed: 7500, color: '#ff4444', altMin: 20000, altMax: 70000, icon: 'fa-location-arrow' },
-        missile_kinzhal: { name: 'Кинжал', speed: 12000, color: '#ff0000', altMin: 30000, altMax: 80000, icon: 'fa-location-arrow' },
-        missile_neptune: { name: 'Нептун', speed: 900, color: '#00aaff', altMin: 50, altMax: 1000, icon: 'fa-location-arrow' },
+        drone_shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88', altMin: 50, altMax: 2000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_x101: { name: 'X-101', speed: 850, color: '#ffbb33', altMin: 100, altMax: 8000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_kalibr: { name: 'Калибр', speed: 900, color: '#33bbff', altMin: 50, altMax: 500, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_zircon: { name: 'Циркон', speed: 11000, color: '#ff00ff', altMin: 30000, altMax: 40000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_iskander: { name: 'Искандер-M', speed: 7500, color: '#ff4444', altMin: 20000, altMax: 70000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_kinzhal: { name: 'Кинжал', speed: 12000, color: '#ff0000', altMin: 30000, altMax: 80000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_neptune: { name: 'Нептун', speed: 900, color: '#00aaff', altMin: 50, altMax: 1000, icon: 'fa-location-arrow', iconAdj: 45 },
         
         pvo_iris: { r: 40, s: 3700, name: 'IRIS-T', mName: 'SLM', type: 'sam' },
         pvo_nasams: { r: 25, s: 4100, name: 'NASAMS', mName: 'AIM-120', type: 'sam' },
         pvo_patriot: { r: 160, s: 6000, name: 'Patriot', mName: 'PAC-3', type: 'sam' },
         
-        ua_f16: { name: 'F-16', speed: 1200, mSpeed: 4800, ammo: 6, range: 120, mName: 'AIM-120 AMRAAM', type: 'fighter' },
-        ua_mig29: { name: 'МиГ-29', speed: 1100, mSpeed: 4200, ammo: 4, range: 80, mName: 'Р-27/Р-73', type: 'fighter' }
+        ua_f16: { name: 'F-16', speed: 1200, mSpeed: 4800, ammo: 6, range: 120, mName: 'AIM-120 AMRAAM', type: 'fighter', iconAdj: -45 },
+        ua_mig29: { name: 'МиГ-29', speed: 1100, mSpeed: 4200, ammo: 4, range: 80, mName: 'Р-27/Р-73', type: 'fighter', iconAdj: -45 }
     };
 
     let state = { 
@@ -239,15 +243,17 @@
         history: [], limits: { planes: 5, ships: 4 }
     };
 
-    // Функция стабильного вычисления угла
+    // Исправлено: Функция вычисления азимута (bearing) между точками
     function calculateHeading(p1, p2) {
         if(!p1 || !p2) return 0;
         const lat1 = p1[0] * Math.PI / 180;
         const lat2 = p2[0] * Math.PI / 180;
-        const dl = (p2[1] - p1[1]) * Math.PI / 180;
-        const y = Math.sin(dl) * Math.cos(lat2);
-        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dl);
-        return (Math.atan2(y, x) * 180 / Math.PI + 45); // +45 для коррекции иконки fa-location-arrow
+        const lon1 = p1[1] * Math.PI / 180;
+        const lon2 = p2[1] * Math.PI / 180;
+        const y = Math.sin(lon2 - lon1) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+        let brng = Math.atan2(y, x) * 180 / Math.PI;
+        return (brng + 360) % 360;
     }
 
     function notifyOnMap(pos, text, color) {
@@ -370,7 +376,7 @@
 
         const t = {
             id: Math.random(), name: cfg.name, path: path, speed: cfg.speed, currentPos: [...path[0]],
-            progressKm: 0, totalDist: 0, active: true, engagedBy: new Set(), side: 'RU',
+            progressKm: 0, totalDist: 0, active: true, engagedBy: new Set(), side: 'RU', iconAdj: cfg.iconAdj,
             altitude: Math.floor(Math.random() * (cfg.altMax - cfg.altMin) + cfg.altMin), history: [[...path[0]]],
             toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
             marker: L.marker(path[0], { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas ${cfg.icon}" style="color:${cfg.color}; font-size:14px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
@@ -428,7 +434,7 @@
             
             const angle = calculateHeading(prev, p.currentPos);
             const icon = p.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle - 45}deg)`; // -45 для выравнивания самолета
+            if(icon) icon.style.transform = `rotate(${angle}deg)`;
 
             p.history.push([...p.currentPos]);
             p.line.setLatLngs(p.history);
@@ -455,7 +461,7 @@
             
             const angle = calculateHeading(prev, p.currentPos);
             const icon = p.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle - 45}deg)`;
+            if(icon) icon.style.transform = `rotate(${angle - 45}deg)`; // -45 для fa-fighter-jet
 
             p.history.push([...p.currentPos]);
             if(p.history.length > 40) p.history.shift();
@@ -482,7 +488,7 @@
             
             const angle = calculateHeading(prev, t.currentPos);
             const icon = t.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle}deg)`;
+            if(icon) icon.style.transform = `rotate(${angle + (t.iconAdj || 0)}deg)`;
 
             t.history.push([...t.currentPos]);
             t.linePassed.setLatLngs(t.history);
@@ -521,7 +527,7 @@
             
             const angle = calculateHeading(prev, m.pos);
             const icon = m.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle}deg)`;
+            if(icon) icon.style.transform = `rotate(${angle + 45}deg)`; // +45 для fa-location-arrow
 
             m.history.push([...m.pos]);
             m.line.setLatLngs(m.history);
