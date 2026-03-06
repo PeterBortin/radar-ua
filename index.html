@@ -94,8 +94,9 @@
         .btn-layer { background: #444; }
 
         select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; }
+        optgroup { background: #0a0c10; color: #888; font-style: normal; font-weight: bold; }
+        option { color: white; background: #1a222d; }
         
-        /* Исправлено: центрирование и вращение */
         .rotated-icon { 
             display: flex; 
             align-items: center; 
@@ -124,23 +125,46 @@
 <div class="ui-layer">
     <div style="display: flex; gap: 20px; width: 95%; max-width: 600px;">
         <div class="tool-card active" id="pvoCard" onclick="setMode('pvo')">
-            <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">ПВО / Патруль</span>
+            <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Силы обороны Украины</span>
             <select id="pvoSelect">
-                <option value="ua_f16">F-16 (Ракеты AIM-120 AMRAAM)</option>
-                <option value="ua_mig29">МиГ-29 (Ракеты Р-27 / Р-73)</option>
-                <option value="pvo_patriot">Patriot PAC-3 (MIM-104)</option>
-                <option value="pvo_iris">IRIS-T SLM</option>
-                <option value="pvo_nasams">NASAMS (AIM-120)</option>
+                <optgroup label="Зенитно-ракетные комплексы">
+                    <option value="pvo_patriot">Patriot PAC-3 (160 км)</option>
+                    <option value="pvo_samp">SAMP/T Mamba (100 км)</option>
+                    <option value="pvo_iris">IRIS-T SLM (40 км)</option>
+                    <option value="pvo_nasams">NASAMS (25 км)</option>
+                    <option value="pvo_skynex">Skynex / Gepard (4 км)</option>
+                </optgroup>
+                <optgroup label="Авиация (Патруль)">
+                    <option value="ua_f16">F-16 (AIM-120 AMRAAM)</option>
+                    <option value="ua_f15">F-15EX (Heavy Eagle)</option>
+                    <option value="ua_mig29">МиГ-29 (Р-27 / Р-73)</option>
+                </optgroup>
+                <optgroup label="Морской компонент">
+                    <option value="ua_ship_hetman">Гетман Иван Мазепа (Корвет)</option>
+                    <option value="ua_ship_island">Island-class (Патрульный катер)</option>
+                </optgroup>
             </select>
         </div>
         <div class="tool-card" id="targetCard" onclick="setMode('target')">
             <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Цели (Симуляция)</span>
             <select id="targetSelect">
-                <option value="drone_shahed">Shahed-136 (185 км/ч)</option>
-                <option value="missile_x101">Х-101 (850 км/ч)</option>
-                <option value="missile_neptune">Нептун (900 км/ч)</option>
-                <option value="missile_iskander">Искандер-М (7500 км/ч)</option>
-                <option value="missile_kinzhal">Кинжал (12000 км/ч)</option>
+                <optgroup label="Гиперзвуковые">
+                    <option value="missile_kinzhal">Кинжал (12000 км/ч)</option>
+                    <option value="missile_zircon">Циркон (11000 км/ч)</option>
+                </optgroup>
+                <optgroup label="Баллистические / Сверхзвуковые">
+                    <option value="missile_iskander">Искандер-М (7500 км/ч)</option>
+                    <option value="missile_x22">Х-22 Буря (4000 км/ч)</option>
+                </optgroup>
+                <optgroup label="Крылатые ракеты">
+                    <option value="missile_x101">Х-101 (850 км/ч)</option>
+                    <option value="missile_kalibr">Калибр (900 км/ч)</option>
+                    <option value="missile_neptune">Нептун (900 км/ч)</option>
+                </optgroup>
+                <optgroup label="БПЛА">
+                    <option value="drone_shahed">Shahed-136 (185 км/ч)</option>
+                    <option value="drone_orlan">Орлан-10 (150 км/ч)</option>
+                </optgroup>
             </select>
         </div>
     </div>
@@ -209,7 +233,8 @@
     const AIRBASES = [
         { name: "Энгельс-2", pos: [51.48, 46.21] },
         { name: "Шайковка", pos: [54.22, 34.36] },
-        { name: "Саваслейка", pos: [55.44, 42.30] }
+        { name: "Саваслейка", pos: [55.44, 42.30] },
+        { name: "Ахтубинск", pos: [48.28, 46.11] }
     ];
 
     const NAVAL_BASES = [
@@ -220,19 +245,27 @@
 
     const CONFIG = {
         drone_shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88', altMin: 50, altMax: 2000, icon: 'fa-location-arrow', iconAdj: 45 },
+        drone_orlan: { name: 'ОРЛАН-10', speed: 150, color: '#00ff88', altMin: 500, altMax: 5000, icon: 'fa-location-arrow', iconAdj: 45 },
         missile_x101: { name: 'X-101', speed: 850, color: '#ffbb33', altMin: 100, altMax: 8000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_kalibr: { name: 'Калибр', speed: 900, color: '#33bbff', altMin: 50, altMax: 500, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_zircon: { name: 'Циркон', speed: 11000, color: '#ff00ff', altMin: 30000, altMax: 40000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_iskander: { name: 'Искандер-M', speed: 7500, color: '#ff4444', altMin: 20000, altMax: 70000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_kinzhal: { name: 'Кинжал', speed: 12000, color: '#ff0000', altMin: 30000, altMax: 80000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_neptune: { name: 'Нептун', speed: 900, color: '#00aaff', altMin: 50, altMax: 1000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_kalibr: { name: 'КАЛИБР', speed: 900, color: '#33bbff', altMin: 50, altMax: 500, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_x22: { name: 'X-22 БУРЯ', speed: 4000, color: '#ff4444', altMin: 12000, altMax: 22000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_zircon: { name: 'ЦИРКОН', speed: 11000, color: '#ff00ff', altMin: 30000, altMax: 40000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_iskander: { name: 'ИСКАНДЕР-M', speed: 7500, color: '#ff4444', altMin: 20000, altMax: 70000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_kinzhal: { name: 'КИНЖАЛ', speed: 12000, color: '#ff0000', altMin: 30000, altMax: 80000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_neptune: { name: 'НЕПТУН', speed: 900, color: '#00aaff', altMin: 50, altMax: 1000, icon: 'fa-location-arrow', iconAdj: 45 },
         
         pvo_iris: { r: 40, s: 3700, name: 'IRIS-T', mName: 'SLM', type: 'sam' },
         pvo_nasams: { r: 25, s: 4100, name: 'NASAMS', mName: 'AIM-120', type: 'sam' },
         pvo_patriot: { r: 160, s: 6000, name: 'Patriot', mName: 'PAC-3', type: 'sam' },
+        pvo_samp: { r: 100, s: 4500, name: 'SAMP/T', mName: 'Aster-30', type: 'sam' },
+        pvo_skynex: { r: 4, s: 3000, name: 'Skynex', mName: 'AHEAD 35mm', type: 'sam' },
         
-        ua_f16: { name: 'F-16', speed: 1200, mSpeed: 4800, ammo: 6, range: 120, mName: 'AIM-120 AMRAAM', type: 'fighter', iconAdj: -45 },
-        ua_mig29: { name: 'МиГ-29', speed: 1100, mSpeed: 4200, ammo: 4, range: 80, mName: 'Р-27/Р-73', type: 'fighter', iconAdj: -45 }
+        ua_f16: { name: 'F-16V', speed: 1200, mSpeed: 4800, ammo: 6, range: 120, mName: 'AIM-120D', type: 'fighter', iconAdj: -45 },
+        ua_f15: { name: 'F-15EX', speed: 1400, mSpeed: 5000, ammo: 12, range: 160, mName: 'AIM-120D', type: 'fighter', iconAdj: -45 },
+        ua_mig29: { name: 'МиГ-29МУ2', speed: 1100, mSpeed: 4200, ammo: 4, range: 80, mName: 'Р-27ЭР', type: 'fighter', iconAdj: -45 },
+
+        ua_ship_island: { name: 'Island class', speed: 55, mSpeed: 900, ammo: 2, range: 100, mName: 'Harpoon/Neptune', type: 'ua_ship', icon: 'fa-ship' },
+        ua_ship_hetman: { name: 'Hetman Ivan Mazepa', speed: 45, mSpeed: 1200, ammo: 8, range: 180, mName: 'NSM', type: 'ua_ship', icon: 'fa-ship' }
     };
 
     let state = { 
@@ -240,20 +273,16 @@
         targets: [], pvo: [], missiles: [], planes: [], uaPlanes: [], ships: [],
         pendingPath: [], tempMarkers: [], activeFutureLine: null, 
         simSeconds: 0, lastFrame: 0, lastRuSpawn: 0, lastShipSpawn: 0,
-        history: [], limits: { planes: 5, ships: 4 }
+        history: [], limits: { planes: 6, ships: 4 }
     };
 
-    // Исправлено: Функция вычисления азимута (bearing) между точками
     function calculateHeading(p1, p2) {
         if(!p1 || !p2) return 0;
-        const lat1 = p1[0] * Math.PI / 180;
-        const lat2 = p2[0] * Math.PI / 180;
-        const lon1 = p1[1] * Math.PI / 180;
-        const lon2 = p2[1] * Math.PI / 180;
+        const lat1 = p1[0] * Math.PI / 180, lat2 = p2[0] * Math.PI / 180;
+        const lon1 = p1[1] * Math.PI / 180, lon2 = p2[1] * Math.PI / 180;
         const y = Math.sin(lon2 - lon1) * Math.cos(lat2);
         const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
-        let brng = Math.atan2(y, x) * 180 / Math.PI;
-        return (brng + 360) % 360;
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
     }
 
     function notifyOnMap(pos, text, color) {
@@ -278,13 +307,14 @@
         document.getElementById('pvoCount').innerText = state.pvo.filter(x=>x.type==='sam').length; 
         document.getElementById('planeCount').innerText = state.planes.filter(x => x.active).length;
         document.getElementById('shipCount').innerText = state.ships.filter(x => x.active).length;
-        document.getElementById('uaPlaneCount').innerText = state.uaPlanes.filter(x => x.active).length;
+        document.getElementById('uaPlaneCount').innerText = (state.uaPlanes.filter(x => x.active).length + state.pvo.filter(x => x.type === 'ua_ship').length);
     }
 
     function createPVO(pos) {
         const typeKey = document.getElementById('pvoSelect').value;
         const cfg = CONFIG[typeKey];
         if (cfg.type === 'fighter') { createUAFighter(pos, cfg); return; }
+        if (cfg.type === 'ua_ship') { createUAShip(pos, cfg); return; }
 
         const initialSize = getRadarSizeInPixels(cfg.r, pos[0]);
         const rMarker = L.marker(pos, { 
@@ -301,6 +331,22 @@
         state.pvo.push(item);
         state.history.push({ type: 'pvo', item: item });
         notifyOnMap(pos, `РАЗВЕРНУТО: ${cfg.name}`, 'var(--primary)');
+        updateCounters(); updateNav();
+    }
+
+    function createUAShip(pos, cfg) {
+        const s = {
+            id: Math.random(), name: cfg.name, mName: cfg.mName, currentPos: pos, patrolTarget: pos,
+            speed: cfg.speed, mSpeed: cfg.mSpeed, ammo: cfg.ammo, range: cfg.range,
+            active: true, side: 'UA', type: 'ua_ship', history: [pos],
+            marker: L.marker(pos, { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas ${cfg.icon}" style="color:var(--ua-gold); font-size:16px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
+            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
+            line: L.polyline([pos], {color: 'var(--ua-gold)', weight: 2, opacity: 0.4, dashArray: '5, 5'}).addTo(map)
+        };
+        document.body.appendChild(s.toolbar);
+        state.pvo.push(s);
+        state.history.push({ type: 'pvo', item: s });
+        notifyOnMap(pos, `СПУЩЕНО: ${cfg.name}`, 'var(--ua-gold)');
         updateCounters(); updateNav();
     }
 
@@ -323,8 +369,10 @@
     function spawnRuPlane() {
         if (state.planes.filter(p => p.active).length >= state.limits.planes) return;
         const types = [
-            { name: 'Ту-95МС', speed: 750, missile: 'missile_x101', count: 4, alt: 9000 },
-            { name: 'MиГ-31K', speed: 2500, missile: 'missile_kinzhal', count: 1, alt: 22000 }
+            { name: 'ТУ-95МС', speed: 750, missile: 'missile_x101', count: 4, alt: 9000 },
+            { name: 'MИГ-31K', speed: 2500, missile: 'missile_kinzhal', count: 1, alt: 22000 },
+            { name: 'TУ-22M3', speed: 1800, missile: 'missile_x22', count: 2, alt: 14000 },
+            { name: 'CУ-57', speed: 2100, missile: 'missile_x101', count: 2, alt: 18000 }
         ];
         const type = types[Math.floor(Math.random() * types.length)];
         const startBase = AIRBASES[Math.floor(Math.random()*AIRBASES.length)];
@@ -347,8 +395,9 @@
     function spawnRuShip() {
         if (state.ships.filter(s => s.active).length >= state.limits.ships) return;
         const types = [
-            { name: 'Фрегат', speed: 55, missile: 'missile_kalibr', count: 4, icon: 'fa-ship' },
-            { name: 'Субмарина', speed: 40, missile: 'missile_kalibr', count: 2, icon: 'fa-anchor' }
+            { name: 'ФРЕГАТ', speed: 55, missile: 'missile_kalibr', count: 8, icon: 'fa-ship' },
+            { name: 'СУБМАРИНА', speed: 40, missile: 'missile_kalibr', count: 4, icon: 'fa-anchor' },
+            { name: 'РК "БОРА"', speed: 90, missile: 'missile_kalibr', count: 6, icon: 'fa-ship' }
         ];
         const type = types[Math.floor(Math.random() * types.length)];
         const base = NAVAL_BASES[Math.floor(Math.random()*NAVAL_BASES.length)];
@@ -461,7 +510,7 @@
             
             const angle = calculateHeading(prev, p.currentPos);
             const icon = p.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle - 45}deg)`; // -45 для fa-fighter-jet
+            if(icon) icon.style.transform = `rotate(${angle - 45}deg)`; 
 
             p.history.push([...p.currentPos]);
             if(p.history.length > 40) p.history.shift();
@@ -469,7 +518,7 @@
             updateToolbar(p, `<b style="color:var(--ua-gold)">${p.name} (UA)</b><br>SPD: ${p.speed} км/ч<br>AMMO: ${p.ammo}`);
 
             if (p.ammo > 0) {
-                [...state.targets, ...state.planes].forEach(t => {
+                [...state.targets, ...state.planes, ...state.ships].forEach(t => {
                     if (t.active && t.side === 'RU' && !t.engagedBy.has(p.id)) {
                         if (map.distance(p.currentPos, t.currentPos)/1000 < p.range) {
                             t.engagedBy.add(p.id); p.ammo--; launchMissile(p, t);
@@ -502,13 +551,43 @@
         });
 
         state.pvo.forEach(sys => {
-            [...state.targets, ...state.planes].forEach(t => {
-                if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
-                    if (map.distance(sys.pos, t.currentPos)/1000 < sys.radius) {
-                        t.engagedBy.add(sys.id); launchMissile(sys, t);
-                    }
+            if (sys.type === 'ua_ship') {
+                const prev = [...sys.currentPos];
+                if (map.distance(sys.currentPos, sys.patrolTarget) < 5000) {
+                    sys.patrolTarget = [45 + (Math.random()-0.5)*1, 32 + Math.random()*5];
                 }
-            });
+                const dist = map.distance(sys.currentPos, sys.patrolTarget);
+                const move = (sys.speed * stepHours * 1000) / dist;
+                sys.currentPos = [sys.currentPos[0] + (sys.patrolTarget[0] - sys.currentPos[0]) * move, sys.currentPos[1] + (sys.patrolTarget[1] - sys.currentPos[1]) * move];
+                sys.marker.setLatLng(sys.currentPos);
+                
+                const angle = calculateHeading(prev, sys.currentPos);
+                const icon = sys.marker.getElement()?.querySelector('.rotated-icon');
+                if(icon) icon.style.transform = `rotate(${angle}deg)`;
+
+                sys.history.push([...sys.currentPos]);
+                if(sys.history.length > 50) sys.history.shift();
+                sys.line.setLatLngs(sys.history);
+                updateToolbar(sys, `<b style="color:var(--ua-gold)">${sys.name} (UA)</b><br>AMMO: ${sys.ammo}`);
+
+                if (sys.ammo > 0) {
+                    [...state.targets, ...state.planes, ...state.ships].forEach(t => {
+                        if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
+                            if (map.distance(sys.currentPos, t.currentPos)/1000 < sys.range) {
+                                t.engagedBy.add(sys.id); sys.ammo--; launchMissile(sys, t);
+                            }
+                        }
+                    });
+                }
+            } else {
+                [...state.targets, ...state.planes].forEach(t => {
+                    if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
+                        if (map.distance(sys.pos, t.currentPos)/1000 < sys.radius) {
+                            t.engagedBy.add(sys.id); launchMissile(sys, t);
+                        }
+                    }
+                });
+            }
         });
 
         state.missiles = state.missiles.filter(m => {
@@ -527,7 +606,7 @@
             
             const angle = calculateHeading(prev, m.pos);
             const icon = m.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle + 45}deg)`; // +45 для fa-location-arrow
+            if(icon) icon.style.transform = `rotate(${angle + 45}deg)`; 
 
             m.history.push([...m.pos]);
             m.line.setLatLngs(m.history);
@@ -542,7 +621,7 @@
 
     function launchMissile(launcher, target) {
         Snd.ping(); Snd.launch();
-        const startPos = launcher.type === 'fighter' ? launcher.currentPos : launcher.pos;
+        const startPos = (launcher.type === 'fighter' || launcher.type === 'ua_ship') ? launcher.currentPos : launcher.pos;
         const tb = Object.assign(document.createElement('div'), {className: 'obj-toolbar', innerHTML: launcher.mName || 'SAM'});
         tb.style.fontSize = '8px'; document.body.appendChild(tb);
 
@@ -579,7 +658,8 @@
             const last = state.history.pop();
             if (last) {
                 if (last.type === 'pvo') {
-                    last.item.layers.forEach(l => map.removeLayer(l));
+                    if (last.item.type === 'sam') last.item.layers.forEach(l => map.removeLayer(l));
+                    else removeObj(last.item);
                     state.pvo = state.pvo.filter(i => i.id !== last.item.id);
                 } else if (last.type === 'uaPlane') {
                     removeObj(last.item);
