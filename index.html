@@ -58,6 +58,7 @@
         .ui-layer > * { pointer-events: auto; }
         .tool-card { background: rgba(15, 20, 30, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; flex: 1; cursor: pointer; backdrop-filter: blur(10px); }
         .tool-card.active { border-color: var(--primary); }
+        #targetCard.active { border-color: #fff; }
         
         .bottom-nav { 
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
@@ -71,12 +72,19 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); flex-shrink: 0;
         }
         .btn:active { transform: scale(0.9); }
-        .btn-confirm { background: #28a745 !important; transform: scale(1.1); }
-        .btn-undo { background: #6c757d; visibility: hidden; opacity: 0; }
-        .btn-undo.visible { visibility: visible; opacity: 1; }
-        .btn-layer { background: #444; }
-        .btn-history { background: #444; }
-        .btn-history.active { border: 2px solid var(--primary); }
+        .btn:hover { background: #555; }
+        
+        /* Состояния главной кнопки */
+        #playBtn { background: #fff; color: #333; }
+        #playBtn.simulating { background: #333; color: var(--primary); border: 2px solid var(--primary); }
+        #playBtn.btn-confirm { background: var(--primary) !important; color: #000 !important; transform: scale(1.15); box-shadow: 0 0 20px rgba(0, 255, 136, 0.4); }
+        #playBtn.btn-confirm:hover { filter: brightness(1.1); }
+        
+        .btn-undo { background: #6c757d; opacity: 0.3; pointer-events: none; }
+        .btn-undo.visible { opacity: 1; pointer-events: auto; }
+        
+        .btn-history { background: #444; color: white; }
+        .btn-history.active { background: #fff; color: #333; border: none; }
 
         select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; }
         optgroup { background: #0a0c10; color: #888; font-style: normal; font-weight: bold; }
@@ -193,7 +201,7 @@
     <button class="btn btn-layer" id="layerBtn" onclick="toggleMapLayer()"><i class="fas fa-layer-group"></i></button>
     <button class="btn" onclick="location.reload()"><i class="fas fa-sync-alt"></i></button>
     <button class="btn btn-undo" id="undoBtn" onclick="undoLastAction()"><i class="fas fa-undo"></i></button>
-    <button class="btn" id="playBtn" style="background:#1a73e8;"><i class="fas fa-play"></i></button>
+    <button class="btn" id="playBtn"><i class="fas fa-play"></i></button>
     <button class="btn btn-history" id="historyBtn" onclick="toggleHistory()"><i class="fas fa-list-ul"></i></button>
 </div>
 
@@ -289,7 +297,7 @@
         pendingPath: [], tempMarkers: [], activeFutureLine: null, 
         simSeconds: 0, lastFrame: 0, lastRuSpawn: 0, lastShipSpawn: 0,
         history: [], limits: { planes: 6, ships: 4 },
-        timeCompression: 15 // Множитель времени
+        timeCompression: 15
     };
 
     function isWater(lat, lon) {
@@ -315,6 +323,7 @@
             pos: pos
         });
         if(document.getElementById('historyModal').classList.contains('active')) updateHistoryTable();
+        updateNav();
     }
 
     function updateHistoryTable() {
@@ -367,6 +376,7 @@
         state.currentMode = m;
         document.getElementById('pvoCard').classList.toggle('active', m === 'pvo');
         document.getElementById('targetCard').classList.toggle('active', m === 'target');
+        updateNav();
     }
 
     function updateCounters() { 
@@ -534,16 +544,16 @@
         document.body.appendChild(t.toolbar);
         for(let i=0; i<t.path.length-1; i++) t.totalDist += map.distance(t.path[i], t.path[i+1])/1000;
         state.targets.push(t);
-        if(cfgOverride) { 
-            addToHistory(cfg.name, 'launch', path[0]);
-            notifyOnMap(path[0], `ПУСК: ${cfg.name}`, '#ffaa00'); Snd.launch(); 
-        }
+        
+        addToHistory(cfg.name, 'launch', path[0]);
+        if(cfgOverride) { notifyOnMap(path[0], `ПУСК: ${cfg.name}`, '#ffaa00'); Snd.launch(); }
+        
         if(!pathOverride) {
             state.tempMarkers.forEach(m => map.removeLayer(m)); state.pendingPath = []; 
             if(state.activeFutureLine) state.activeFutureLine.remove();
-            state.activeFutureLine = null; updateNav();
+            state.activeFutureLine = null;
         }
-        updateCounters();
+        updateCounters(); updateNav();
     }
 
     function syncAllToolbars() {
@@ -753,15 +763,13 @@
         if (state.pendingPath.length > 0) {
             state.pendingPath.pop(); const m = state.tempMarkers.pop(); if(m) map.removeLayer(m);
             if(state.activeFutureLine) { if (state.pendingPath.length > 0) state.activeFutureLine.setLatLngs(state.pendingPath); else { state.activeFutureLine.remove(); state.activeFutureLine = null; } }
-        } else {
+        } else if (state.history.length > 0) {
             const last = state.history.pop();
-            if (last) {
-                const pvoIdx = state.pvo.findIndex(i => i.name === last.name);
-                if (pvoIdx !== -1) {
-                    const item = state.pvo[pvoIdx];
-                    if (item.type === 'sam') item.layers.forEach(l => map.removeLayer(l)); else removeObj(item);
-                    state.pvo.splice(pvoIdx, 1);
-                }
+            const pvoIdx = state.pvo.findIndex(i => i.name === last.name);
+            if (pvoIdx !== -1) {
+                const item = state.pvo[pvoIdx];
+                if (item.type === 'sam') item.layers.forEach(l => map.removeLayer(l)); else removeObj(item);
+                state.pvo.splice(pvoIdx, 1);
             }
         }
         updateCounters(); updateNav();
@@ -821,13 +829,19 @@
 
     document.getElementById('playBtn').onclick = () => {
         Snd.init();
-        if (state.pendingPath.length > 1) {
-             if (state.currentMode === 'pvo') createPVO(); else createTarget();
+        if (state.pendingPath.length > 0) {
+             if (state.currentMode === 'pvo') {
+                 if (state.pendingPath.length >= 2 || CONFIG[document.getElementById('pvoSelect').value].type !== 'mrg') {
+                     createPVO(state.pendingPath[0]);
+                 }
+             } else {
+                 if (state.pendingPath.length >= 2) createTarget();
+             }
         } else {
             state.isSimulating = !state.isSimulating; state.lastFrame = performance.now();
             if (state.isSimulating) { 
                 requestAnimationFrame(simLoop); 
-                notifyOnMap(map.getCenter(), "СИМУЛЯЦИЯ ЗАПУЩЕНА", "#fff"); 
+                notifyOnMap(map.getCenter(), "СИМУЛЯЦИЯ ЗАПУЩЕНА", "var(--primary)"); 
             } else {
                 syncAllToolbars();
                 notifyOnMap(map.getCenter(), "ПАУЗА", "var(--ua-gold)");
@@ -844,9 +858,18 @@
     function updateNav() {
         const btn = document.getElementById('playBtn');
         const undo = document.getElementById('undoBtn');
-        undo.classList.toggle('visible', state.pendingPath.length > 0 || state.history.length > 0);
-        if(state.pendingPath.length > 0) { btn.innerHTML = '<i class="fas fa-check"></i>'; btn.className = 'btn btn-confirm'; }
-        else { btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; btn.className = 'btn'; }
+        const hasActions = state.pendingPath.length > 0 || state.history.length > 0;
+        
+        undo.classList.toggle('visible', hasActions);
+        
+        if(state.pendingPath.length > 0) { 
+            btn.innerHTML = '<i class="fas fa-check"></i>'; 
+            btn.className = 'btn btn-confirm'; 
+        } else { 
+            btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; 
+            btn.className = 'btn';
+            btn.classList.toggle('simulating', state.isSimulating);
+        }
     }
 
     map.on('zoom', () => {
