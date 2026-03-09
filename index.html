@@ -74,7 +74,6 @@
         .btn:active { transform: scale(0.9); }
         .btn:hover { background: #555; }
         
-        /* Состояния главной кнопки */
         #playBtn { background: #fff; color: #333; }
         #playBtn.simulating { background: #333; color: var(--primary); border: 2px solid var(--primary); }
         #playBtn.btn-confirm { background: var(--primary) !important; color: #000 !important; transform: scale(1.15); box-shadow: 0 0 20px rgba(0, 255, 136, 0.4); }
@@ -136,46 +135,52 @@
         <div class="tool-card active" id="pvoCard" onclick="setMode('pvo')">
             <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Силы обороны Украины</span>
             <select id="pvoSelect">
-                <optgroup label="Зенитно-ракетные комплексы">
-                    <option value="pvo_patriot">Patriot PAC-3 (160 км) - Без БПЛА</option>
+                <optgroup label="Дальнего / Среднего действия">
+                    <option value="pvo_patriot">Patriot PAC-3 (160 км) - ПРО</option>
                     <option value="pvo_samp">SAMP/T Mamba (100 км)</option>
+                    <option value="pvo_s300">С-300ПС (75 км)</option>
                     <option value="pvo_iris">IRIS-T SLM (40 км)</option>
                     <option value="pvo_nasams">NASAMS (25 км)</option>
-                    <option value="pvo_skynex">Skynex / Gepard (4 км)</option>
+                    <option value="pvo_buk">Бук-М1 (35 км)</option>
                 </optgroup>
-                <optgroup label="Мобильные огневые группы">
-                    <option value="ua_mobile_mrg">МРГ (Пулеметы/ПЗРК) - По дорогам</option>
+                <optgroup label="Малого действия / Анти-Дрон">
+                    <option value="pvo_gepard">Gepard (4 км) - Снаряды AHEAD</option>
+                    <option value="pvo_skynex">Skynex (4 км) - Лазер/ПРО</option>
+                    <option value="pvo_vampire">Vampire APKWS (5 км) - Против БПЛА</option>
+                    <option value="ua_mobile_mrg">МРГ (Пулеметы/ПЗРК) - Патруль</option>
                 </optgroup>
-                <optgroup label="Авиация (Патруль)">
-                    <option value="ua_f16">F-16 (AIM-120 AMRAAM)</option>
-                    <option value="ua_f15">F-15EX (Heavy Eagle)</option>
-                    <option value="ua_mig29">МиГ-29 (Р-27 / Р-73)</option>
+                <optgroup label="Авиация (Перехват)">
+                    <option value="ua_f16">F-16V (AIM-120D)</option>
+                    <option value="ua_f15">F-15EX Eagle II</option>
+                    <option value="ua_mig29">МиГ-29МУ2 (Р-27/73)</option>
                 </optgroup>
-                <optgroup label="Морской компонент">
+                <optgroup label="Морской щит">
                     <option value="ua_ship_hetman">Гетман Иван Мазепа (Корвет)</option>
-                    <option value="ua_ship_island">Island-class (Патрульный катер)</option>
+                    <option value="ua_ship_island">Island-class (Катер)</option>
                 </optgroup>
             </select>
         </div>
         <div class="tool-card" id="targetCard" onclick="setMode('target')">
             <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Цели (Симуляция)</span>
             <select id="targetSelect">
-                <optgroup label="Гиперзвуковые">
-                    <option value="missile_kinzhal">Кинжал (12000 км/ч)</option>
-                    <option value="missile_zircon">Циркон (11000 км/ч)</option>
+                <optgroup label="Гиперзвук / Баллистика">
+                    <option value="missile_kinzhal">Кинжал (Х-47М2)</option>
+                    <option value="missile_zircon">Циркон (3М22)</option>
+                    <option value="missile_iskander">Искандер-М</option>
+                    <option value="missile_tochka">Точка-У</option>
                 </optgroup>
-                <optgroup label="Баллистические / Сверхзвуковые">
-                    <option value="missile_iskander">Искандер-М (7500 км/ч)</option>
-                    <option value="missile_x22">Х-22 Буря (4000 км/ч)</option>
+                <optgroup label="Крылатые / Сверхзвук">
+                    <option value="missile_x101">Х-101 (Стелс)</option>
+                    <option value="missile_kalibr">Калибр (3М14)</option>
+                    <option value="missile_x22">Х-22 Буря (Противокорабельная)</option>
+                    <option value="missile_oniks">Оникс (П-800)</option>
+                    <option value="missile_x59">Х-59МК2 (Тактическая)</option>
                 </optgroup>
-                <optgroup label="Крылатые ракеты">
-                    <option value="missile_x101">Х-101 (850 км/ч)</option>
-                    <option value="missile_kalibr">Калибр (900 км/ч)</option>
-                    <option value="missile_neptune">Нептун (900 км/ч)</option>
-                </optgroup>
-                <optgroup label="БПЛА">
-                    <option value="drone_shahed">Shahed-136 (185 км/ч)</option>
-                    <option value="drone_orlan">Орлан-10 (150 км/ч)</option>
+                <optgroup label="БПЛА (Камикадзе / Разведка)">
+                    <option value="drone_shahed">Shahed-136 (Герань)</option>
+                    <option value="drone_orlan">Орлан-10 (Разведка)</option>
+                    <option value="drone_supercam">Supercam S350</option>
+                    <option value="drone_zala">ZALA 421-16E</option>
                 </optgroup>
             </select>
         </div>
@@ -226,14 +231,12 @@
         alert() { this.init(); this.osc(800, 'sawtooth', 0.1, 0.05); setTimeout(()=>this.osc(600, 'sawtooth', 0.1, 0.05), 100); }
     };
 
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([47.5, 35.0], 6);
-    
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.0, 31.0], 6);
     const layers = {
         dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'),
         satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
         labels: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', { pane: 'shadowPane', opacity: 0.8 })
     };
-    
     layers.dark.addTo(map);
     layers.labels.addTo(map); 
     let currentLayer = 'dark';
@@ -265,21 +268,30 @@
     ];
 
     const CONFIG = {
-        drone_shahed: { name: 'SHAHED-136', speed: 185, color: '#00ff88', altMin: 50, altMax: 2000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
-        drone_orlan: { name: 'ОРЛАН-10', speed: 150, color: '#00ff88', altMin: 500, altMax: 5000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
-        missile_x101: { name: 'X-101', speed: 850, color: '#ffbb33', altMin: 100, altMax: 8000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_kalibr: { name: 'КАЛИБР', speed: 900, color: '#33bbff', altMin: 50, altMax: 500, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_x22: { name: 'X-22 БУРЯ', speed: 4000, color: '#ff4444', altMin: 12000, altMax: 22000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_zircon: { name: 'ЦИРКОН', speed: 11000, color: '#ff00ff', altMin: 30000, altMax: 40000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_iskander: { name: 'ИСКАНДЕР-M', speed: 7500, color: '#ff4444', altMin: 20000, altMax: 70000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_kinzhal: { name: 'КИНЖАЛ', speed: 12000, color: '#ff0000', altMin: 30000, altMax: 80000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_neptune: { name: 'НЕПТУН', speed: 900, color: '#00aaff', altMin: 50, altMax: 1000, icon: 'fa-location-arrow', iconAdj: 45 },
+        drone_shahed: { name: 'SHAHED-136', speed: 185, maxRange: 1500, color: '#00ff88', altMin: 50, altMax: 2000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
+        drone_orlan: { name: 'ОРЛАН-10', speed: 150, maxRange: 600, color: '#00ff88', altMin: 500, altMax: 5000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
+        drone_supercam: { name: 'SUPERCAM', speed: 120, maxRange: 200, color: '#00ff88', altMin: 1000, altMax: 4000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
+        drone_zala: { name: 'ZALA', speed: 110, maxRange: 150, color: '#00ff88', altMin: 800, altMax: 3500, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
+        
+        missile_x101: { name: 'X-101', speed: 850, maxRange: 3500, color: '#ffbb33', altMin: 100, altMax: 8000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_kalibr: { name: 'КАЛИБР', speed: 900, maxRange: 2000, color: '#33bbff', altMin: 50, altMax: 500, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_x22: { name: 'X-22 БУРЯ', speed: 4000, maxRange: 600, color: '#ff4444', altMin: 12000, altMax: 22000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_zircon: { name: 'ЦИРКОН', speed: 11000, maxRange: 1000, color: '#ff00ff', altMin: 30000, altMax: 40000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_iskander: { name: 'ИСКАНДЕР-M', speed: 7500, maxRange: 500, color: '#ff4444', altMin: 20000, altMax: 70000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_kinzhal: { name: 'КИНЖАЛ', speed: 12000, maxRange: 2000, color: '#ff0000', altMin: 30000, altMax: 80000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_oniks: { name: 'ОНИКС', speed: 2800, maxRange: 600, color: '#ff4444', altMin: 50, altMax: 14000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_x59: { name: 'X-59МК2', speed: 1050, maxRange: 285, color: '#ffbb33', altMin: 100, altMax: 5000, icon: 'fa-location-arrow', iconAdj: 45 },
+        missile_tochka: { name: 'ТОЧКА-У', speed: 3900, maxRange: 120, color: '#ff4444', altMin: 10000, altMax: 50000, icon: 'fa-location-arrow', iconAdj: 45 },
         
         pvo_iris: { r: 40, s: 3700, name: 'IRIS-T', mName: 'SLM', type: 'sam' },
         pvo_nasams: { r: 25, s: 4100, name: 'NASAMS', mName: 'AIM-120', type: 'sam' },
         pvo_patriot: { r: 160, s: 6000, name: 'Patriot', mName: 'PAC-3', type: 'sam', ignoreCheap: true },
         pvo_samp: { r: 100, s: 4500, name: 'SAMP/T', mName: 'Aster-30', type: 'sam' },
-        pvo_skynex: { r: 4, s: 3000, name: 'Skynex', mName: 'AHEAD 35mm', type: 'sam' },
+        pvo_s300: { r: 75, s: 4000, name: 'С-300ПС', mName: '5В55Р', type: 'sam' },
+        pvo_buk: { r: 35, s: 3500, name: 'Бук-М1', mName: '9М38', type: 'sam' },
+        pvo_skynex: { r: 4, s: 3200, name: 'Skynex', mName: 'AHEAD 35mm', type: 'sam' },
+        pvo_gepard: { r: 4.5, s: 3000, name: 'Gepard', mName: '35mm APDS', type: 'sam' },
+        pvo_vampire: { r: 5, s: 2800, name: 'Vampire', mName: 'APKWS Laser', type: 'sam' },
         
         ua_mobile_mrg: { name: 'МРГ ПВО', speed: 75, r: 3.5, s: 1200, mName: 'Browning/Stinger', type: 'mrg' },
 
@@ -294,7 +306,7 @@
     let state = { 
         currentMode: 'pvo', isSimulating: false, 
         targets: [], pvo: [], missiles: [], planes: [], uaPlanes: [], ships: [],
-        pendingPath: [], tempMarkers: [], activeFutureLine: null, 
+        pendingPath: [], tempMarkers: [], activeFutureLine: null, rangeCircle: null,
         simSeconds: 0, lastFrame: 0, lastRuSpawn: 0, lastShipSpawn: 0,
         history: [], limits: { planes: 6, ships: 4 },
         timeCompression: 15
@@ -316,12 +328,7 @@
     }
 
     function addToHistory(name, eventType, pos) {
-        state.history.push({
-            time: getSimTimeString(),
-            name: name,
-            type: eventType, 
-            pos: pos
-        });
+        state.history.push({ time: getSimTimeString(), name: name, type: eventType, pos: pos });
         if(document.getElementById('historyModal').classList.contains('active')) updateHistoryTable();
         updateNav();
     }
@@ -332,7 +339,6 @@
         state.history.slice().reverse().forEach(entry => {
             const row = document.createElement('tr');
             row.onclick = () => { map.flyTo(entry.pos, 9); Snd.ping(); };
-            
             let badgeClass = 'badge-' + entry.type;
             let statusText = entry.type === 'deploy' ? 'Развернут' : 
                              entry.type === 'launch' ? 'Пуск' : 
@@ -376,6 +382,7 @@
         state.currentMode = m;
         document.getElementById('pvoCard').classList.toggle('active', m === 'pvo');
         document.getElementById('targetCard').classList.toggle('active', m === 'target');
+        resetCurrentSelection();
         updateNav();
     }
 
@@ -387,38 +394,40 @@
         document.getElementById('uaPlaneCount').innerText = (state.uaPlanes.filter(x => x.active).length + state.pvo.filter(x => x.type === 'ua_ship').length);
     }
 
+    function resetCurrentSelection() {
+        state.tempMarkers.forEach(m => map.removeLayer(m)); 
+        state.tempMarkers = []; 
+        state.pendingPath = []; 
+        if(state.activeFutureLine) { state.activeFutureLine.remove(); state.activeFutureLine = null; }
+        if(state.rangeCircle) { state.rangeCircle.remove(); state.rangeCircle = null; }
+        updateNav();
+    }
+
     function createPVO(pos) {
         const typeKey = document.getElementById('pvoSelect').value;
         const cfg = CONFIG[typeKey];
         
         if (cfg.type === 'ua_ship') {
-            if (!isWater(pos[0], pos[1])) {
-                notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА ВОДЕ", "var(--ru-red)");
-                Snd.warning(); return;
-            }
+            if (!isWater(pos[0], pos[1])) { notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА ВОДЕ", "var(--ru-red)"); Snd.warning(); return; }
             createUAShip(pos, cfg); return;
+        } else if (cfg.type !== 'fighter') {
+            if (isWater(pos[0], pos[1])) { notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА СУШЕ", "var(--ru-red)"); Snd.warning(); return; }
         }
 
         if (cfg.type === 'mrg') {
-            if (state.pendingPath.length < 2) {
-                notifyOnMap(pos, "МРГ: УКАЖИТЕ МАРШРУТ (2+ ТОЧКИ)", "var(--mobile-pvo)");
-                return;
-            }
+            if (state.pendingPath.length < 2) { notifyOnMap(pos, "МРГ: УКАЖИТЕ МАРШРУТ (2+ ТОЧКИ)", "var(--mobile-pvo)"); return; }
             createMRG(cfg); return;
         }
-        
         if (cfg.type === 'fighter') { createUAFighter(pos, cfg); return; }
-
+        
         const initialSize = getRadarSizeInPixels(cfg.r, pos[0]);
         const rMarker = L.marker(pos, { 
             icon: L.divIcon({ className: 'radar-container', html: `<div class="radar-sweep" style="width:${initialSize}px; height:${initialSize}px;"></div>`, iconSize: [0, 0] }),
             interactive: false 
         }).addTo(map);
-
         const dot = L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: '#00ff88', fillOpacity: 1 }).addTo(map);
         const item = { id: Math.random(), pos, radius: cfg.r, mSpeed: cfg.s, name: cfg.name, mName: cfg.mName, type: 'sam', ignoreCheap: cfg.ignoreCheap, layers: [rMarker, dot], side: 'UA' };
-        state.pvo.push(item); 
-        addToHistory(cfg.name, 'deploy', pos);
+        state.pvo.push(item); addToHistory(cfg.name, 'deploy', pos);
         notifyOnMap(pos, `РАЗВЕРНУТО: ${cfg.name}`, 'var(--primary)');
         updateCounters(); updateNav();
     }
@@ -435,12 +444,8 @@
         };
         for(let i=0; i<path.length-1; i++) m.totalDist += map.distance(path[i], path[i+1])/1000;
         document.body.appendChild(m.toolbar);
-        state.pvo.push(m);
-        addToHistory(cfg.name, 'deploy', path[0]);
-        
-        state.tempMarkers.forEach(m => map.removeLayer(m)); state.tempMarkers = []; 
-        state.pendingPath = []; if(state.activeFutureLine) state.activeFutureLine.remove(); state.activeFutureLine = null;
-
+        state.pvo.push(m); addToHistory(cfg.name, 'deploy', path[0]);
+        resetCurrentSelection();
         notifyOnMap(path[0], `МРГ ВЫШЛА НА ПАТРУЛЬ`, 'var(--mobile-pvo)');
         updateCounters(); updateNav();
     }
@@ -455,8 +460,7 @@
             line: L.polyline([pos], {color: 'var(--ua-gold)', weight: 2, opacity: 0.4, dashArray: '5, 5'}).addTo(map)
         };
         document.body.appendChild(s.toolbar);
-        state.pvo.push(s);
-        addToHistory(cfg.name, 'deploy', pos);
+        state.pvo.push(s); addToHistory(cfg.name, 'deploy', pos);
         notifyOnMap(pos, `СПУЩЕНО: ${cfg.name}`, 'var(--ua-gold)');
         updateCounters(); updateNav();
     }
@@ -471,8 +475,7 @@
             line: L.polyline([pos], {color: 'var(--ua-gold)', weight: 2, opacity: 0.6}).addTo(map)
         };
         document.body.appendChild(p.toolbar);
-        state.uaPlanes.push(p);
-        addToHistory(cfg.name, 'deploy', pos);
+        state.uaPlanes.push(p); addToHistory(cfg.name, 'deploy', pos);
         notifyOnMap(pos, `ВЗЛЕТ: ${cfg.name}`, 'var(--ua-gold)');
         updateCounters(); updateNav();
     }
@@ -486,7 +489,8 @@
         ];
         const type = types[Math.floor(Math.random() * types.length)];
         const startBase = AIRBASES[Math.floor(Math.random()*AIRBASES.length)];
-        const launchPoint = [48 + Math.random()*3, 38 + Math.random()*2]; 
+        let launchPoint = [48 + Math.random()*3, 38 + Math.random()*2];
+        if (isWater(launchPoint[0], launchPoint[1])) launchPoint = [50, 39];
         const path = [startBase.pos, launchPoint, startBase.pos];
         const p = {
             id: Math.random(), cfg: type, path: path, currentPos: [...startBase.pos], progressKm: 0, totalDist: 0,
@@ -497,8 +501,7 @@
         };
         for(let i=0; i<path.length-1; i++) p.totalDist += map.distance(path[i], path[i+1])/1000;
         document.body.appendChild(p.toolbar);
-        state.planes.push(p); 
-        addToHistory(type.name, 'deploy', startBase.pos);
+        state.planes.push(p); addToHistory(type.name, 'deploy', startBase.pos);
         Snd.alert(); notifyOnMap(startBase.pos, `ЦЕЛЬ: ${type.name}`, 'var(--ru-red)');
     }
 
@@ -521,8 +524,7 @@
         };
         for(let i=0; i<path.length-1; i++) s.totalDist += map.distance(path[i], path[i+1])/1000;
         document.body.appendChild(s.toolbar);
-        state.ships.push(s); 
-        addToHistory(type.name, 'deploy', base.pos);
+        state.ships.push(s); addToHistory(type.name, 'deploy', base.pos);
         Snd.alert(); notifyOnMap(base.pos, `В МОРЕ: ${type.name}`, 'var(--sea-blue)');
     }
 
@@ -531,45 +533,31 @@
         const cfg = CONFIG[type];
         const path = pathOverride || [...state.pendingPath];
         if (path.length < 2) return;
+        
+        if (!cfgOverride && cfg.name !== 'КАЛИБР') {
+            if (isWater(path[0][0], path[0][1])) {
+                notifyOnMap(path[0], "ОШИБКА: ПУСК С СУШИ", "var(--ru-red)");
+                Snd.warning(); resetCurrentSelection(); return;
+            }
+        }
+
         const t = {
             id: Math.random(), name: cfg.name, path: path, speed: cfg.speed, curSpeed: 0, currentPos: [...path[0]],
             progressKm: 0, totalDist: 0, active: true, engagedBy: new Set(), side: 'RU', iconAdj: cfg.iconAdj,
             altitude: 0, targetAlt: Math.floor(Math.random() * (cfg.altMax - cfg.altMin) + cfg.altMin), 
             history: [[...path[0]]], cheap: cfg.cheap || false,
             toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
-            marker: L.marker(path[0], { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas ${cfg.icon}" style="color:${cfg.color}; font-size:14px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
+            marker: L.marker(path[0], { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas ${cfg.icon || 'fa-location-arrow'}" style="color:${cfg.color}; font-size:14px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
             linePassed: L.polyline([path[0]], {color: cfg.color, weight: 2}).addTo(map),
             lineFuture: L.polyline(path, {color: cfg.color, weight: 1, dashArray: '5, 10', opacity: 0.5}).addTo(map)
         };
         document.body.appendChild(t.toolbar);
         for(let i=0; i<t.path.length-1; i++) t.totalDist += map.distance(t.path[i], t.path[i+1])/1000;
         state.targets.push(t);
-        
         addToHistory(cfg.name, 'launch', path[0]);
         if(cfgOverride) { notifyOnMap(path[0], `ПУСК: ${cfg.name}`, '#ffaa00'); Snd.launch(); }
-        
-        if(!pathOverride) {
-            state.tempMarkers.forEach(m => map.removeLayer(m)); state.pendingPath = []; 
-            if(state.activeFutureLine) state.activeFutureLine.remove();
-            state.activeFutureLine = null;
-        }
+        if(!pathOverride) resetCurrentSelection();
         updateCounters(); updateNav();
-    }
-
-    function syncAllToolbars() {
-        state.targets.forEach(t => t.active && updateToolbar(t, `<b>${t.name}</b><br>SPD: ${Math.round(t.curSpeed)} км/ч<br>ALT: ${Math.round(t.altitude)}м`));
-        state.planes.forEach(p => p.active && updateToolbar(p, `<b>${p.cfg.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>ALT: ${Math.round(p.altitude)}м`));
-        state.uaPlanes.forEach(p => p.active && updateToolbar(p, `<b style="color:var(--ua-gold)">${p.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>AMMO: ${p.ammo}`));
-        state.ships.forEach(s => s.active && updateToolbar(s, `<b style="color:var(--sea-blue)">${s.cfg.name}</b><br>SPD: ${Math.round(s.curSpeed)} км/ч`));
-        state.pvo.forEach(sys => {
-            if (sys.type === 'ua_ship') updateToolbar(sys, `<b style="color:var(--ua-gold)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
-            else if (sys.type === 'mrg') updateToolbar(sys, `<b style="color:var(--mobile-pvo)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
-        });
-        state.missiles.forEach(m => {
-            const pt = map.latLngToContainerPoint(m.pos);
-            m.toolbar.style.left = pt.x + 'px'; m.toolbar.style.top = pt.y + 'px';
-            m.toolbar.innerHTML = `${Math.round(m.curSpeed)} км/ч`;
-        });
     }
 
     function simLoop(time) {
@@ -596,16 +584,13 @@
                     setTimeout(() => createTarget('missile_kalibr', [s.currentPos, ukTarget]), i*2000);
                 }
             }
-            updateToolbar(s, `<b style="color:var(--sea-blue)">${s.cfg.name}</b><br>SPD: ${Math.round(s.curSpeed)} км/ч`);
         });
 
         state.planes.forEach(p => {
             if(!p.active) return;
             const prev = [...p.currentPos];
-            if (p.progressKm < 20) { 
-                p.curSpeed = Math.min(p.cfg.speed * 0.7, p.curSpeed + 500 * stepHours * 100); 
-                p.altitude = Math.min(p.cfg.alt, p.altitude + 15000 * stepHours);
-            } else { p.curSpeed = p.cfg.speed; p.altitude = p.cfg.alt; }
+            if (p.progressKm < 20) { p.curSpeed = Math.min(p.cfg.speed * 0.7, p.curSpeed + 500 * stepHours * 100); p.altitude = Math.min(p.cfg.alt, p.altitude + 15000 * stepHours); }
+            else { p.curSpeed = p.cfg.speed; p.altitude = p.cfg.alt; }
             p.progressKm += p.curSpeed * stepHours;
             if(p.progressKm >= p.totalDist) { removeObj(p); return; }
             p.currentPos = interpolate(p.path, p.progressKm);
@@ -622,7 +607,6 @@
                     setTimeout(() => createTarget(p.cfg.missile, [p.currentPos, ukTarget]), i*1200);
                 }
             }
-            updateToolbar(p, `<b>${p.cfg.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>ALT: ${Math.round(p.altitude)}м`);
         });
 
         state.uaPlanes.forEach(p => {
@@ -639,7 +623,6 @@
             if(icon) icon.style.transform = `rotate(${angle - 45}deg)`; 
             p.history.push([...p.currentPos]); if(p.history.length > 40) p.history.shift();
             p.line.setLatLngs(p.history);
-            updateToolbar(p, `<b style="color:var(--ua-gold)">${p.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>AMMO: ${p.ammo}`);
             if (p.ammo > 0) {
                 [...state.targets, ...state.planes].forEach(t => {
                     if (t.active && t.side === 'RU' && !t.engagedBy.has(p.id)) {
@@ -652,12 +635,10 @@
         state.targets.forEach(t => {
             if (!t.active) return;
             const prev = [...t.currentPos];
-            if (t.progressKm < 5) { 
-                t.curSpeed = Math.min(t.speed, t.curSpeed + 8000 * stepHours * 10);
-                t.altitude = Math.min(t.targetAlt, t.altitude + 20000 * stepHours);
-            } else if (t.progressKm > t.totalDist - 15) { 
-                t.curSpeed = t.speed * 1.3; t.altitude = Math.max(0, t.altitude - 40000 * stepHours);
-            } else { t.curSpeed = t.speed; t.altitude = t.targetAlt; }
+            const remDist = t.totalDist - t.progressKm;
+            if (t.progressKm < 5) { t.curSpeed = Math.min(t.speed, t.curSpeed + 8000 * stepHours * 10); t.altitude = Math.min(t.targetAlt, t.altitude + 20000 * stepHours); }
+            else if (remDist < 15) { t.curSpeed = t.speed * 1.1; t.altitude = Math.max(0, t.altitude - (t.targetAlt / (15 / (t.curSpeed * stepHours)))); }
+            else { t.curSpeed = t.speed; t.altitude = t.targetAlt; }
             t.progressKm += t.curSpeed * stepHours;
             t.currentPos = interpolate(t.path, t.progressKm);
             t.marker.setLatLng(t.currentPos);
@@ -665,12 +646,7 @@
             const icon = t.marker.getElement()?.querySelector('.rotated-icon');
             if(icon) icon.style.transform = `rotate(${angle + (t.iconAdj || 0)}deg)`;
             t.history.push([...t.currentPos]); t.linePassed.setLatLngs(t.history);
-            if (t.progressKm >= t.totalDist) { 
-                markEvent(t.currentPos, 'hit'); 
-                addToHistory(t.name, 'hit', t.currentPos);
-                notifyOnMap(t.currentPos, `ПРИЛЕТ: ${t.name}`, 'var(--ru-red)'); removeObj(t, true); 
-            }
-            else updateToolbar(t, `<b>${t.name}</b><br>SPD: ${Math.round(t.curSpeed)} км/ч<br>ALT: ${Math.round(t.altitude)}м`);
+            if (t.progressKm >= t.totalDist) { t.altitude = 0; markEvent(t.currentPos, 'hit'); addToHistory(t.name, 'hit', t.currentPos); notifyOnMap(t.currentPos, `ПРИЛЕТ: ${t.name}`, 'var(--ru-red)'); removeObj(t, true); }
         });
 
         state.pvo.forEach(sys => {
@@ -683,7 +659,6 @@
                 sys.marker.setLatLng(sys.currentPos);
                 sys.history.push([...sys.currentPos]); if(sys.history.length > 50) sys.history.shift();
                 sys.line.setLatLngs(sys.history);
-                updateToolbar(sys, `<b style="color:var(--ua-gold)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
                 if (sys.ammo > 0) {
                     [...state.targets, ...state.planes, ...state.ships].forEach(t => {
                         if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
@@ -696,7 +671,6 @@
                 if (sys.progressKm >= sys.totalDist) sys.progressKm = 0; 
                 sys.currentPos = interpolate(sys.path, sys.progressKm);
                 sys.marker.setLatLng(sys.currentPos);
-                updateToolbar(sys, `<b style="color:var(--mobile-pvo)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
                 state.targets.forEach(t => {
                     if (t.active && t.cheap && !t.engagedBy.has(sys.id)) {
                         if (map.distance(sys.currentPos, t.currentPos)/1000 < sys.radius) { t.engagedBy.add(sys.id); launchMissile(sys, t); }
@@ -717,9 +691,7 @@
             const prev = [...m.pos];
             const d = map.distance(m.pos, m.target.currentPos);
             if (d < 1500) { 
-                markEvent(m.target.currentPos, 'intercept'); 
-                addToHistory(m.target.name || m.target.cfg?.name, 'intercept', m.target.currentPos);
-                notifyOnMap(m.target.currentPos, `СБИТО: ${m.target.name || m.target.cfg?.name}`, 'var(--primary)'); 
+                markEvent(m.target.currentPos, 'intercept'); addToHistory(m.target.name || m.target.cfg?.name, 'intercept', m.target.currentPos); notifyOnMap(m.target.currentPos, `СБИТО: ${m.target.name || m.target.cfg?.name}`, 'var(--primary)'); 
                 removeObj(m.target, true); m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; 
             }
             m.curSpeed = Math.min(m.speed * 1.5, (m.curSpeed || m.speed) + 2000 * stepHours * 10);
@@ -730,13 +702,11 @@
             const icon = m.marker.getElement()?.querySelector('.rotated-icon');
             if(icon) icon.style.transform = `rotate(${angle + 45}deg)`; 
             m.history.push([...m.pos]); m.line.setLatLngs(m.history);
-            const pt = map.latLngToContainerPoint(m.pos);
-            m.toolbar.style.left = pt.x + 'px'; m.toolbar.style.top = pt.y + 'px';
-            m.toolbar.innerHTML = `${Math.round(m.curSpeed)} км/ч`;
             return true;
         });
 
-        state.simSeconds += dt * state.timeCompression; updateClock(); requestAnimationFrame(simLoop);
+        state.simSeconds += dt * state.timeCompression; updateClock(); syncAllToolbars();
+        requestAnimationFrame(simLoop);
     }
 
     function launchMissile(launcher, target) {
@@ -763,6 +733,7 @@
         if (state.pendingPath.length > 0) {
             state.pendingPath.pop(); const m = state.tempMarkers.pop(); if(m) map.removeLayer(m);
             if(state.activeFutureLine) { if (state.pendingPath.length > 0) state.activeFutureLine.setLatLngs(state.pendingPath); else { state.activeFutureLine.remove(); state.activeFutureLine = null; } }
+            if(state.pendingPath.length === 0 && state.rangeCircle) { state.rangeCircle.remove(); state.rangeCircle = null; }
         } else if (state.history.length > 0) {
             const last = state.history.pop();
             const pvoIdx = state.pvo.findIndex(i => i.name === last.name);
@@ -775,13 +746,22 @@
         updateCounters(); updateNav();
     }
 
+    function syncAllToolbars() {
+        state.targets.forEach(t => t.active && updateToolbar(t, `<b>${t.name}</b><br>SPD: ${Math.round(t.curSpeed)} км/ч<br>ALT: ${Math.round(t.altitude)}м`));
+        state.planes.forEach(p => p.active && updateToolbar(p, `<b>${p.cfg.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>ALT: ${Math.round(p.altitude)}м`));
+        state.uaPlanes.forEach(p => p.active && updateToolbar(p, `<b style="color:var(--ua-gold)">${p.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>AMMO: ${p.ammo}`));
+        state.ships.forEach(s => s.active && updateToolbar(s, `<b style="color:var(--sea-blue)">${s.cfg.name}</b><br>SPD: ${Math.round(s.curSpeed)} км/ч`));
+        state.pvo.forEach(sys => {
+            if (sys.type === 'ua_ship') updateToolbar(sys, `<b style="color:var(--ua-gold)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
+            else if (sys.type === 'mrg') updateToolbar(sys, `<b style="color:var(--mobile-pvo)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
+        });
+        state.missiles.forEach(m => { if(!m.target.active) return; const pt = map.latLngToContainerPoint(m.pos); m.toolbar.style.left = pt.x + 'px'; m.toolbar.style.top = pt.y + 'px'; m.toolbar.innerHTML = `${Math.round(m.curSpeed)} км/ч`; });
+    }
+
     function updateToolbar(obj, text) {
-        const targetPos = obj.currentPos || obj.pos;
-        if (!targetPos) return;
+        const targetPos = obj.currentPos || obj.pos; if (!targetPos || !obj.toolbar) return;
         const pt = map.latLngToContainerPoint(targetPos);
-        obj.toolbar.style.left = pt.x + 'px'; 
-        obj.toolbar.style.top = pt.y + 'px'; 
-        obj.toolbar.innerHTML = text;
+        obj.toolbar.style.left = pt.x + 'px'; obj.toolbar.style.top = pt.y + 'px'; obj.toolbar.innerHTML = text;
     }
 
     function markEvent(pos, type) {
@@ -818,11 +798,25 @@
                 if(state.activeFutureLine) state.activeFutureLine.remove();
                 state.activeFutureLine = L.polyline(state.pendingPath, { color: 'var(--mobile-pvo)', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
             } else createPVO(pos);
-        }
-        else {
-            state.pendingPath.push(pos); state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
-            if(state.activeFutureLine) state.activeFutureLine.remove();
-            state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
+        } else {
+            const type = document.getElementById('targetSelect').value;
+            const cfg = CONFIG[type];
+            if (state.pendingPath.length === 0) {
+                state.pendingPath.push(pos);
+                state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
+                state.rangeCircle = L.circle(pos, { radius: cfg.maxRange * 1000, color: cfg.color, weight: 1, fillOpacity: 0.05, dashArray: '10, 10', interactive: false }).addTo(map);
+            } else {
+                const startPos = state.pendingPath[0];
+                const dist = map.distance(startPos, pos) / 1000;
+                if (dist > cfg.maxRange) {
+                    notifyOnMap(pos, `ПРЕВЫШЕНА ДАЛЬНОСТЬ (${Math.round(dist)} > ${cfg.maxRange} км)`, "var(--ru-red)");
+                    Snd.warning(); return;
+                }
+                state.pendingPath.push(pos);
+                state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
+                if(state.activeFutureLine) state.activeFutureLine.remove();
+                state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
+            }
         }
         updateNav();
     });
@@ -831,21 +825,12 @@
         Snd.init();
         if (state.pendingPath.length > 0) {
              if (state.currentMode === 'pvo') {
-                 if (state.pendingPath.length >= 2 || CONFIG[document.getElementById('pvoSelect').value].type !== 'mrg') {
-                     createPVO(state.pendingPath[0]);
-                 }
-             } else {
-                 if (state.pendingPath.length >= 2) createTarget();
-             }
+                 if (state.pendingPath.length >= 2 || CONFIG[document.getElementById('pvoSelect').value].type !== 'mrg') { createPVO(state.pendingPath[0]); }
+             } else { if (state.pendingPath.length >= 2) createTarget(); }
         } else {
             state.isSimulating = !state.isSimulating; state.lastFrame = performance.now();
-            if (state.isSimulating) { 
-                requestAnimationFrame(simLoop); 
-                notifyOnMap(map.getCenter(), "СИМУЛЯЦИЯ ЗАПУЩЕНА", "var(--primary)"); 
-            } else {
-                syncAllToolbars();
-                notifyOnMap(map.getCenter(), "ПАУЗА", "var(--ua-gold)");
-            }
+            if (state.isSimulating) { requestAnimationFrame(simLoop); notifyOnMap(map.getCenter(), "СИМУЛЯЦИЯ ЗАПУЩЕНА", "var(--primary)"); } 
+            else { syncAllToolbars(); notifyOnMap(map.getCenter(), "ПАУЗА", "var(--ua-gold)"); }
         }
         updateNav();
     };
@@ -858,18 +843,9 @@
     function updateNav() {
         const btn = document.getElementById('playBtn');
         const undo = document.getElementById('undoBtn');
-        const hasActions = state.pendingPath.length > 0 || state.history.length > 0;
-        
-        undo.classList.toggle('visible', hasActions);
-        
-        if(state.pendingPath.length > 0) { 
-            btn.innerHTML = '<i class="fas fa-check"></i>'; 
-            btn.className = 'btn btn-confirm'; 
-        } else { 
-            btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; 
-            btn.className = 'btn';
-            btn.classList.toggle('simulating', state.isSimulating);
-        }
+        undo.classList.toggle('visible', state.pendingPath.length > 0 || state.history.length > 0);
+        if(state.pendingPath.length > 0) { btn.innerHTML = '<i class="fas fa-check"></i>'; btn.className = 'btn btn-confirm'; } 
+        else { btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; btn.className = 'btn'; btn.classList.toggle('simulating', state.isSimulating); }
     }
 
     map.on('zoom', () => {
