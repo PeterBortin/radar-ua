@@ -95,7 +95,6 @@
         }
         .rotated-icon i { display: block; }
 
-        /* ИСПРАВЛЕННЫЙ СТИЛЬ МОДАЛЬНОГО ОКНА */
         #historyModal {
             position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 580px; max-height: 45vh;
@@ -152,6 +151,10 @@
                     <option value="pvo_skynex">Skynex (4 км) - Лазер/ПРО</option>
                     <option value="pvo_vampire">Vampire APKWS (5 км) - Против БПЛА</option>
                     <option value="ua_mobile_mrg">МРГ (Пулеметы/ПЗРК) - Патруль</option>
+                </optgroup>
+                <optgroup label="Вертолетная группа (Перехват БПЛА)">
+                    <option value="ua_mi8">Ми-8МСБ-В (ПКМ/ПЗРК)</option>
+                    <option value="ua_mi24">Ми-24П (ГШ-30-2)</option>
                 </optgroup>
                 <optgroup label="Авиация (Перехват)">
                     <option value="ua_f16">F-16V (AIM-120D)</option>
@@ -318,6 +321,9 @@
         ua_f15: { name: 'F-15EX', speed: 1400, mSpeed: 5000, ammo: 12, range: 160, mName: 'AIM-120D', type: 'fighter', iconAdj: -45 },
         ua_mig29: { name: 'МиГ-29МУ2', speed: 1100, mSpeed: 4200, ammo: 4, range: 80, mName: 'Р-27ЭР', type: 'fighter', iconAdj: -45 },
 
+        ua_mi8: { name: 'Ми-8МСБ-В', speed: 250, mSpeed: 1000, ammo: 2, range: 4, mName: 'ПКМ/Stinger', type: 'fighter', icon: 'fa-helicopter', antiDroneOnly: true, iconAdj: 0 },
+        ua_mi24: { name: 'Ми-24П', speed: 310, mSpeed: 1100, ammo: 4, range: 5, mName: 'ГШ-30-2', type: 'fighter', icon: 'fa-helicopter', antiDroneOnly: true, iconAdj: 0 },
+
         ua_ship_island: { name: 'Island class', speed: 55, mSpeed: 900, ammo: 2, range: 100, mName: 'Harpoon/Neptune', type: 'ua_ship', icon: 'fa-ship' },
         ua_ship_hetman: { name: 'Hetman Ivan Mazepa', speed: 45, mSpeed: 1200, ammo: 8, range: 180, mName: 'NSM', type: 'ua_ship', icon: 'fa-ship' }
     };
@@ -328,7 +334,7 @@
         pendingPath: [], tempMarkers: [], activeFutureLine: null, rangeCircle: null,
         simSeconds: 0, lastFrame: 0, lastRuSpawn: 0, lastShipSpawn: 0,
         history: [], limits: { planes: 6, ships: 4 },
-        timeCompression: 15,
+        timeCompression: 1, // Синхронизация: 1 секунда симуляции = 1 реальная секунда
         baseTime: new Date()
     };
 
@@ -375,7 +381,7 @@
     }
 
     function getSimTimeString() {
-        const now = new Date(state.baseTime.getTime() + state.simSeconds * 1000);
+        const now = state.isSimulating ? new Date(state.baseTime.getTime() + state.simSeconds * 1000) : new Date();
         const h = now.getHours().toString().padStart(2, '0');
         const m = now.getMinutes().toString().padStart(2, '0');
         const s = now.getSeconds().toString().padStart(2, '0');
@@ -492,8 +498,8 @@
         const p = {
             id: Math.random(), name: cfg.name, mName: cfg.mName, currentPos: pos, patrolTarget: pos,
             speed: cfg.speed, curSpeed: 0, mSpeed: cfg.mSpeed, ammo: cfg.ammo, range: cfg.range,
-            active: true, side: 'UA', type: 'fighter', altitude: 8000, history: [pos],
-            marker: L.marker(pos, { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas fa-fighter-jet" style="color:var(--ua-gold); font-size:18px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
+            active: true, side: 'UA', type: 'fighter', altitude: 2000, history: [pos], antiDroneOnly: cfg.antiDroneOnly || false,
+            marker: L.marker(pos, { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas ${cfg.icon || 'fa-fighter-jet'}" style="color:var(--ua-gold); font-size:18px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
             toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
             line: L.polyline([pos], {color: 'var(--ua-gold)', weight: 2, opacity: 0.6}).addTo(map)
         };
@@ -501,54 +507,6 @@
         state.uaPlanes.push(p); addToHistory(cfg.name, 'deploy', pos);
         notifyOnMap(pos, `ВЗЛЕТ: ${cfg.name}`, 'var(--ua-gold)');
         updateCounters(); updateNav();
-    }
-
-    function spawnRuPlane() {
-        if (state.planes.filter(p => p.active).length >= state.limits.planes) return;
-        const types = [
-            { name: 'ТУ-95МС', speed: 750, missile: 'missile_x101', count: 4, alt: 9000 },
-            { name: 'MИГ-31K', speed: 2500, missile: 'missile_kinzhal', count: 1, alt: 22000 },
-            { name: 'TУ-22M3', speed: 1800, missile: 'missile_x22', count: 2, alt: 14000 }
-        ];
-        const type = types[Math.floor(Math.random() * types.length)];
-        const startBase = AIRBASES[Math.floor(Math.random()*AIRBASES.length)];
-        let launchPoint = [48 + Math.random()*3, 38 + Math.random()*2];
-        if (isWater(launchPoint[0], launchPoint[1])) launchPoint = [50, 39];
-        const path = [startBase.pos, launchPoint, startBase.pos];
-        const p = {
-            id: Math.random(), cfg: type, path: path, currentPos: [...startBase.pos], progressKm: 0, totalDist: 0,
-            active: true, launched: false, altitude: 0, curSpeed: 0, side: 'RU', engagedBy: new Set(), history: [[...startBase.pos]],
-            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
-            marker: L.marker(startBase.pos, { icon: L.divIcon({ html: '<div class="rotated-icon"><i class="fas fa-plane" style="color:var(--ru-red); font-size:18px;"></i></div>', className: 'event-marker' }) }).addTo(map),
-            line: L.polyline([startBase.pos], {color: 'var(--ru-red)', weight: 2, opacity: 0.6}).addTo(map)
-        };
-        for(let i=0; i<path.length-1; i++) p.totalDist += map.distance(path[i], path[i+1])/1000;
-        document.body.appendChild(p.toolbar);
-        state.planes.push(p); addToHistory(type.name, 'deploy', startBase.pos);
-        Snd.alert(); notifyOnMap(startBase.pos, `ЦЕЛЬ: ${type.name}`, 'var(--ru-red)');
-    }
-
-    function spawnRuShip() {
-        if (state.ships.filter(s => s.active).length >= state.limits.ships) return;
-        const types = [
-            { name: 'ФРЕГАТ', speed: 55, missile: 'missile_kalibr', count: 8, icon: 'fa-ship' },
-            { name: 'СУБМАРИНА', speed: 40, missile: 'missile_kalibr', count: 4, icon: 'fa-anchor' }
-        ];
-        const type = types[Math.floor(Math.random() * types.length)];
-        const base = NAVAL_BASES[Math.floor(Math.random()*NAVAL_BASES.length)];
-        const launchPoint = [44.5 + Math.random()*0.5, 33 + Math.random()*4];
-        const path = [base.pos, launchPoint, base.pos];
-        const s = {
-            id: Math.random(), cfg: type, path: path, currentPos: [...base.pos], progressKm: 0, totalDist: 0,
-            active: true, launched: false, side: 'RU', engagedBy: new Set(), history: [[...base.pos]], curSpeed: 0,
-            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
-            marker: L.marker(base.pos, { icon: L.divIcon({ html: `<i class="fas ${type.icon}" style="color:var(--sea-blue); font-size:16px;"></i>`, className: 'event-marker' }) }).addTo(map),
-            line: L.polyline([base.pos], {color: 'var(--sea-blue)', weight: 2, opacity: 0.4}).addTo(map)
-        };
-        for(let i=0; i<path.length-1; i++) s.totalDist += map.distance(path[i], path[i+1])/1000;
-        document.body.appendChild(s.toolbar);
-        state.ships.push(s); addToHistory(type.name, 'deploy', base.pos);
-        Snd.alert(); notifyOnMap(base.pos, `В МОРЕ: ${type.name}`, 'var(--sea-blue)');
     }
 
     function createTarget(cfgOverride = null, pathOverride = null) {
@@ -584,58 +542,14 @@
     }
 
     function simLoop(time) {
-        if (!state.isSimulating) { syncAllToolbars(); return; }
+        if (!state.isSimulating) { syncAllToolbars(); updateClock(); return; }
         const dt = (time - state.lastFrame) / 1000; state.lastFrame = time;
         const stepHours = (dt * state.timeCompression) / 3600;
-
-        if (time - state.lastRuSpawn > 12000) { spawnRuPlane(); state.lastRuSpawn = time; }
-        if (time - state.lastShipSpawn > 20000) { spawnRuShip(); state.lastShipSpawn = time; }
-
-        state.ships.forEach(s => {
-            if(!s.active) return;
-            s.curSpeed = Math.min(s.cfg.speed, s.curSpeed + 2 * stepHours * 3600);
-            s.progressKm += s.curSpeed * stepHours;
-            if(s.progressKm >= s.totalDist) { removeObj(s); return; }
-            s.currentPos = interpolate(s.path, s.progressKm);
-            s.marker.setLatLng(s.currentPos);
-            s.history.push([...s.currentPos]); if(s.history.length > 50) s.history.shift();
-            s.line.setLatLngs(s.history);
-            if(!s.launched && s.progressKm > s.totalDist / 2.5) {
-                s.launched = true;
-                for(let i=0; i<s.cfg.count; i++) {
-                    const ukTarget = [47 + (Math.random()-0.5)*4, 25 + Math.random()*8];
-                    setTimeout(() => createTarget('missile_kalibr', [s.currentPos, ukTarget]), i*2000);
-                }
-            }
-        });
-
-        state.planes.forEach(p => {
-            if(!p.active) return;
-            const prev = [...p.currentPos];
-            if (p.progressKm < 20) { p.curSpeed = Math.min(p.cfg.speed * 0.7, p.curSpeed + 500 * stepHours * 100); p.altitude = Math.min(p.cfg.alt, p.altitude + 15000 * stepHours); }
-            else { p.curSpeed = p.cfg.speed; p.altitude = p.cfg.alt; }
-            p.progressKm += p.curSpeed * stepHours;
-            if(p.progressKm >= p.totalDist) { removeObj(p); return; }
-            p.currentPos = interpolate(p.path, p.progressKm);
-            p.marker.setLatLng(p.currentPos);
-            const angle = calculateHeading(prev, p.currentPos);
-            const icon = p.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle}deg)`;
-            p.history.push([...p.currentPos]); if(p.history.length > 50) p.history.shift();
-            p.line.setLatLngs(p.history);
-            if(!p.launched && p.currentPos[1] < 40) {
-                p.launched = true;
-                for(let i=0; i<p.cfg.count; i++) {
-                    const ukTarget = [48 + (Math.random()-0.5)*4, 24 + Math.random()*10];
-                    setTimeout(() => createTarget(p.cfg.missile, [p.currentPos, ukTarget]), i*1200);
-                }
-            }
-        });
 
         state.uaPlanes.forEach(p => {
             if(!p.active) return;
             const prev = [...p.currentPos];
-            if (map.distance(p.currentPos, p.patrolTarget) < 10000) p.patrolTarget = [47 + (Math.random()-0.5)*4, 30 + Math.random()*5];
+            if (map.distance(p.currentPos, p.patrolTarget) < 1000) p.patrolTarget = [47 + (Math.random()-0.5)*4, 30 + Math.random()*5];
             const dist = map.distance(p.currentPos, p.patrolTarget);
             p.curSpeed = p.speed; 
             const move = (p.curSpeed * stepHours * 1000) / dist;
@@ -643,12 +557,13 @@
             p.marker.setLatLng(p.currentPos);
             const angle = calculateHeading(prev, p.currentPos);
             const icon = p.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle - 45}deg)`; 
+            if(icon) icon.style.transform = `rotate(${angle + (p.iconAdj || -45)}deg)`; 
             p.history.push([...p.currentPos]); if(p.history.length > 40) p.history.shift();
             p.line.setLatLngs(p.history);
             if (p.ammo > 0) {
-                [...state.targets, ...state.planes].forEach(t => {
+                state.targets.forEach(t => {
                     if (t.active && t.side === 'RU' && !t.engagedBy.has(p.id)) {
+                        if (p.antiDroneOnly && !t.cheap) return;
                         if (map.distance(p.currentPos, t.currentPos)/1000 < p.range) { t.engagedBy.add(p.id); p.ammo--; launchMissile(p, t); }
                     }
                 });
@@ -683,7 +598,7 @@
                 sys.history.push([...sys.currentPos]); if(sys.history.length > 50) sys.history.shift();
                 sys.line.setLatLngs(sys.history);
                 if (sys.ammo > 0) {
-                    [...state.targets, ...state.planes, ...state.ships].forEach(t => {
+                    state.targets.forEach(t => {
                         if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
                             if (map.distance(sys.currentPos, t.currentPos)/1000 < sys.range) { t.engagedBy.add(sys.id); sys.ammo--; launchMissile(sys, t); }
                         }
@@ -700,7 +615,7 @@
                     }
                 });
             } else if (sys.type === 'sam') {
-                [...state.targets, ...state.planes].forEach(t => {
+                state.targets.forEach(t => {
                     if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
                         if (sys.ignoreCheap && t.cheap) return; 
                         if (map.distance(sys.pos, t.currentPos)/1000 < sys.radius) { t.engagedBy.add(sys.id); launchMissile(sys, t); }
@@ -713,7 +628,7 @@
             if (!m.target.active) { m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; }
             const prev = [...m.pos];
             const d = map.distance(m.pos, m.target.currentPos);
-            if (d < 1500) { 
+            if (d < 500) { 
                 markEvent(m.target.currentPos, 'intercept'); addToHistory(m.target.name || m.target.cfg?.name, 'intercept', m.target.currentPos); notifyOnMap(m.target.currentPos, `СБИТО: ${m.target.name || m.target.cfg?.name}`, 'var(--primary)'); 
                 removeObj(m.target, true); m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; 
             }
@@ -771,9 +686,7 @@
 
     function syncAllToolbars() {
         state.targets.forEach(t => t.active && updateToolbar(t, `<b>${t.name}</b><br>SPD: ${Math.round(t.curSpeed)} км/ч<br>ALT: ${Math.round(t.altitude)}м`));
-        state.planes.forEach(p => p.active && updateToolbar(p, `<b>${p.cfg.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>ALT: ${Math.round(p.altitude)}м`));
         state.uaPlanes.forEach(p => p.active && updateToolbar(p, `<b style="color:var(--ua-gold)">${p.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>AMMO: ${p.ammo}`));
-        state.ships.forEach(s => s.active && updateToolbar(s, `<b style="color:var(--sea-blue)">${s.cfg.name}</b><br>SPD: ${Math.round(s.curSpeed)} км/ч`));
         state.pvo.forEach(sys => {
             if (sys.type === 'ua_ship') updateToolbar(sys, `<b style="color:var(--ua-gold)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
             else if (sys.type === 'mrg') updateToolbar(sys, `<b style="color:var(--mobile-pvo)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
@@ -880,6 +793,9 @@
             }
         });
     });
+    
+    updateClock();
+    setInterval(updateClock, 1000);
 </script>
 </body>
 </html>
