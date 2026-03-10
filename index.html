@@ -85,7 +85,7 @@
         .btn-history { background: #444; color: white; }
         .btn-history.active { background: #fff; color: #333; border: none; }
 
-        select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; }
+        select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; outline: none; }
         optgroup { background: #0a0c10; color: #888; font-style: normal; font-weight: bold; }
         option { color: white; background: #1a222d; }
         
@@ -120,9 +120,17 @@
 
         .layers-stack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .btn-location { background: #2c3e50; color: #fff; }
+        .btn-attack { 
+            background: #8b0000; color: #fff; border: 2px solid #ff4444 !important; 
+            display: none; /* Скрыта по умолчанию */
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); } }
+        
+        .btn-attack:disabled { background: #222; border-color: #444 !important; opacity: 0.5; cursor: not-allowed; animation: none; }
     </style>
 </head>
-<body>
+<body onclick="Snd.init()">
 <div id="map"></div>
 <div class="status-header">
     <div class="status-item"><i class="far fa-clock"></i> <span id="simTime">00:00:00</span></div>
@@ -137,7 +145,7 @@
     <div style="display: flex; gap: 20px; width: 95%; max-width: 600px;">
         <div class="tool-card active" id="pvoCard" onclick="setMode('pvo')">
             <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Силы обороны Украины</span>
-            <select id="pvoSelect">
+            <select id="pvoSelect" onchange="Snd.ping()">
                 <optgroup label="Дальнего / Среднего действия">
                     <option value="pvo_patriot">Patriot PAC-3 (160 км) - ПРО</option>
                     <option value="pvo_samp">SAMP/T Mamba (100 км)</option>
@@ -169,7 +177,7 @@
         </div>
         <div class="tool-card" id="targetCard" onclick="setMode('target')">
             <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Цели (Симуляция)</span>
-            <select id="targetSelect">
+            <select id="targetSelect" onchange="Snd.ping()">
                 <optgroup label="Гиперзвук / Баллистика">
                     <option value="missile_kinzhal">Кинжал (Х-47М2)</option>
                     <option value="missile_zircon">Циркон (3М22)</option>
@@ -211,10 +219,11 @@
 
 <div class="bottom-nav">
     <div class="layers-stack">
+        <button class="btn btn-attack" id="attackBtn" title="МАССИРОВАННЫЙ УДАР" onclick="triggerMassiveAttack()"><i class="fas fa-radiation"></i></button>
         <button class="btn btn-location" id="locBtn" title="Ваша позиция" onclick="locateUser()"><i class="fas fa-crosshairs"></i></button>
         <button class="btn btn-layer" id="layerBtn" title="Смена карты" onclick="toggleMapLayer()"><i class="fas fa-layer-group"></i></button>
     </div>
-    <button class="btn" onclick="location.reload()"><i class="fas fa-sync-alt"></i></button>
+    <button class="btn" onclick="Snd.ping(); setTimeout(()=>location.reload(), 100)"><i class="fas fa-sync-alt"></i></button>
     <button class="btn btn-undo" id="undoBtn" onclick="undoLastAction()"><i class="fas fa-undo"></i></button>
     <button class="btn" id="playBtn"><i class="fas fa-play"></i></button>
     <button class="btn btn-history" id="historyBtn" onclick="toggleHistory()"><i class="fas fa-list-ul"></i></button>
@@ -224,8 +233,14 @@
 <script>
     const Snd = {
         ctx: null,
-        init() { if(!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } if(this.ctx.state === 'suspended') this.ctx.resume(); },
+        init() { 
+            if(!this.ctx) { 
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+            } 
+            if(this.ctx.state === 'suspended') this.ctx.resume(); 
+        },
         osc(f, t, d, v) {
+            if(!this.ctx) return;
             const o = this.ctx.createOscillator(), g = this.ctx.createGain();
             o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
             g.gain.setValueAtTime(v, this.ctx.currentTime);
@@ -238,7 +253,11 @@
         hit() { this.init(); this.osc(40, 'triangle', 1.0, 0.4); },
         ping() { this.init(); this.osc(1000, 'sine', 0.05, 0.02); },
         warning() { this.init(); this.osc(120, 'square', 0.5, 0.1); },
-        alert() { this.init(); this.osc(800, 'sawtooth', 0.1, 0.05); setTimeout(()=>this.osc(600, 'sawtooth', 0.1, 0.05), 100); }
+        alert() { 
+            this.init(); 
+            this.osc(800, 'sawtooth', 0.1, 0.05); 
+            setTimeout(()=>this.osc(600, 'sawtooth', 0.1, 0.05), 100); 
+        }
     };
 
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.0, 31.0], 6);
@@ -252,22 +271,26 @@
     let currentLayer = 'dark';
 
     function toggleMapLayer() {
+        Snd.ping();
         if (currentLayer === 'dark') { map.removeLayer(layers.dark); layers.satellite.addTo(map); currentLayer = 'satellite'; }
         else { map.removeLayer(layers.satellite); layers.dark.addTo(map); currentLayer = 'dark'; }
-        Snd.init(); Snd.ping();
     }
 
     function locateUser() {
-        Snd.init(); Snd.ping();
+        Snd.ping();
         map.locate({setView: true, maxZoom: 10});
     }
 
     map.on('locationfound', (e) => {
+        Snd.alert();
         L.circle(e.latlng, {radius: 500, color: 'var(--primary)', weight: 2}).addTo(map);
         notifyOnMap(e.latlng, "ВАША ПОЗИЦИЯ", "var(--primary)");
     });
 
-    map.on('locationerror', () => notifyOnMap(map.getCenter(), "ГЕОПОЗИЦИЯ НЕДОСТУПНА", "var(--ru-red)"));
+    map.on('locationerror', () => {
+        Snd.warning();
+        notifyOnMap(map.getCenter(), "ГЕОПОЗИЦИЯ НЕДОСТУПНА", "var(--ru-red)");
+    });
 
     const frontlineCoords = [
         [46.4, 32.2], [46.6, 32.6], [47.2, 33.4], [47.5, 34.4], 
@@ -275,19 +298,6 @@
         [48.6, 38.2], [49.2, 38.0], [50.1, 38.4], [50.4, 37.8]
     ];
     L.polyline(frontlineCoords, { color: '#ff0000', weight: 3, dashArray: '10, 10', opacity: 0.7, interactive: false }).addTo(map);
-
-    const AIRBASES = [
-        { name: "Энгельс-2", pos: [51.48, 46.21] },
-        { name: "Шайковка", pos: [54.22, 34.36] },
-        { name: "Саваслейка", pos: [55.44, 42.30] },
-        { name: "Ахтубинск", pos: [48.28, 46.11] }
-    ];
-
-    const NAVAL_BASES = [
-        { name: "Севастополь", pos: [44.61, 33.52], type: 'sub' },
-        { name: "Новороссийск", pos: [44.72, 37.77], type: 'ship' },
-        { name: "Азов", pos: [45.35, 36.65], type: 'ship' }
-    ];
 
     const CONFIG = {
         drone_shahed: { name: 'SHAHED-136', speed: 185, maxRange: 1500, color: '#00ff88', altMin: 50, altMax: 2000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
@@ -334,8 +344,10 @@
         pendingPath: [], tempMarkers: [], activeFutureLine: null, rangeCircle: null,
         simSeconds: 0, lastFrame: 0, lastRuSpawn: 0, lastShipSpawn: 0,
         history: [], limits: { planes: 6, ships: 4 },
-        timeCompression: 1, // Синхронизация: 1 секунда симуляции = 1 реальная секунда
-        baseTime: new Date()
+        timeCompression: 1, 
+        baseTime: new Date(),
+        isAttackActive: false,
+        carriers: [] // Для отображения носителей
     };
 
     function isWater(lat, lon) {
@@ -346,6 +358,7 @@
     }
 
     function toggleHistory() {
+        Snd.ping();
         const modal = document.getElementById('historyModal');
         const btn = document.getElementById('historyBtn');
         const isActive = modal.classList.toggle('active');
@@ -355,6 +368,7 @@
 
     function addToHistory(name, eventType, pos) {
         state.history.push({ time: getSimTimeString(), name: name, type: eventType, pos: pos });
+        Snd.ping();
         if(document.getElementById('historyModal').classList.contains('active')) updateHistoryTable();
         updateNav();
     }
@@ -408,6 +422,7 @@
     }
 
     function setMode(m) {
+        Snd.ping();
         state.currentMode = m;
         document.getElementById('pvoCard').classList.toggle('active', m === 'pvo');
         document.getElementById('targetCard').classList.toggle('active', m === 'target');
@@ -416,11 +431,17 @@
     }
 
     function updateCounters() { 
-        document.getElementById('targetCount').innerText = state.targets.filter(x => x.active).length; 
+        const targetActive = state.targets.filter(x => x.active).length;
+        document.getElementById('targetCount').innerText = targetActive; 
         document.getElementById('pvoCount').innerText = state.pvo.filter(x=>x.type==='sam').length; 
         document.getElementById('mobileCount').innerText = state.pvo.filter(x=>x.type==='mrg').length;
         document.getElementById('shipCount').innerText = state.ships.filter(x => x.active).length;
         document.getElementById('uaPlaneCount').innerText = (state.uaPlanes.filter(x => x.active).length + state.pvo.filter(x => x.type === 'ua_ship').length);
+        
+        if (targetActive === 0 && state.isAttackActive) {
+            state.isAttackActive = false;
+            document.getElementById('attackBtn').disabled = false;
+        }
     }
 
     function resetCurrentSelection() {
@@ -437,18 +458,28 @@
         const cfg = CONFIG[typeKey];
         
         if (cfg.type === 'ua_ship') {
-            if (!isWater(pos[0], pos[1])) { notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА ВОДЕ", "var(--ru-red)"); Snd.warning(); return; }
+            if (!isWater(pos[0], pos[1])) { 
+                notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА ВОДЕ", "var(--ru-red)"); 
+                Snd.warning(); return; 
+            }
             createUAShip(pos, cfg); return;
         } else if (cfg.type !== 'fighter') {
-            if (isWater(pos[0], pos[1])) { notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА СУШЕ", "var(--ru-red)"); Snd.warning(); return; }
+            if (isWater(pos[0], pos[1])) { 
+                notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА СУШЕ", "var(--ru-red)"); 
+                Snd.warning(); return; 
+            }
         }
 
         if (cfg.type === 'mrg') {
-            if (state.pendingPath.length < 2) { notifyOnMap(pos, "МРГ: УКАЖИТЕ МАРШРУТ (2+ ТОЧКИ)", "var(--mobile-pvo)"); return; }
+            if (state.pendingPath.length < 2) { 
+                notifyOnMap(pos, "МРГ: УКАЖИТЕ МАРШРУТ (2+ ТОЧКИ)", "var(--mobile-pvo)"); 
+                Snd.ping(); return; 
+            }
             createMRG(cfg); return;
         }
         if (cfg.type === 'fighter') { createUAFighter(pos, cfg); return; }
         
+        Snd.alert();
         const initialSize = getRadarSizeInPixels(cfg.r, pos[0]);
         const rMarker = L.marker(pos, { 
             icon: L.divIcon({ className: 'radar-container', html: `<div class="radar-sweep" style="width:${initialSize}px; height:${initialSize}px;"></div>`, iconSize: [0, 0] }),
@@ -475,6 +506,7 @@
         document.body.appendChild(m.toolbar);
         state.pvo.push(m); addToHistory(cfg.name, 'deploy', path[0]);
         resetCurrentSelection();
+        Snd.alert();
         notifyOnMap(path[0], `МРГ ВЫШЛА НА ПАТРУЛЬ`, 'var(--mobile-pvo)');
         updateCounters(); updateNav();
     }
@@ -490,6 +522,7 @@
         };
         document.body.appendChild(s.toolbar);
         state.pvo.push(s); addToHistory(cfg.name, 'deploy', pos);
+        Snd.alert();
         notifyOnMap(pos, `СПУЩЕНО: ${cfg.name}`, 'var(--ua-gold)');
         updateCounters(); updateNav();
     }
@@ -505,6 +538,7 @@
         };
         document.body.appendChild(p.toolbar);
         state.uaPlanes.push(p); addToHistory(cfg.name, 'deploy', pos);
+        Snd.alert();
         notifyOnMap(pos, `ВЗЛЕТ: ${cfg.name}`, 'var(--ua-gold)');
         updateCounters(); updateNav();
     }
@@ -536,9 +570,104 @@
         for(let i=0; i<t.path.length-1; i++) t.totalDist += map.distance(t.path[i], t.path[i+1])/1000;
         state.targets.push(t);
         addToHistory(cfg.name, 'launch', path[0]);
-        if(cfgOverride) { notifyOnMap(path[0], `ПУСК: ${cfg.name}`, '#ffaa00'); Snd.launch(); }
+        Snd.launch();
+        if(cfgOverride) { notifyOnMap(path[0], `ПУСК: ${cfg.name}`, '#ffaa00'); }
         if(!pathOverride) resetCurrentSelection();
         updateCounters(); updateNav();
+    }
+
+    function showCarrier(pos, name, icon) {
+        const marker = L.marker(pos, { 
+            icon: L.divIcon({ 
+                html: `<div class="static-icon"><i class="fas ${icon}" style="color:var(--ru-red); font-size:24px; filter: drop-shadow(0 0 5px red);"></i></div>`, 
+                className: 'event-marker' 
+            }) 
+        }).addTo(map);
+        
+        const tb = Object.assign(document.createElement('div'), {
+            className: 'obj-toolbar', 
+            innerHTML: `<b style="color:var(--ru-red)">${name}</b><br>В БОЕВОЙ ГОТОВНОСТИ`
+        });
+        document.body.appendChild(tb);
+        
+        const pt = map.latLngToContainerPoint(pos);
+        tb.style.left = pt.x + 'px'; tb.style.top = pt.y + 'px';
+        
+        const carrier = { marker, tb, pos };
+        state.carriers.push(carrier);
+    }
+
+    function triggerMassiveAttack() {
+        if (state.isAttackActive) return;
+        Snd.alert();
+        state.isAttackActive = true;
+        document.getElementById('attackBtn').disabled = true;
+        
+        const cities = {
+            kyiv: [50.45, 30.52],
+            lviv: [49.83, 24.02],
+            odesa: [46.48, 30.72],
+            dnipro: [48.46, 35.04],
+            kharkiv: [49.99, 36.23],
+            staro: [49.75, 27.22],
+            vinnytsia: [49.23, 28.46],
+            mykolaiv: [46.97, 31.99]
+        };
+        
+        const launchZones = {
+            blackSea: [44.5, 33.5],
+            caspian: [47.5, 43.5],
+            belgorod: [50.6, 36.6],
+            crimea: [45.1, 34.0],
+            kursk: [51.7, 36.1],
+            belarus: [52.1, 26.5]
+        };
+
+        notifyOnMap(map.getCenter(), "МАССИРОВАННЫЙ УДАР: ЗАФИКСИРОВАНЫ НОСИТЕЛИ", "var(--ru-red)");
+
+        // Носители
+        showCarrier(launchZones.caspian, "ТУ-95МС", "fa-fighter-jet");
+        showCarrier(launchZones.blackSea, "ФРЕГАТ/ПОДЛОДКИ", "fa-ship");
+        showCarrier(launchZones.crimea, "ШАХЕД-ХАБ (ЧАУДА)", "fa-warehouse");
+        showCarrier(launchZones.belgorod, "ОТРК ИСКАНДЕР", "fa-truck-monster");
+        showCarrier(launchZones.belarus, "МИГ-31К", "fa-plane-arrival");
+
+        // 1. БПЛА (разные точки входа)
+        setTimeout(() => {
+            Object.values(cities).forEach((target, i) => {
+                const entry = i % 2 === 0 ? launchZones.crimea : launchZones.belgorod;
+                setTimeout(() => {
+                    createTarget('drone_shahed', [entry, [46.5, 33.5], [47.5, 32.5], target]);
+                }, i * 1000);
+            });
+        }, 3000);
+
+        // 2. Калибры
+        setTimeout(() => {
+            [cities.odesa, cities.mykolaiv, cities.kyiv, cities.vinnytsia].forEach((target, i) => {
+                createTarget('missile_kalibr', [launchZones.blackSea, target]);
+            });
+        }, 7000);
+
+        // 3. Х-101
+        setTimeout(() => {
+            [cities.lviv, cities.staro, cities.kyiv, cities.dnipro].forEach((target, i) => {
+                createTarget('missile_x101', [launchZones.caspian, [50.0, 39.0], [49.0, 34.0], target]);
+            });
+        }, 11000);
+
+        // 4. Кинжал
+        setTimeout(() => {
+            createTarget('missile_kinzhal', [launchZones.belarus, cities.kyiv]);
+            createTarget('missile_kinzhal', [launchZones.belarus, cities.staro]);
+        }, 16000);
+
+        if (!state.isSimulating) {
+            state.isSimulating = true;
+            state.lastFrame = performance.now();
+            requestAnimationFrame(simLoop);
+            updateNav();
+        }
     }
 
     function simLoop(time) {
@@ -648,7 +777,7 @@
     }
 
     function launchMissile(launcher, target) {
-        Snd.ping(); Snd.launch();
+        Snd.launch();
         const startPos = (launcher.type === 'fighter' || launcher.type === 'ua_ship' || launcher.type === 'mrg') ? launcher.currentPos : launcher.pos;
         const tb = Object.assign(document.createElement('div'), {className: 'obj-toolbar', innerHTML: launcher.mName || 'SAM'});
         tb.style.fontSize = '8px'; document.body.appendChild(tb);
@@ -668,6 +797,7 @@
     }
 
     function undoLastAction() {
+        Snd.ping();
         if (state.pendingPath.length > 0) {
             state.pendingPath.pop(); const m = state.tempMarkers.pop(); if(m) map.removeLayer(m);
             if(state.activeFutureLine) { if (state.pendingPath.length > 0) state.activeFutureLine.setLatLngs(state.pendingPath); else { state.activeFutureLine.remove(); state.activeFutureLine = null; } }
@@ -692,6 +822,7 @@
             else if (sys.type === 'mrg') updateToolbar(sys, `<b style="color:var(--mobile-pvo)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
         });
         state.missiles.forEach(m => { if(!m.target.active) return; const pt = map.latLngToContainerPoint(m.pos); m.toolbar.style.left = pt.x + 'px'; m.toolbar.style.top = pt.y + 'px'; m.toolbar.innerHTML = `${Math.round(m.curSpeed)} км/ч`; });
+        state.carriers.forEach(c => { const pt = map.latLngToContainerPoint(c.pos); c.tb.style.left = pt.x + 'px'; c.tb.style.top = pt.y + 'px'; });
     }
 
     function updateToolbar(obj, text) {
@@ -726,7 +857,9 @@
     }
 
     map.on('click', (e) => {
-        Snd.init(); const pos = [e.latlng.lat, e.latlng.lng];
+        Snd.init(); 
+        Snd.ping();
+        const pos = [e.latlng.lat, e.latlng.lng];
         if (state.currentMode === 'pvo') {
             const type = document.getElementById('pvoSelect').value;
             if (CONFIG[type].type === 'mrg') {
@@ -760,13 +893,22 @@
     document.getElementById('playBtn').onclick = () => {
         Snd.init();
         if (state.pendingPath.length > 0) {
+             Snd.ping();
              if (state.currentMode === 'pvo') {
                  if (state.pendingPath.length >= 2 || CONFIG[document.getElementById('pvoSelect').value].type !== 'mrg') { createPVO(state.pendingPath[0]); }
              } else { if (state.pendingPath.length >= 2) createTarget(); }
         } else {
             state.isSimulating = !state.isSimulating; state.lastFrame = performance.now();
-            if (state.isSimulating) { requestAnimationFrame(simLoop); notifyOnMap(map.getCenter(), "СИМУЛЯЦИЯ ЗАПУЩЕНА", "var(--primary)"); } 
-            else { syncAllToolbars(); notifyOnMap(map.getCenter(), "ПАУЗА", "var(--ua-gold)"); }
+            if (state.isSimulating) { 
+                Snd.alert();
+                requestAnimationFrame(simLoop); 
+                notifyOnMap(map.getCenter(), "СИМУЛЯЦИЯ ЗАПУЩЕНА", "var(--primary)"); 
+            } 
+            else { 
+                Snd.ping();
+                syncAllToolbars(); 
+                notifyOnMap(map.getCenter(), "ПАУЗА", "var(--ua-gold)"); 
+            }
         }
         updateNav();
     };
@@ -779,7 +921,11 @@
     function updateNav() {
         const btn = document.getElementById('playBtn');
         const undo = document.getElementById('undoBtn');
+        const attack = document.getElementById('attackBtn');
+        
         undo.classList.toggle('visible', state.pendingPath.length > 0 || state.history.length > 0);
+        attack.style.display = state.isSimulating ? 'flex' : 'none';
+
         if(state.pendingPath.length > 0) { btn.innerHTML = '<i class="fas fa-check"></i>'; btn.className = 'btn btn-confirm'; } 
         else { btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; btn.className = 'btn'; btn.classList.toggle('simulating', state.isSimulating); }
     }
