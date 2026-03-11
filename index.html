@@ -119,6 +119,7 @@
         .badge-deploy { background: rgba(0, 136, 255, 0.2); color: var(--sea-blue); border: 1px solid var(--sea-blue); }
 
         .layers-stack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .play-stack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .btn-location { background: #2c3e50; color: #fff; }
         .btn-attack { 
             background: #8b0000; color: #fff; border: 2px solid #ff4444 !important; 
@@ -219,13 +220,15 @@
 
 <div class="bottom-nav">
     <div class="layers-stack">
-        <button class="btn btn-attack" id="attackBtn" title="МАССИРОВАННЫЙ УДАР" onclick="triggerMassiveAttack()"><i class="fas fa-radiation"></i></button>
         <button class="btn btn-location" id="locBtn" title="Ваша позиция" onclick="locateUser()"><i class="fas fa-crosshairs"></i></button>
         <button class="btn btn-layer" id="layerBtn" title="Смена карты" onclick="toggleMapLayer()"><i class="fas fa-layer-group"></i></button>
     </div>
     <button class="btn" onclick="Snd.ping(); setTimeout(()=>location.reload(), 100)"><i class="fas fa-sync-alt"></i></button>
     <button class="btn btn-undo" id="undoBtn" onclick="undoLastAction()"><i class="fas fa-undo"></i></button>
-    <button class="btn" id="playBtn"><i class="fas fa-play"></i></button>
+    <div class="play-stack">
+        <button class="btn btn-attack" id="attackBtn" title="МАССИРОВАННЫЙ УДАР" onclick="triggerMassiveAttack()"><i class="fas fa-radiation"></i></button>
+        <button class="btn" id="playBtn"><i class="fas fa-play"></i></button>
+    </div>
     <button class="btn btn-history" id="historyBtn" onclick="toggleHistory()"><i class="fas fa-list-ul"></i></button>
 </div>
 
@@ -347,7 +350,7 @@
         timeCompression: 1, 
         baseTime: new Date(),
         isAttackActive: false,
-        carriers: [] // Для отображения носителей
+        carriers: [] 
     };
 
     function isWater(lat, lon) {
@@ -441,6 +444,8 @@
         if (targetActive === 0 && state.isAttackActive) {
             state.isAttackActive = false;
             document.getElementById('attackBtn').disabled = false;
+            state.carriers.forEach(c => { c.marker.remove(); c.tb.remove(); });
+            state.carriers = [];
         }
     }
 
@@ -548,13 +553,6 @@
         const cfg = CONFIG[type];
         const path = pathOverride || [...state.pendingPath];
         if (path.length < 2) return;
-        
-        if (!cfgOverride && cfg.name !== 'КАЛИБР') {
-            if (isWater(path[0][0], path[0][1])) {
-                notifyOnMap(path[0], "ОШИБКА: ПУСК С СУШИ", "var(--ru-red)");
-                Snd.warning(); resetCurrentSelection(); return;
-            }
-        }
 
         const t = {
             id: Math.random(), name: cfg.name, path: path, speed: cfg.speed, curSpeed: 0, currentPos: [...path[0]],
@@ -571,7 +569,6 @@
         state.targets.push(t);
         addToHistory(cfg.name, 'launch', path[0]);
         Snd.launch();
-        if(cfgOverride) { notifyOnMap(path[0], `ПУСК: ${cfg.name}`, '#ffaa00'); }
         if(!pathOverride) resetCurrentSelection();
         updateCounters(); updateNav();
     }
@@ -593,8 +590,7 @@
         const pt = map.latLngToContainerPoint(pos);
         tb.style.left = pt.x + 'px'; tb.style.top = pt.y + 'px';
         
-        const carrier = { marker, tb, pos };
-        state.carriers.push(carrier);
+        state.carriers.push({ marker, tb, pos });
     }
 
     function triggerMassiveAttack() {
@@ -603,64 +599,48 @@
         state.isAttackActive = true;
         document.getElementById('attackBtn').disabled = true;
         
-        const cities = {
-            kyiv: [50.45, 30.52],
-            lviv: [49.83, 24.02],
-            odesa: [46.48, 30.72],
-            dnipro: [48.46, 35.04],
-            kharkiv: [49.99, 36.23],
-            staro: [49.75, 27.22],
-            vinnytsia: [49.23, 28.46],
-            mykolaiv: [46.97, 31.99]
-        };
+        const targetsUA = [
+            [50.45, 30.52], [49.83, 24.02], [46.48, 30.72], [48.46, 35.04],
+            [49.99, 36.23], [49.75, 27.22], [49.23, 28.46], [46.97, 31.99],
+            [50.74, 25.32], [48.92, 24.71], [48.37, 31.16], [51.50, 31.29]
+        ];
         
         const launchZones = {
-            blackSea: [44.5, 33.5],
-            caspian: [47.5, 43.5],
-            belgorod: [50.6, 36.6],
-            crimea: [45.1, 34.0],
-            kursk: [51.7, 36.1],
-            belarus: [52.1, 26.5]
+            blackSea: [44.5, 33.5], caspian: [47.5, 43.5], belgorod: [50.6, 36.6],
+            crimea: [45.1, 34.0], kursk: [51.7, 36.1], belarus: [52.1, 26.5],
+            donetsk: [48.0, 37.8], kherson_occ: [46.6, 33.3]
         };
+
+        const getRandomUA = () => targetsUA[Math.floor(Math.random() * targetsUA.length)];
 
         notifyOnMap(map.getCenter(), "МАССИРОВАННЫЙ УДАР: ЗАФИКСИРОВАНЫ НОСИТЕЛИ", "var(--ru-red)");
 
-        // Носители
         showCarrier(launchZones.caspian, "ТУ-95МС", "fa-fighter-jet");
         showCarrier(launchZones.blackSea, "ФРЕГАТ/ПОДЛОДКИ", "fa-ship");
         showCarrier(launchZones.crimea, "ШАХЕД-ХАБ (ЧАУДА)", "fa-warehouse");
         showCarrier(launchZones.belgorod, "ОТРК ИСКАНДЕР", "fa-truck-monster");
-        showCarrier(launchZones.belarus, "МИГ-31К", "fa-plane-arrival");
 
-        // 1. БПЛА (разные точки входа)
-        setTimeout(() => {
-            Object.values(cities).forEach((target, i) => {
-                const entry = i % 2 === 0 ? launchZones.crimea : launchZones.belgorod;
-                setTimeout(() => {
-                    createTarget('drone_shahed', [entry, [46.5, 33.5], [47.5, 32.5], target]);
-                }, i * 1000);
-            });
-        }, 3000);
+        // 1. Дроны (Волна 1)
+        for(let i=0; i<8; i++) {
+            setTimeout(() => {
+                const start = Math.random() > 0.5 ? launchZones.crimea : launchZones.belgorod;
+                createTarget('drone_shahed', [start, [47 + Math.random(), 33 + Math.random()], getRandomUA()]);
+            }, i * 800);
+        }
 
         // 2. Калибры
         setTimeout(() => {
-            [cities.odesa, cities.mykolaiv, cities.kyiv, cities.vinnytsia].forEach((target, i) => {
-                createTarget('missile_kalibr', [launchZones.blackSea, target]);
-            });
-        }, 7000);
+            for(let i=0; i<4; i++) {
+                createTarget('missile_kalibr', [launchZones.blackSea, getRandomUA()]);
+            }
+        }, 6000);
 
-        // 3. Х-101
+        // 3. Баллистика и КР
         setTimeout(() => {
-            [cities.lviv, cities.staro, cities.kyiv, cities.dnipro].forEach((target, i) => {
-                createTarget('missile_x101', [launchZones.caspian, [50.0, 39.0], [49.0, 34.0], target]);
-            });
-        }, 11000);
-
-        // 4. Кинжал
-        setTimeout(() => {
-            createTarget('missile_kinzhal', [launchZones.belarus, cities.kyiv]);
-            createTarget('missile_kinzhal', [launchZones.belarus, cities.staro]);
-        }, 16000);
+            createTarget('missile_iskander', [launchZones.belgorod, getRandomUA()]);
+            createTarget('missile_x101', [launchZones.caspian, [50.0, 38.0], getRandomUA()]);
+            createTarget('missile_kinzhal', [launchZones.belarus, getRandomUA()]);
+        }, 12000);
 
         if (!state.isSimulating) {
             state.isSimulating = true;
