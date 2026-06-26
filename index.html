@@ -55,8 +55,15 @@
   .tbtn{width:40px;height:40px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--text);backdrop-filter:blur(8px);cursor:pointer;display:grid;place-items:center;font-size:14px;font-family:inherit;font-weight:600}
   .tbtn:hover{border-color:var(--cyan);color:var(--cyan)}.tbtn.on{border-color:var(--cyan);color:var(--cyan);background:rgba(34,211,238,.12)}
 
-  .panel{position:absolute;right:10px;top:max(98px,calc(env(safe-area-inset-top) + 92px));z-index:8;width:248px;background:var(--panel);backdrop-filter:blur(11px);
+  .panel{position:absolute;right:10px;top:max(98px,calc(env(safe-area-inset-top) + 92px));z-index:8;width:256px;max-height:72vh;overflow-y:auto;background:var(--panel);backdrop-filter:blur(11px);
     border:1px solid var(--line);border-radius:12px;padding:12px;display:none;box-shadow:0 14px 40px rgba(0,0,0,.5)}
+  .addb{width:38px;height:38px;border-radius:9px;border:none;background:#2f6bff;color:#fff;font-size:18px;font-weight:700;cursor:pointer;flex:0 0 auto;display:grid;place-items:center}
+  .addb:active{transform:scale(.92)}
+  .chosen{display:flex;flex-direction:column;gap:5px}
+  .chosen:empty::after{content:"— порожньо —";color:var(--dim);font-size:10px}
+  .chosenrow{display:flex;align-items:center;gap:8px;background:var(--solid);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:11px}
+  .chosenrow span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .delb{width:20px;height:20px;border-radius:50%;border:none;background:#e0473c;color:#fff;font-size:11px;font-weight:700;cursor:pointer;flex:0 0 auto;line-height:1;padding:0}
   .panel.show{display:block}
   .panel h4{margin:0 0 9px;font-weight:700;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
   .prow{margin-bottom:12px}.prow:last-child{margin-bottom:0}
@@ -164,15 +171,27 @@
 </div>
 
 <div class="panel" id="settings">
-  <h4>Параметри атаки</h4>
-  <div class="prow"><div class="plab">Склад атаки</div>
-    <div class="chips" id="comp">
-      <button class="chip sh on" data-c="shahed">Shahed</button>
-      <button class="chip re on" data-c="recon">Розвідка</button>
-      <button class="chip cr on" data-c="cruise">Крилаті</button>
-      <button class="chip ba on" data-c="ballistic">Балістика</button>
-      <button class="chip hy on" data-c="hyper">Гіперзвук</button>
-    </div></div>
+  <h4>ППО — твоя оборона</h4>
+  <div class="prow"><div class="plab">Режим</div>
+    <div class="seg" id="pvoMode"><button data-m="auto" class="on">Авто</button><button data-m="manual">Ручний</button></div>
+    <div style="font-size:9px;color:var(--dim);margin-top:5px" id="pvoModeHint">Авто: додаєш — система ставить випадково по карті.</div></div>
+  <div class="prow"><div class="plab">Тип</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="pvoCat" style="flex:1"></select>
+      <select id="pvoAsset" style="flex:1.3"></select>
+      <button class="addb" id="pvoAdd" title="Додати">＋</button></div></div>
+  <div class="prow"><div class="plab">Обрані / розгорнуті</div><div class="chosen" id="pvoChosen"></div></div>
+
+  <h4 style="margin-top:14px">Засоби атаки</h4>
+  <div class="prow"><div style="display:flex;gap:6px;align-items:center">
+      <select id="wMethod" style="flex:1"></select>
+      <select id="wType" style="flex:1"></select>
+      <select id="wAsset" style="flex:1.2"></select>
+      <button class="addb" id="wAdd" title="Додати">＋</button></div>
+    <div style="font-size:9px;color:var(--dim);margin-top:5px">Спосіб · тип · засіб. Порожній список = усі типи.</div></div>
+  <div class="prow"><div class="plab">Обрані засоби</div><div class="chosen" id="wChosen"></div></div>
+
+  <h4 style="margin-top:14px">Параметри</h4>
   <div class="prow"><div class="plab"><span>Інтенсивність</span><span id="intVal">50</span></div>
     <input type="range" id="intensity" min="0" max="100" value="50"></div>
   <div class="prow"><div class="plab">Кількість хвиль</div>
@@ -193,30 +212,14 @@
   <div class="lrow"><span class="gl" id="gl-sk"></span>Збиття<small></small></div>
   <div class="lrow"><span class="gl" id="gl-bo"></span>Приліт<small></small></div>
   <div class="lrow"><span class="gl"><span class="sq"></span></span>Загроза області<small></small></div>
-  <div class="hint">Тапни по карті — поставити вибрану ППО. «Атака» — випадковий комбінований удар. Тап по цілі — її тулбар. Не реальне відстеження.</div>
+  <div class="hint">⚙ — обери ППО і засоби. «Авто» ставить ППО сама, «Ручний» — тап по карті. «Атака» — удар з обраних засобів. Тап по цілі — її тулбар.</div>
 </div>
 
 <div id="objbar"></div>
 
 <div id="dock">
-  <div class="pod" id="defPod">
-    <div><span class="lab">Твоя ППО</span><br>
-      <select id="pvoSel">
-        <optgroup label="Далекої / середньої дії">
-          <option value="patriot">Patriot PAC-3 (160 км)</option>
-          <option value="samp">SAMP/T Mamba (100 км)</option>
-          <option value="s300">С-300ПС (75 км)</option>
-          <option value="iris" selected>IRIS-T SLM (40 км)</option>
-          <option value="buk">Бук-М1 (35 км)</option>
-          <option value="nasams">NASAMS (25 км)</option>
-        </optgroup>
-        <optgroup label="Ближньої дії / анти-БпЛА">
-          <option value="gepard">Gepard (4.5 км)</option>
-          <option value="skynex">Skynex (4 км)</option>
-          <option value="vampire">Vampire APKWS (5 км)</option>
-        </optgroup>
-      </select>
-    </div>
+  <div class="pod" id="actPod">
+    <button class="btn" id="b-config" title="ППО і засоби">⚙</button>
     <button class="btn" id="b-clear" title="Прибрати всю ППО">⌫</button>
     <button class="btn attack" id="b-attack"><span>☢</span><span>Атака</span></button>
   </div>
@@ -290,7 +293,13 @@ const MOVE={
     x.beginPath();x.moveTo(0,-26);x.lineTo(2.6,-20);x.lineTo(-2.6,-20);x.closePath();x.fill();},
   mig(x){x.beginPath();x.moveTo(0,-26);x.lineTo(2.6,-5);x.lineTo(2.6,14);x.lineTo(-2.6,14);x.lineTo(-2.6,-5);x.closePath();x.fill();
     x.beginPath();x.moveTo(2.6,0);x.lineTo(17,14);x.lineTo(2.6,10);x.closePath();x.fill();x.beginPath();x.moveTo(-2.6,0);x.lineTo(-17,14);x.lineTo(-2.6,10);x.closePath();x.fill();
-    x.beginPath();x.moveTo(2.6,14);x.lineTo(7,22);x.lineTo(2.6,20);x.closePath();x.fill();x.beginPath();x.moveTo(-2.6,14);x.lineTo(-7,22);x.lineTo(-2.6,20);x.closePath();x.fill();}};
+    x.beginPath();x.moveTo(2.6,14);x.lineTo(7,22);x.lineTo(2.6,20);x.closePath();x.fill();x.beginPath();x.moveTo(-2.6,14);x.lineTo(-7,22);x.lineTo(-2.6,20);x.closePath();x.fill();},
+  fighter(x){x.beginPath();x.moveTo(0,-28);x.lineTo(3,-8);x.lineTo(3,14);x.lineTo(-3,14);x.lineTo(-3,-8);x.closePath();x.fill();
+    x.beginPath();x.moveTo(3,-2);x.lineTo(22,12);x.lineTo(3,8);x.closePath();x.fill();x.beginPath();x.moveTo(-3,-2);x.lineTo(-22,12);x.lineTo(-3,8);x.closePath();x.fill();
+    x.beginPath();x.moveTo(3,14);x.lineTo(9,24);x.lineTo(3,22);x.closePath();x.fill();x.beginPath();x.moveTo(-3,14);x.lineTo(-9,24);x.lineTo(-3,22);x.closePath();x.fill();},
+  helo(x){x.fillRect(-4,-13,8,26);x.fillRect(-1.6,12,3.2,15);x.fillRect(-7,25,14,3);
+    x.save();x.translate(0,-3);x.fillRect(-26,-1.4,52,2.8);x.fillRect(-1.4,-26,2.8,52);x.restore();},
+  navy(x){x.beginPath();x.moveTo(0,-26);x.lineTo(7,-6);x.lineTo(7,22);x.lineTo(-7,22);x.lineTo(-7,-6);x.closePath();x.fill();x.fillRect(-4,-2,8,12);}};
 const MARK={
   tel(x){x.fillStyle="#b94a4a";x.fillRect(-12,2,24,8);x.fillStyle="#822e2e";x.fillRect(-12,9,24,4);x.fillStyle="#d76a6a";x.save();x.rotate(-0.5);x.fillRect(-2.6,-14,5,16);x.restore();},
   ship(x){x.fillStyle="#9fb0c0";x.beginPath();x.moveTo(-15,2);x.lineTo(15,2);x.lineTo(10,11);x.lineTo(-10,11);x.closePath();x.fill();x.fillStyle="#cdd9e4";x.fillRect(-5,-8,10,10);x.fillStyle="#7e8ea0";x.fillRect(-1,-15,2,7);},
@@ -321,17 +330,43 @@ const CAT_MODELS={shahed:["shahed"],recon:["recon"],cruise:["kh101","kalibr","kh
 const PLAT_ICON={ground:"tel",ship:"ship",air_bomber:"bomber",air_mig:"mig"};
 const PLAT_UK={ground:"наземна ПУ",ship:"фрегат ЧФ",air_bomber:"літак-носій",air_mig:"МіГ-31К"};
 const PLAT_SIZE={ground:22,ship:26,air_bomber:24,air_mig:20};
-const PVO={
- patriot:{name:"Patriot PAC-3",r:160,mSpeed:6000,ignoreCheap:true,ammo:16},samp:{name:"SAMP/T Mamba",r:100,mSpeed:4500,ammo:16},
- s300:{name:"С-300ПС",r:75,mSpeed:4000,ammo:12},iris:{name:"IRIS-T SLM",r:40,mSpeed:3700,ammo:12},
- buk:{name:"Бук-М1",r:35,mSpeed:3500,ammo:8},nasams:{name:"NASAMS",r:25,mSpeed:4100,ammo:12},
- gepard:{name:"Gepard",r:4.5,mSpeed:3000,antiDrone:true,ammo:60},skynex:{name:"Skynex",r:4,mSpeed:3200,antiDrone:true,ammo:100},
- vampire:{name:"Vampire APKWS",r:5,mSpeed:2800,antiDrone:true,ammo:24}};
+const DEF={
+ patriot:{name:"Patriot PAC-3",r:160,mSpeed:6000,ignoreCheap:true,ammo:16,kind:"sam"},
+ samp:{name:"SAMP/T Mamba",r:100,mSpeed:4500,ammo:16,kind:"sam"},
+ s300:{name:"С-300ПС",r:75,mSpeed:4000,ammo:12,kind:"sam"},
+ iris:{name:"IRIS-T SLM",r:40,mSpeed:3700,ammo:12,kind:"sam"},
+ buk:{name:"Бук-М1",r:35,mSpeed:3500,ammo:8,kind:"sam"},
+ nasams:{name:"NASAMS",r:25,mSpeed:4100,ammo:12,kind:"sam"},
+ gepard:{name:"Gepard",r:4.5,mSpeed:3000,antiDrone:true,ammo:60,kind:"sam"},
+ skynex:{name:"Skynex",r:4,mSpeed:3200,antiDrone:true,ammo:100,kind:"sam"},
+ vampire:{name:"Vampire APKWS",r:5,mSpeed:2800,antiDrone:true,ammo:24,kind:"sam"},
+ f16:{name:"F-16V",r:120,mSpeed:4800,ammo:6,kind:"air",icon:"fighter"},
+ f15:{name:"F-15EX Eagle II",r:160,mSpeed:5000,ammo:12,kind:"air",icon:"fighter"},
+ mig29:{name:"МіГ-29МУ2",r:80,mSpeed:4200,ammo:4,kind:"air",icon:"fighter"},
+ mi8:{name:"Ми-8МСБ-В",r:30,mSpeed:1000,ammo:4,antiDrone:true,kind:"air",icon:"helo"},
+ mi24:{name:"Ми-24П",r:35,mSpeed:1100,ammo:6,antiDrone:true,kind:"air",icon:"helo"},
+ island:{name:"Island-class (катер)",r:35,mSpeed:900,ammo:2,kind:"ship",icon:"navy"},
+ hetman:{name:"Гетьман І. Мазепа",r:70,mSpeed:1200,ammo:8,kind:"ship",icon:"navy"}};
+const PVO_CAT={ground:["patriot","samp","s300","iris","buk","nasams","gepard","skynex","vampire"],air:["f16","f15","mig29","mi8","mi24"],sea:["island","hetman"]};
+const PVO_CAT_UK={ground:"Наземні (ЗРК)",air:"Авіація",sea:"Флот"};
+const DEF_COL={sam:[52,211,153],air:[255,210,74],ship:[255,210,74]};
 const CITIES=[["Київ",30.52,50.45,4],["Харків",36.23,49.99,3],["Одеса",30.74,46.48,3],["Дніпро",35.04,48.46,3],
   ["Львів",24.03,49.84,2],["Запоріжжя",35.14,47.84,2],["Миколаїв",31.99,46.97,2],["Кривий Ріг",33.39,47.91,2],
   ["Вінниця",28.48,49.23,1],["Полтава",34.55,49.59,1],["Суми",34.80,50.91,1],["Чернігів",31.29,51.49,1],
   ["Кропивницький",32.26,48.51,1],["Черкаси",32.06,49.44,1],["Ів.-Франківськ",24.71,48.92,1]];
-const LZ=[[33.5,44.3],[31.0,44.0],[47.0,46.0],[36.6,50.6],[35.9,51.7],[33.9,52.6],[34.0,45.1],[33.3,45.2],[35.2,47.0],[33.3,46.6],[37.8,48.0],[28.0,52.3]];
+const LZ_GROUND=[[36.6,50.6],[35.9,51.7],[33.9,52.6],[34.0,45.1],[33.3,45.2],[35.2,47.0],[33.3,46.6],[37.8,48.0],[28.0,52.3]];
+const LZ_SEA=[[33.5,44.3],[31.0,44.0],[33.0,43.7]];
+const LZ_AIR=[[47.0,46.0],[40.6,47.2],[35.7,52.5],[28.0,53.2]];
+function originFor(model,rng){const p=WP[model].plat,pool=p==="ship"?LZ_SEA:p.indexOf("air")===0?LZ_AIR:LZ_GROUND;return pool[Math.floor(rng()*pool.length)];}
+/* Засоби: Спосіб → Тип → засоби */
+const ATTACK_TREE={ground:{drone:["shahed","recon"],ballistic:["iskm","kn23"],hyper:["zircon"]},air:{cruise:["kh101","kh55"],hyper:["kinzhal"]},sea:{cruise:["kalibr"]}};
+const SPOSIB_UK={ground:"Наземні",air:"Повітряні",sea:"Морські"};
+const TYPE_UK={drone:"БпЛА",cruise:"Крилаті",ballistic:"Балістика",hyper:"Гіперзвук"};
+function isWater(lng,lat){return (lat<46.6&&lng>29&&lng<42)||(lat>45&&lat<47.5&&lng>34.5&&lng<39.5);}
+function randLand(){for(let k=0;k<200;k++){const lng=22.5+Math.random()*16.5,lat=44.6+Math.random()*7.6;if(!isWater(lng,lat)&&oblastAt(lng,lat)>=0)return [lng,lat];}return [31,49];}
+function randSea(){for(let k=0;k<200;k++){const lng=30+Math.random()*6.5,lat=44+Math.random()*2.2;if(isWater(lng,lat))return [lng,lat];}return [32,45];}
+function loiterPos(p,t){const w=p.kind==="ship"?0.012:0.03,R=p.kind==="ship"?0.12:0.26,a=p.phase+t*w;
+  return [p.home[0]+R*Math.cos(a)/Math.cos(p.home[1]*Math.PI/180),p.home[1]+R*Math.sin(a)];}
 const altAt=(profile,alt,p)=>profile==="arc"?alt*Math.sin(Math.PI*Math.min(p,0.999))+600
   :Math.max((p>0.93?alt*(1-(p-0.93)/0.07*0.8):alt)*Math.min(1,p/0.07),40);
 
@@ -339,7 +374,8 @@ const altAt=(profile,alt,p)=>profile==="arc"?alt*Math.sin(Math.PI*Math.min(p,0.9
 const DT=0.5;
 const S={threats:[],pvo:[],inter:[],marks:[],effects:[],events:[]};
 const ENV={simT:0,dur:0,playing:false,speed:2,last:0,acc:0,seq:1,intensity:50,waves:1,
-  comp:{shahed:true,recon:true,cruise:true,ballistic:true,hyper:true},ammoLimit:false,kills:0,impacts:0,selected:0,lastEv:-1};
+  comp:{shahed:true,recon:true,cruise:true,ballistic:true,hyper:true},ammoLimit:false,kills:0,impacts:0,selected:0,lastEv:-1,
+  pvoMode:"manual",armed:null,weapons:new Set()};
 
 /* ---------- attack generation (deterministic per seed) ---------- */
 function makeThreat(model,origin,city,spawnT,rng){
@@ -355,12 +391,11 @@ function makeThreat(model,origin,city,spawnT,rng){
 }
 function generateAttack(){
   const seed=Math.floor(Math.random()*1e9),rng=mulberry32(seed);
-  const cats=Object.keys(ENV.comp).filter(c=>ENV.comp[c]);if(!cats.length)cats.push("shahed");
-  const models=[];for(const c of cats)for(const m of CAT_MODELS[c])models.push(m);
+  const models=ENV.weapons.size?[...ENV.weapons]:Object.keys(WP);
   S.threats=[];
   const perWave=Math.round(lerp(6,22,ENV.intensity/100)),gap=420;
   for(let w=0;w<ENV.waves;w++)for(let i=0;i<perWave;i++){
-    const model=models[Math.floor(rng()*models.length)],origin=LZ[Math.floor(rng()*LZ.length)],city=CITIES[Math.floor(rng()*CITIES.length)];
+    const model=models[Math.floor(rng()*models.length)],origin=originFor(model,rng),city=CITIES[Math.floor(rng()*CITIES.length)];
     const spawnT=w*gap+i*lerp(150,30,ENV.intensity/100)*(0.5+rng());makeThreat(model,origin,city,spawnT,rng);}
   let dur=0;for(const t of S.threats)dur=Math.max(dur,t.spawnT+t.totalKm/t.speed*3600);
   ENV.dur=Math.ceil(dur+90);
@@ -375,6 +410,7 @@ function resetDynamic(){
 /* ---------- engine (deterministic) ---------- */
 function step(dt){
   const sh=dt/3600,now=ENV.simT;
+  for(const p of S.pvo)if(p.kind==="air"||p.kind==="ship"){const cur=loiterPos(p,now),pr=loiterPos(p,now-DT);p.pos=cur;p.heading=bearing(pr,cur);}
   for(const th of S.threats)if(!th.active&&!th.dead&&!th.impacted&&now>=th.spawnT){
     th.active=true;th.history=[[...th.pos]];S.effects.push({pos:[th.origin[0],th.origin[1],0],t0:now,kind:"launch"});
     S.events.push({t:now,type:"launch",name:th.uk,pos:[th.origin[0],th.origin[1]],col:th.col});}
@@ -437,22 +473,33 @@ function getTooltip({object}){const th=object&&object.__t;if(!th)return null;
 map.on("click",e=>{
   const info=overlay&&overlay.pickObject({x:e.point.x,y:e.point.y,radius:8,layerIds:["movers"]});
   if(info&&info.object&&info.object.__t){ENV.selected=ENV.selected===info.object.__t.id?0:info.object.__t.id;rebuild();return;}
-  const cfg=PVO[document.getElementById("pvoSel").value];
-  S.pvo.push({id:ENV.seq++,key:document.getElementById("pvoSel").value,name:cfg.name,r:cfg.r,mSpeed:cfg.mSpeed,
-    ignoreCheap:!!cfg.ignoreCheap,antiDrone:!!cfg.antiDrone,ammo0:cfg.ammo,ammo:cfg.ammo,pos:[e.lngLat.lng,e.lngLat.lat],engaged:new Set()});
-  reSim();toast("РОЗГОРНУТО: "+cfg.name);rebuild();});
+  if(ENV.armed){placePVO(ENV.armed,[e.lngLat.lng,e.lngLat.lat]);}});
+
+function addPVO(key,pos){const c=DEF[key];
+  S.pvo.push({id:ENV.seq++,key,name:c.name,r:c.r,mSpeed:c.mSpeed,ignoreCheap:!!c.ignoreCheap,antiDrone:!!c.antiDrone,
+    kind:c.kind,icon:c.icon||null,ammo0:c.ammo,ammo:c.ammo,home:[...pos],pos:[...pos],phase:(ENV.seq*0.7)%6.283,engaged:new Set()});
+  renderChosenPVO();if(ENV.dur>0)reSim();rebuild();}
+function placePVO(key,pos){const c=DEF[key];
+  if(c.kind==="ship"&&!isWater(pos[0],pos[1])){toast("ФЛОТ — ЛИШЕ НА ВОДІ");return;}
+  if(c.kind!=="ship"&&isWater(pos[0],pos[1])){toast("НАЗЕМНІ/АВІАЦІЯ — НА СУШІ");return;}
+  addPVO(key,pos);toast("РОЗГОРНУТО: "+c.name);}
+function placeAuto(key){const c=DEF[key];addPVO(key,c.kind==="ship"?randSea():randLand());toast("РОЗГОРНУТО: "+c.name);}
+function removePVO(id){S.pvo=S.pvo.filter(p=>p.id!==id);renderChosenPVO();if(ENV.dur>0)reSim();rebuild();}
+
 
 /* ---------- radar sweep ---------- */
 function sweepPolys(){const polys=[],deg=(performance.now()/1000*55)%360,span=92,slices=13;
-  for(const p of S.pvo){const R=p.r;for(let s=0;s<slices;s++){const a0=deg-(s/slices)*span,a1=deg-((s+1)/slices)*span,al=Math.round(90*(1-s/slices));
-    polys.push({poly:[[p.pos[0],p.pos[1]],dest(p.pos,R,a0),dest(p.pos,R,(a0+a1)/2),dest(p.pos,R,a1)],c:[52,211,153,al]});}}return polys;}
+  for(const p of S.pvo){const R=p.r,col=DEF_COL[p.kind]||DEF_COL.sam;for(let s=0;s<slices;s++){const a0=deg-(s/slices)*span,a1=deg-((s+1)/slices)*span,al=Math.round(85*(1-s/slices));
+    polys.push({poly:[[p.pos[0],p.pos[1]],dest(p.pos,R,a0),dest(p.pos,R,(a0+a1)/2),dest(p.pos,R,a1)],c:[col[0],col[1],col[2],al]});}}return polys;}
 
 /* ---------- render ---------- */
 function rebuild(){
   if(!overlay)return;
   const movers=[],travel=[],stalks=[],glow=[],marks=[],rings=[],cores=[],samdots=[],samlbl=[],selRing=[];
   const level=new Float32Array(OBLASTS.features.length);
-  for(const p of S.pvo){samdots.push({pos:[p.pos[0],p.pos[1],0]});
+  for(const p of S.pvo){
+    if(p.kind==="sam")samdots.push({pos:[p.pos[0],p.pos[1],0]});
+    else movers.push({pos:[p.pos[0],p.pos[1],0],heading:p.heading||0,icon:p.icon,size:p.kind==="ship"?24:22,color:[255,210,74,235],__t:null});
     if(ENV.ammoLimit)samlbl.push({pos:[p.pos[0],p.pos[1],0],txt:String(p.ammo)});}
   for(const th of S.threats){if(!th.active||th.dead||th.impacted)continue;
     const idx=Math.min(th.seqN,Math.round(th.prog/th.totalKm*th.seqN));
@@ -561,7 +608,7 @@ function updateNav(){document.getElementById("b-play").textContent=ENV.playing?"
 document.getElementById("b-play").onclick=()=>{if(ENV.dur<=0){toast("СПОЧАТКУ НАТИСНИ «АТАКА»");return;}setPlaying(!ENV.playing);};
 document.getElementById("b-reset").onclick=()=>{resetDynamic();setPlaying(false);refreshEventTicks();rebuild();toast("НА ПОЧАТОК");};
 document.getElementById("b-attack").onclick=generateAttack;
-document.getElementById("b-clear").onclick=()=>{S.pvo=[];reSim();rebuild();toast("ППО ПРИБРАНО");};
+document.getElementById("b-clear").onclick=()=>{S.pvo=[];renderChosenPVO();if(ENV.dur>0)reSim();rebuild();toast("ППО ПРИБРАНО");};
 document.getElementById("seek").oninput=e=>{if(ENV.dur<=0)return;simulateTo(e.target.value/1000*ENV.dur);ENV.acc=0;rebuild();};
 document.getElementById("t-base").onclick=()=>{base=base==="dark"?"sat":"dark";
   if(map.getLayer("esri-sat"))map.setLayoutProperty("esri-sat","visibility",base==="sat"?"visible":"none");
@@ -569,12 +616,47 @@ document.getElementById("t-base").onclick=()=>{base=base==="dark"?"sat":"dark";
 function togglePanel(id,btn){const wasShow=document.getElementById(id).classList.contains("show");
   ["settings","journal","legend"].forEach(p=>document.getElementById(p).classList.remove("show"));
   ["t-set","t-jrn","t-legend"].forEach(b=>document.getElementById(b).classList.remove("on"));
-  if(!wasShow){document.getElementById(id).classList.add("show");document.getElementById(btn).classList.add("on");if(id==="journal")renderJournal();}}
+  if(!wasShow){document.getElementById(id).classList.add("show");if(document.getElementById(btn))document.getElementById(btn).classList.add("on");if(id==="journal")renderJournal();}}
 document.getElementById("t-set").onclick=()=>togglePanel("settings","t-set");
+document.getElementById("b-config").onclick=()=>togglePanel("settings","t-set");
 document.getElementById("t-jrn").onclick=()=>togglePanel("journal","t-jrn");
 document.getElementById("t-legend").onclick=()=>togglePanel("legend","t-legend");
-document.getElementById("comp").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;const c=b.dataset.c;
-  ENV.comp[c]=!ENV.comp[c];b.classList.toggle("on",ENV.comp[c]);};
+
+/* ---------- config: ППО + Засоби ---------- */
+function fillSel(id,opts,val){const s=document.getElementById(id);s.innerHTML="";
+  for(const [v,t] of opts){const o=document.createElement("option");o.value=v;o.textContent=t;s.appendChild(o);}
+  s.value=(val!=null?val:(opts[0]&&opts[0][0]));}
+function pvoCatOpts(){return Object.keys(PVO_CAT).map(k=>[k,PVO_CAT_UK[k]]);}
+function pvoAssetOpts(cat){return PVO_CAT[cat].map(k=>[k,DEF[k].name]);}
+function refreshPvoAssets(){fillSel("pvoAsset",pvoAssetOpts(document.getElementById("pvoCat").value));}
+fillSel("pvoCat",pvoCatOpts(),"ground");refreshPvoAssets();
+document.getElementById("pvoCat").onchange=refreshPvoAssets;
+document.getElementById("pvoMode").onclick=e=>{const b=e.target.closest("button");if(!b)return;ENV.pvoMode=b.dataset.m;
+  [...e.currentTarget.children].forEach(c=>c.classList.remove("on"));b.classList.add("on");
+  ENV.armed=null;map.getCanvas().style.cursor="";
+  document.getElementById("pvoModeHint").textContent=ENV.pvoMode==="auto"?"Авто: додаєш — система ставить випадково по карті.":"Ручний: натисни ＋, тоді тапни по карті, щоб поставити.";};
+document.getElementById("pvoAdd").onclick=()=>{const key=document.getElementById("pvoAsset").value;
+  if(ENV.pvoMode==="auto"){placeAuto(key);}
+  else{ENV.armed=ENV.armed===key?null:key;map.getCanvas().style.cursor=ENV.armed?"crosshair":"";
+    toast(ENV.armed?("ТАПНИ КАРТУ: "+DEF[key].name):"РОЗМІЩЕННЯ ВИМКНЕНО");}};
+function renderChosenPVO(){const box=document.getElementById("pvoChosen");box.innerHTML="";
+  for(const p of S.pvo){const row=document.createElement("div");row.className="chosenrow";
+    row.innerHTML=`<span>${p.name}</span>`;const del=document.createElement("button");del.className="delb";del.textContent="✕";
+    del.onclick=()=>removePVO(p.id);row.appendChild(del);box.appendChild(row);}}
+
+function wTypeOpts(m){return Object.keys(ATTACK_TREE[m]).map(t=>[t,TYPE_UK[t]]);}
+function wAssetOpts(m,t){return ATTACK_TREE[m][t].map(k=>[k,WP[k].uk]);}
+function refreshWType(){const m=document.getElementById("wMethod").value;fillSel("wType",wTypeOpts(m));refreshWAsset();}
+function refreshWAsset(){const m=document.getElementById("wMethod").value,t=document.getElementById("wType").value;fillSel("wAsset",wAssetOpts(m,t));}
+fillSel("wMethod",Object.keys(ATTACK_TREE).map(m=>[m,SPOSIB_UK[m]]),"ground");refreshWType();
+document.getElementById("wMethod").onchange=refreshWType;
+document.getElementById("wType").onchange=refreshWAsset;
+document.getElementById("wAdd").onclick=()=>{const k=document.getElementById("wAsset").value;ENV.weapons.add(k);renderChosenWeapons();toast("ДОДАНО: "+WP[k].uk);};
+function renderChosenWeapons(){const box=document.getElementById("wChosen");box.innerHTML="";
+  for(const k of ENV.weapons){const row=document.createElement("div");row.className="chosenrow";
+    row.innerHTML=`<span>${WP[k].uk}</span>`;const del=document.createElement("button");del.className="delb";del.textContent="✕";
+    del.onclick=()=>{ENV.weapons.delete(k);renderChosenWeapons();};row.appendChild(del);box.appendChild(row);}}
+
 document.getElementById("intensity").oninput=e=>{ENV.intensity=+e.target.value;document.getElementById("intVal").textContent=e.target.value;};
 document.getElementById("waves").onclick=e=>{const b=e.target.closest("button");if(!b)return;ENV.waves=+b.dataset.w;
   [...document.getElementById("waves").children].forEach(c=>c.classList.remove("on"));b.classList.add("on");};
