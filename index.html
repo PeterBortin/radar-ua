@@ -149,6 +149,28 @@
   #card .crow{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;margin:3px 0}
   #card .crow span{color:var(--mut)}#card .crow b{color:var(--txt);font-weight:700;text-align:right}
   #sheet.dragging{transition:none!important}
+  .phase{margin-left:auto;display:flex;gap:0;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel);backdrop-filter:blur(8px)}
+  .ps{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:5px 9px;white-space:nowrap}
+  .ps.on{color:#03161b;background:var(--acc);font-weight:700}
+  #setuphint{position:absolute;z-index:6;left:50%;bottom:calc(96px + var(--sb));transform:translateX(-50%);display:none;align-items:center;font-size:9px;letter-spacing:.06em;color:var(--mut);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 13px;backdrop-filter:blur(8px);white-space:nowrap}
+  body[data-phase="setup"] #setuphint{display:flex}
+  #setuphint b{color:var(--acc);margin:0 3px;font-weight:700}
+  #panelLR{position:absolute;right:10px;top:max(150px,calc(var(--st) + 140px));z-index:7;width:200px;display:none;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r2);padding:10px 12px;backdrop-filter:blur(10px);box-shadow:var(--sh1);max-height:60vh;overflow-y:auto}
+  #panelLR.show{display:block}
+  #panelLR .ph{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:9px 0 6px}
+  #panelLR .ph:first-child{margin-top:0}
+  .lr{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--txt);margin:5px 0;cursor:pointer}
+  .lr input{width:16px;height:16px;accent-color:var(--acc)}
+  .lg{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--mut);margin:3px 0}.lg img{width:20px;height:20px}
+  @media(min-width:1000px){
+    #b-cat{display:none!important}
+    #sheet{left:10px;right:auto;top:96px;bottom:96px;width:332px;max-height:none;transform:none!important;border:1px solid var(--line);border-radius:14px}
+    #scrim{display:none!important}
+    #card{left:auto;right:10px;bottom:auto;top:96px;width:300px}
+    #panelLR{top:96px;right:322px}
+    #tlwrap{left:354px;right:322px}
+    #setuphint{left:auto;right:340px;transform:none}
+  }
   #toast{position:absolute;z-index:14;left:50%;top:44%;transform:translate(-50%,-50%);pointer-events:none;padding:8px 16px;border:1px solid var(--acc);
     background:rgba(6,9,14,.92);color:#eef5fb;font-size:11px;letter-spacing:.16em;text-transform:uppercase;border-radius:9px;opacity:0;transition:opacity .25s;max-width:84vw;text-align:center}
   #toast.show{opacity:1}
@@ -166,7 +188,7 @@
 <div id="hud">
   <div class="hrow">
     <div class="brand"><div class="t">Повітряна оборона</div><div class="s">сценарний симулятор · синтетичні дані</div></div>
-    <div class="phase" id="phaseLbl">підготовка</div>
+    <div class="phase" id="phaseLbl"><span class="ps on" data-p="setup">1·Підготовка</span><span class="ps" data-p="run">2·Прогон</span><span class="ps" data-p="report">3·Звіт</span></div>
     <div class="clk" id="clk">00:00:00</div>
   </div>
   <div id="counters">
@@ -182,10 +204,12 @@
 <div id="rtools">
   <button class="tb" id="t-base" title="Супутник">🛰</button>
   <button class="tb" id="t-brush" title="Пензель виділення">✦</button>
+  <button class="tb" id="t-layers" title="Шари та легенда">▦</button>
 </div>
 
 <div id="chip"><span id="chip-txt"></span><button class="x" id="chip-x">✕</button></div>
 <div id="banner">Синтетичні навчальні дані · не реальне відстеження</div>
+<div id="setuphint" class="setuponly"><b>1</b> Каталог ▸ тактика й ППО &nbsp;·&nbsp; <b>2</b> ▶ Пуск</div>
 
 <div id="card"><span class="cx" id="card-x">✕</span><div class="ct" id="card-t"></div><div class="cs" id="card-s"></div></div>
 
@@ -202,6 +226,14 @@
 </div>
 
 <div id="tlwrap"><div class="tlhead"><span id="tl-now">00:00:00</span><span id="tl-end">/ 00:00:00</span></div><canvas id="tlc"></canvas></div>
+<div id="panelLR">
+  <div class="ph">Шари</div>
+  <label class="lr"><input type="checkbox" id="ly-ranges" checked> Зони ППО</label>
+  <label class="lr"><input type="checkbox" id="ly-paths" checked> Траєкторії</label>
+  <label class="lr"><input type="checkbox" id="ly-labels" checked> Підписи міст</label>
+  <div class="ph">Легенда</div>
+  <div id="legendRows"></div>
+</div>
 <div id="scrim"></div>
 <div id="sheet">
   <div class="grip"></div>
@@ -368,7 +400,7 @@ const PLAT_UK={ground:"наземна ПУ",coast:"берег. «Бастіон�
 
 /* ---- ТТХ ППО ---- */
 const PVO={
- patriot:{name:"Patriot PAC-3",r:160,mSpeed:6100,ammo:16,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
+ patriot:{name:"Patriot (PAC-3 + PAC-2)",r:160,mSpeed:6100,ammo:16,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
  samp:{name:"SAMP/T",r:100,mSpeed:5400,ammo:16,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
  s300:{name:"С-300ПС",r:75,mSpeed:6000,ammo:24,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
  hawk:{name:"MIM-23 Hawk",r:40,mSpeed:3000,ammo:18,cr:1,bal:0,dr:1,grp:"Середньої дії"},
@@ -384,6 +416,7 @@ const PVO={
  manpad:{name:"ПЗРК (Stinger/Igla)",r:5,mSpeed:2600,ammo:4,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
  zu23:{name:"ЗУ-23 / Шилка",r:2.5,mSpeed:3000,ammo:60,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"}};
 
+const PATRIOT_LOAD={pac3:6,pac2:10}; // змішаний боєкомплект Patriot
 const CITIES=[["Київ",30.52,50.45,4],["Харків",36.23,49.99,3],["Одеса",30.74,46.48,3],["Дніпро",35.04,48.46,3],
  ["Львів",24.03,49.84,2],["Запоріжжя",35.14,47.84,2],["Миколаїв",31.99,46.97,2],["Кривий Ріг",33.39,47.91,2],
  ["Вінниця",28.48,49.23,1],["Полтава",34.55,49.59,1],["Суми",34.80,50.91,1],["Чернігів",31.29,51.49,1],
@@ -409,7 +442,7 @@ const PRESETS=[
 const SETUP={presetIdx:0,intensity:55,classes:{drone:true,cruise:true,ballistic:true,hyper:true},focusCity:null,pvo:[],tool:null,sel:null};
 const CAP=60,BASE=1; // ×1 = реальний час (1 c відтворення = 1 реальна c); прискорення ×2/×5
 let RUN=null;
-const ENV={phase:"setup",t:0,endT:1,playing:false,speed:2,last:0,sat:false,sel:null,brush:false};
+const ENV={phase:"setup",t:0,endT:1,playing:false,speed:2,last:0,sat:false,sel:null,brush:false,layers:{ranges:true,paths:true,labels:true}};
 
 /* ---- висота ---- */
 function altAt(profile,apo,p){if(profile==="arc")return apo*Math.pow(Math.sin(Math.PI*Math.min(Math.max(p,0),0.999)),0.72)+600;
@@ -417,11 +450,16 @@ function altAt(profile,apo,p){if(profile==="arc")return apo*Math.pow(Math.sin(Ma
 const zmul=pr=>pr==="arc"?2.4:1;
 
 /* ---- вибір зони пуску в межах дальності ---- */
+function isLand(lng,lat){for(const f of OBLASTS.features){const g=f.geometry;
+  if(g.type==="Polygon"){if(inPoly(lng,lat,g.coordinates))return true;}else for(const poly of g.coordinates){if(inPoly(lng,lat,poly))return true;}}return false;}
+function snapToLand(o,target){if(isLand(o[0],o[1]))return o;const br=bearing(o,target);for(let k=1;k<=22;k++){const c=dest(o,k*12,br);if(isLand(c[0],c[1]))return c;}return o;}
 function originFor(w,target){const type=PLAT_LZ[w.plat],cands=LZ.filter(z=>z.t===type);
   const within=cands.filter(z=>hav(z.p,target)<=w.maxRange*0.98);
-  if(within.length){const z=rpick(within);return[z.p[0]+rr(-0.35,0.35),z.p[1]+rr(-0.35,0.35)];}
-  let best=cands[0],bd=Infinity;for(const z of cands){const d=hav(z.p,target);if(d<bd){bd=d;best=z;}}
-  return dest(target,Math.min(bd,w.maxRange*0.92),bearing(target,best.p));}
+  let o;if(within.length){const z=rpick(within);o=[z.p[0]+rr(-0.35,0.35),z.p[1]+rr(-0.35,0.35)];}
+  else{let best=cands[0],bd=Infinity;for(const z of cands){const d=hav(z.p,target);if(d<bd){bd=d;best=z;}}
+    o=dest(target,Math.min(bd,w.maxRange*0.92),bearing(target,best.p));}
+  if(w.plat==="ground"||w.plat==="coast")o=snapToLand(o,target);
+  return o;}
 
 /* ---- упереджувальне наведення ---- */
 function leadSolve(P,T,vKmh,hd,Vi){const la=T[1]*Math.PI/180,kx=111.32*Math.cos(la),ky=110.57;
@@ -455,9 +493,9 @@ function buildRun(seed){
     threats.push({id:i+1,model,w,cat:w.cat,path,total,dur,launchT:launch,hd:bearing(origin,tgt),
       targetName:city[0],outcome:null});}
   // оборона
-  const sams=SETUP.pvo.map(p=>({id:p.id,key:p.key,name:PVO[p.key].name,pos:p.pos,r:PVO[p.key].r,mSpeed:PVO[p.key].mSpeed,
-    cr:PVO[p.key].cr,bal:PVO[p.key].bal,dr:PVO[p.key].dr,ignoreCheap:PVO[p.key].ignoreCheap,gun:PVO[p.key].r<=5,
-    ammoMax:PVO[p.key].ammo,ammoLeft:PVO[p.key].ammo,engaged:new Set()}));
+  const sams=SETUP.pvo.map(p=>{const c=PVO[p.key];const s={id:p.id,key:p.key,name:c.name,pos:p.pos,r:c.r,mSpeed:c.mSpeed,
+    cr:c.cr,bal:c.bal,dr:c.dr,ignoreCheap:c.ignoreCheap,gun:c.r<=5,ammoMax:c.ammo,ammoLeft:c.ammo,engaged:new Set()};
+    if(p.key==="patriot"){s.pac3=PATRIOT_LOAD.pac3;s.pac2=PATRIOT_LOAD.pac2;}return s;});
   const inters=[],events=[];
   let horizon=0;for(const th of threats)horizon=Math.max(horizon,th.launchT+th.dur);
   const DT=2;
@@ -466,15 +504,18 @@ function buildRun(seed){
       const p=(t-th.launchT)/th.dur;
       if(p>=1){th.outcome={kind:"impact",t:th.launchT+th.dur,pos:[th.path[1][0],th.path[1][1],0]};continue;}
       const gp=interp(th.path,p*th.total);const cur=[gp[0],gp[1]];
-      for(const s of sams){if(s.ammoLeft<=0||s.engaged.has(th.id)||!roleOK(s,th.cat))continue;
+      for(const s of sams){if(s.engaged.has(th.id)||!roleOK(s,th.cat))continue;
+        const isBal=(th.cat==="ballistic"||th.cat==="hyper");
+        const pool=s.key==="patriot"?(isBal?"pac3":"pac2"):"ammoLeft";
+        if(s[pool]<=0)continue;
         if(hav(s.pos,cur)>s.r)continue;
         const sol=leadSolve(s.pos,cur,th.w.speed,th.hd,s.mSpeed);if(!sol)continue;
         if(s.mSpeed/3600*sol.tau>s.r*1.3)continue;
-        s.engaged.add(th.id);s.ammoLeft--;
+        s.engaged.add(th.id);s[pool]--;
         const arriveT=t+sol.tau,pp=Math.min(0.999,(arriveT-th.launchT)/th.dur),kp=interp(th.path,pp*th.total);
         const aim=[kp[0],kp[1],altAt(th.w.profile,th.w.apo,pp)*zmul(th.w.profile)];
         const hit=RND()<pkOf(s,th);
-        inters.push({samId:s.id,launchT:t,arriveT,from:[s.pos[0],s.pos[1],60],to:aim,hit});
+        inters.push({samId:s.id,launchT:t,arriveT,from:[s.pos[0],s.pos[1],60],to:aim,hit,pool});
         events.push({t,kind:"samfire",pos:[s.pos[0],s.pos[1],0]});
         if(hit){th.outcome={kind:"kill",t:arriveT,pos:aim,samId:s.id};events.push({t:arriveT,kind:"kill",pos:aim});}
         break;}}}
@@ -502,6 +543,11 @@ function stateAt(t){const air=[],kills=[],booms=[],intersNow=[],fx=[];const coun
   return{air,kills,booms,intersNow,fx,counts,nK,nI};}
 
 /* ============ MAP / RENDER ============ */
+const TIPSTYLE={background:"rgba(6,9,14,.96)",border:"1px solid #1d2a3a",borderRadius:"8px",padding:"6px 9px",color:"#dbe6f1",fontFamily:"Jura,sans-serif",fontSize:"11px",lineHeight:"1.5"};
+function deckTooltip(info){const o=info&&info.object;if(!o)return null;
+  if(o.__a){const th=o.__a.th,a=o.__a;return{html:"<b>"+th.w.uk+"</b><br>"+th.w.speed.toLocaleString("uk")+" км/год · "+(a.alt>=1000?(a.alt/1000).toFixed(1)+" км":Math.round(a.alt)+" м")+"<br>→ "+th.targetName,style:TIPSTYLE};}
+  if(o.key!==undefined&&PVO[o.key]){const c=PVO[o.key];return{html:"<b>"+c.name+"</b><br>дальність "+c.r+" км",style:TIPSTYLE};}
+  return null;}
 const DARK="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const map=new maplibregl.Map({container:"map",style:DARK,center:[31.6,48.7],zoom:5.25,pitch:48,bearing:0,antialias:true,attributionControl:false});
 let overlay=null;
@@ -511,7 +557,7 @@ map.on("load",()=>{patchUk();
   map.addSource("esri",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256});
   const firstSym=(map.getStyle().layers.find(l=>l.type==="symbol")||{}).id;
   map.addLayer({id:"esri-sat",type:"raster",source:"esri",layout:{visibility:"none"}},firstSym);
-  overlay=new MapboxOverlay({interleaved:false,layers:[],getTooltip:null});map.addControl(overlay);render();});
+  overlay=new MapboxOverlay({interleaved:false,layers:[],getTooltip:deckTooltip});map.addControl(overlay);render();});
 
 function render(){if(!overlay)return;
   const st=ENV.phase==="setup"?null:stateAt(ENV.t);
@@ -551,9 +597,9 @@ function render(){if(!overlay)return;
       getLineColor:f=>{const l=level[f.properties.i];return l>=2?[255,90,90,170]:l>=1?[255,80,80,80]:[90,110,130,26];},
       getLineWidth:f=>level[f.properties.i]>=2?1.6:1,lineWidthUnits:"pixels",lineWidthMinPixels:1,parameters:{depthTest:false},
       updateTriggers:{getFillColor:[lk],getLineColor:[lk],getLineWidth:[lk]}}),
-    new ScatterplotLayer({id:"ranges",data:ranges,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:d=>d.r,radiusUnits:"meters",stroked:true,filled:false,getLineColor:[52,211,153,120],getLineWidth:1.2,lineWidthUnits:"pixels",parameters:{depthTest:false}}),
-    new PathLayer({id:"travel",data:travel,getPath:d=>d.path,getColor:d=>d.color,getWidth:2,widthUnits:"pixels",widthMinPixels:1.5,capRounded:true,jointRounded:true,parameters:{depthTest:false}}),
-    new LineLayer({id:"dash",data:dashes,getSourcePosition:d=>d.s,getTargetPosition:d=>d.e,getColor:d=>d.c,getWidth:1.5,parameters:{depthTest:false}}),
+    ENV.layers.ranges?new ScatterplotLayer({id:"ranges",data:ranges,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:d=>d.r,radiusUnits:"meters",stroked:true,filled:false,getLineColor:[52,211,153,120],getLineWidth:1.2,lineWidthUnits:"pixels",parameters:{depthTest:false}}):null,
+    ENV.layers.paths?new PathLayer({id:"travel",data:travel,getPath:d=>d.path,getColor:d=>d.color,getWidth:2,widthUnits:"pixels",widthMinPixels:1.5,capRounded:true,jointRounded:true,parameters:{depthTest:false}}):null,
+    ENV.layers.paths?new LineLayer({id:"dash",data:dashes,getSourcePosition:d=>d.s,getTargetPosition:d=>d.e,getColor:d=>d.c,getWidth:1.5,parameters:{depthTest:false}}):null,
     new LineLayer({id:"stalk",data:stalks,getSourcePosition:d=>d.s,getTargetPosition:d=>d.e,getColor:d=>d.c,getWidth:1,parameters:{depthTest:false}}),
     new ScatterplotLayer({id:"cities",data:CITIES,getPosition:c=>[c[1],c[2],0],getRadius:c=>900+c[3]*420,radiusUnits:"meters",getFillColor:[120,150,175,50],stroked:true,getLineColor:[150,180,205,140],getLineWidth:1,lineWidthUnits:"pixels",radiusMinPixels:2,radiusMaxPixels:7}),
     new ScatterplotLayer({id:"rings",data:rings,getPosition:d=>d.pos,getRadius:d=>d.r,radiusUnits:"meters",stroked:true,filled:false,getLineColor:d=>d.c,getLineWidth:2,lineWidthUnits:"pixels",parameters:{depthTest:false}}),
@@ -562,7 +608,7 @@ function render(){if(!overlay)return;
     new IconLayer({id:"samdots",data:samdots,getPosition:d=>d.pos,getIcon:d=>d.gun?M.samg:M.sam,getSize:24,sizeUnits:"pixels",billboard:true,pickable:true,onClick:onSamClick,parameters:{depthTest:false}}),
     new IconLayer({id:"marks",data:marks,getPosition:d=>d.pos,getIcon:d=>M[d.kind],getSize:d=>d.size,sizeUnits:"pixels",billboard:true,parameters:{depthTest:false}}),
     makeMovers(movers),
-    new TextLayer({id:"clbl",data:CITIES,getPosition:c=>[c[1],c[2],0],getText:c=>c[0],characterSet:"auto",getColor:[160,185,208,150],getSize:c=>9.5+c[3],sizeUnits:"pixels",getPixelOffset:[0,12],fontFamily:"Jura, sans-serif",getTextAnchor:"middle",outlineWidth:2.5,outlineColor:[5,9,14,255],fontSettings:{sdf:true}})
+    ENV.layers.labels?new TextLayer({id:"clbl",data:CITIES,getPosition:c=>[c[1],c[2],0],getText:c=>c[0],characterSet:"auto",getColor:[160,185,208,150],getSize:c=>9.5+c[3],sizeUnits:"pixels",getPixelOffset:[0,12],fontFamily:"Jura, sans-serif",getTextAnchor:"middle",outlineWidth:2.5,outlineColor:[5,9,14,255],fontSettings:{sdf:true}}):null
   ]});
   updateHUD(st);updateCard();if(ENV.phase==="run"&&RUN)drawTimeline();}
 function dashAlong(pts,dashKm,gapKm,col){const segs=[];let carry=0,on=true;
@@ -591,14 +637,19 @@ function fillThreatCard(th){const o=th.outcome,t=ENV.t,col=COL[th.cat],cc="rgb("
     '<div class="crow"><span>дальність</span><b>'+th.w.maxRange+' км</b></div>'+extra+
     '<div class="crow"><span>статус</span><b>'+status+'</b></div>';
   document.getElementById("card").classList.add("show");}
-function fillSamCard(key,id){const cfg=PVO[key];let used=0;if(RUN)used=RUN.inters.filter(z=>z.samId===id&&z.launchT<=ENV.t).length;
-  const roles=[];if(cfg.bal)roles.push("балістика/ПРО");if(cfg.cr)roles.push("крилаті");if(cfg.dr&&!cfg.ignoreCheap)roles.push("дрони");if(cfg.r<=5)roles.push("гармата");
+function fillSamCard(key,id){const cfg=PVO[key];let html;
+  if(key==="patriot"){let u3=0,u2=0;if(RUN)for(const z of RUN.inters){if(z.samId===id&&z.launchT<=ENV.t){if(z.pool==="pac3")u3++;else if(z.pool==="pac2")u2++;}}
+    html='<div class="crow"><span>дальність</span><b>'+cfg.r+' км</b></div>'+
+      '<div class="crow"><span>PAC-3 (балістика/гіперзвук)</span><b>'+(PATRIOT_LOAD.pac3-u3)+' / '+PATRIOT_LOAD.pac3+'</b></div>'+
+      '<div class="crow"><span>PAC-2 (літаки / КР)</span><b>'+(PATRIOT_LOAD.pac2-u2)+' / '+PATRIOT_LOAD.pac2+'</b></div>';}
+  else{let used=0;if(RUN)used=RUN.inters.filter(z=>z.samId===id&&z.launchT<=ENV.t).length;
+    const roles=[];if(cfg.bal)roles.push("балістика/ПРО");if(cfg.cr)roles.push("крилаті");if(cfg.dr&&!cfg.ignoreCheap)roles.push("дрони");if(cfg.r<=5)roles.push("гармата");
+    html='<div class="crow"><span>дальність</span><b>'+cfg.r+' км</b></div>'+
+      '<div class="crow"><span>швидкість ЗКР</span><b>'+cfg.mSpeed.toLocaleString("uk")+' км/год</b></div>'+
+      '<div class="crow"><span>боєкомплект</span><b>'+(cfg.ammo-used)+' / '+cfg.ammo+'</b></div>'+
+      '<div class="crow"><span>цілі</span><b>'+roles.join(", ")+'</b></div>';}
   document.getElementById("card-t").innerHTML='🛡 '+cfg.name;
-  document.getElementById("card-s").innerHTML='<div class="cdesc">Зенітний засіб. Бере цілі за роллю; має скінченний боєкомплект.</div>'+
-    '<div class="crow"><span>дальність</span><b>'+cfg.r+' км</b></div>'+
-    '<div class="crow"><span>швидкість ЗКР</span><b>'+cfg.mSpeed.toLocaleString("uk")+' км/год</b></div>'+
-    '<div class="crow"><span>боєкомплект</span><b>'+(cfg.ammo-used)+' / '+cfg.ammo+'</b></div>'+
-    '<div class="crow"><span>цілі</span><b>'+roles.join(", ")+'</b></div>';
+  document.getElementById("card-s").innerHTML='<div class="cdesc">Зенітний засіб. Бере цілі за роллю; скінченний боєкомплект.</div>'+html;
   document.getElementById("card").classList.add("show");}
 function updateCard(){if(!ENV.sel)return;if(ENV.sel.kind==="threat"){const th=RUN&&RUN.threats.find(x=>x.id===ENV.sel.id);if(th)fillThreatCard(th);}else fillSamCard(ENV.sel.key,ENV.sel.id);}
 document.getElementById("card-x").onclick=()=>{ENV.sel=null;document.getElementById("card").classList.remove("show");};
@@ -622,7 +673,7 @@ requestAnimationFrame(loop);
 /* ============ UI ============ */
 let toT=null;function toast(m){const e=document.getElementById("toast");e.textContent=m;e.classList.add("show");clearTimeout(toT);toT=setTimeout(()=>e.classList.remove("show"),1600);}
 function setPhase(ph){ENV.phase=ph;document.body.dataset.phase=ph;
-  document.getElementById("phaseLbl").textContent=ph==="setup"?"підготовка":ph==="run"?"прогон":"звіт";}
+  document.querySelectorAll(".ps").forEach(s=>s.classList.toggle("on",s.dataset.p===ph));}
 
 /* sheet */
 const sheet=document.getElementById("sheet"),scrim=document.getElementById("scrim"),catBtn=document.getElementById("b-cat");
@@ -664,12 +715,13 @@ function selectPVO(k,row){document.querySelectorAll("#pvolist .row.sel").forEach
 document.getElementById("chip-x").onclick=()=>{SETUP.tool=null;SETUP.sel=null;document.getElementById("chip").classList.remove("show");document.querySelectorAll("#pvolist .row.sel").forEach(r=>r.classList.remove("sel"));};
 let pvoSeq=1;
 map.on("click",e=>{if(ENV.phase!=="setup"||SETUP.tool!=="pvo"||!SETUP.sel)return;
+  if(!isLand(e.lngLat.lng,e.lngLat.lat)){toast("НА ВОДІ НЕ МОЖНА · лише суша");return;}
   SETUP.pvo.push({id:pvoSeq++,key:SETUP.sel,pos:[e.lngLat.lng,e.lngLat.lat]});toast("РОЗГОРНУТО · "+PVO[SETUP.sel].name);render();});
 document.getElementById("b-auto").onclick=()=>{autoDeploy();render();toast("ППО РОЗГОРНУТО ("+SETUP.pvo.length+")");};
 document.getElementById("b-clear").onclick=()=>{SETUP.pvo=[];render();toast("ППО ПРИБРАНО");};
 const SYS_PLAN=[["patriot","Київ"],["iris","Харків"],["nasams","Одеса"],["buk","Дніпро"],["s300","Львів"],["samp","Запоріжжя"],["gepard","Миколаїв"],["skynex","Кривий Ріг"],["hawk","Вінниця"],["irisls","Полтава"],["s125","Суми"],["crotale","Чернігів"]];
 function autoDeploy(){SETUP.pvo=[];const n=Math.round(lerp(5,SYS_PLAN.length,SETUP.intensity/100));
-  for(let i=0;i<n;i++){const[key,cn]=SYS_PLAN[i],c=CITIES.find(x=>x[0]===cn);SETUP.pvo.push({id:pvoSeq++,key,pos:[c[1]+(Math.random()-.5)*0.4,c[2]+(Math.random()-.5)*0.4]});}}
+  for(let i=0;i<n;i++){const[key,cn]=SYS_PLAN[i],c=CITIES.find(x=>x[0]===cn);let pos=[c[1]+(Math.random()-.5)*0.4,c[2]+(Math.random()-.5)*0.4];if(!isLand(pos[0],pos[1]))pos=snapToLand(pos,[c[1],c[2]]);SETUP.pvo.push({id:pvoSeq++,key,pos});}}
 
 /* launch */
 function startRun(seed){RUN=buildRun(seed);ENV.endT=RUN.endT;ENV.t=0;ENV.playing=true;ENV.last=0;setPhase("run");syncPlay();closeSheet();
@@ -727,6 +779,11 @@ document.getElementById("r-setup").onclick=()=>{setPhase("setup");document.getEl
 document.getElementById("t-base").onclick=()=>{ENV.sat=!ENV.sat;if(map.getLayer("esri-sat"))map.setLayoutProperty("esri-sat","visibility",ENV.sat?"visible":"none");
   document.getElementById("t-base").classList.toggle("on",ENV.sat);toast(ENV.sat?"СУПУТНИК":"ТЕМНА КАРТА");};
 
+const LEG=[["drone","Shahed / дрон",false],["cruise","Крилата / КР",false],["ballistic","Балістика",false],["hyper","Гіперзвук",false],["interceptor","Ракета ППО",false],["bomber","Бомбардувальник",true],["mig","МіГ-31К",true],["ship","Корабель",true],["tel","Наземна ПУ",true],["bastion","«Бастіон»",true],["sam","ППО (ЗКР)",true],["samg","ППО (гармата)",true],["skull","Збито",true],["boom","Приліт",true]];
+document.getElementById("legendRows").innerHTML=LEG.map(function(r){return '<div class="lg">'+legIcon(r[0],r[2])+'<span>'+r[1]+'</span></div>';}).join("");
+document.getElementById("t-layers").onclick=()=>{document.getElementById("panelLR").classList.toggle("show");document.getElementById("t-layers").classList.toggle("on");};
+function bindLy(id,key){const el=document.getElementById(id);el.onchange=()=>{ENV.layers[key]=el.checked;render();};}
+bindLy("ly-ranges","ranges");bindLy("ly-paths","paths");bindLy("ly-labels","labels");
 const BrushingExtension=deck.BrushingExtension||deck._BrushingExtension||null;
 const brushExt=BrushingExtension?new BrushingExtension():null;
 function makeBrush(st){return new ScatterplotLayer({id:"brush",data:st.air.map(a=>({pos:[a.pos[0],a.pos[1]]})),getPosition:d=>d.pos,
