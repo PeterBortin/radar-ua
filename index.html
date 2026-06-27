@@ -27,7 +27,17 @@
   .maplibregl-ctrl-group{background:var(--panel)!important;border:1px solid var(--line)!important;backdrop-filter:blur(8px)}
   .maplibregl-ctrl button{filter:invert(1) hue-rotate(180deg) brightness(1.1)}
   #fx{position:absolute;inset:0;z-index:3;pointer-events:none;
-    background:radial-gradient(125% 100% at 50% 40%, transparent 60%, rgba(3,6,10,.55) 100%)}
+    background:
+      radial-gradient(rgba(125,150,170,.05) 1px,transparent 1.4px) 0 0/22px 22px,
+      radial-gradient(125% 100% at 50% 40%, transparent 58%, rgba(2,5,9,.62) 100%)}
+  #fx::before{content:"";position:absolute;inset:0;
+    background:linear-gradient(rgba(86,116,138,.045) 1px,transparent 1px) 0 0/66px 66px,
+              linear-gradient(90deg,rgba(86,116,138,.045) 1px,transparent 1px) 0 0/66px 66px;
+    -webkit-mask:radial-gradient(120% 100% at 50% 42%,#000 52%,transparent 92%);
+    mask:radial-gradient(120% 100% at 50% 42%,#000 52%,transparent 92%)}
+  #fx::after{content:"";position:absolute;inset:0;opacity:.045;
+    background:repeating-linear-gradient(0deg,#9fd4e6 0 1px,transparent 1px 3px)}
+  @media(prefers-reduced-motion:reduce){#fx::after{display:none}}
 
   #hud{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;align-items:flex-start;justify-content:space-between;
     gap:8px;padding:max(8px,env(safe-area-inset-top)) 10px 20px;pointer-events:none;
@@ -358,7 +368,7 @@ function pickMix(mix){let r=Math.random();for(const [k,w] of mix){r-=w;if(r<=0)r
 function tacWeapon(){return TAC&&TAC.mix?pickMix(TAC.mix):pickW();}
 function tacZone(){return TAC&&TAC.zones?LZ[pick(TAC.zones)]:pick(Object.values(LZ));}
 function tacCity(){if(TAC&&TAC.focus){const f=TAC.focus.map(n=>CITIES.find(c=>c[0]===n)).filter(Boolean);if(f.length)return pick(f);}return pick(CITIES);}
-const altAt=(profile,alt,p)=>profile==="arc"?alt*Math.sin(Math.PI*Math.min(p,0.999))+600
+const altAt=(profile,alt,p)=>profile==="arc"?alt*Math.pow(Math.sin(Math.PI*Math.min(p,0.999)),0.72)+600
   :Math.max((p>0.93?alt*(1-(p-0.93)/0.07*0.8):alt)*Math.min(1,p/0.07),40);
 
 /* ---------- state ---------- */
@@ -379,8 +389,10 @@ function spawnThreat(model,path,delay){
     active:false,dead:false,impacted:false,spawnT:ENV.t+delay,engagedBy:new Set(),history:[],oblastSeq,seqN,
     pos:[o[0],o[1],0]});
 }
-function threatTo(model,origin,city,delay){const before=S.threats.length;
-  spawnThreat(model,[[origin[0]+rint(-0.4,0.4),origin[1]+rint(-0.4,0.4)],[city[1]+rint(-0.1,0.1),city[2]+rint(-0.1,0.1)]],delay);
+function threatTo(model,origin,city,delay){const before=S.threats.length;const w=WP[model];
+  let o=[origin[0]+rint(-0.4,0.4),origin[1]+rint(-0.4,0.4)];const tgt=[city[1]+rint(-0.1,0.1),city[2]+rint(-0.1,0.1)];
+  if(hav(o,tgt)>w.maxRange*0.95)o=dest(tgt,w.maxRange*0.9,bearing(tgt,o)); // п.1 — старт у межах реальної дальності
+  spawnThreat(model,[o,tgt],delay);
   if(S.threats.length>before&&typeof city[0]==="string")S.threats[S.threats.length-1].targetName=city[0];}
 function activeCount(){let n=0;for(const t of S.threats)if(t.active&&!t.dead&&!t.impacted)n++;return n;}
 
@@ -451,7 +463,7 @@ function step(dts){
     else if(rem<12)th.curSpeed=th.speed*1.05;else th.curSpeed=th.speed;
     th.prog=Math.min(th.totalKm,th.prog+th.curSpeed*sh);
     const f=th.prog/th.totalKm,p2=interp(th.path,th.prog);
-    th.pos=[p2[0],p2[1],altAt(th.profile,th.alt,f)];th.altitude=th.pos[2];
+    const _aR=altAt(th.profile,th.alt,f);th.altitude=_aR;th.pos=[p2[0],p2[1],th.profile==="arc"?_aR*2.4:_aR];
     const hd=bearing(prev,p2);if(hd)th.heading=hd;
     th.history.push([...th.pos]);if(th.history.length>80)th.history.shift();
     if(th.prog>=th.totalKm){th.impacted=true;th.active=false;ENV.impacts++;
@@ -496,9 +508,12 @@ function sweepPolys(){const polys=[],deg=(performance.now()/1000*55)%360,span=92
 /* ---------- render ---------- */
 function rebuild(){
   if(!overlay)return;
-  const movers=[],travel=[],dashes=[],stalks=[],glow=[],marks=[],rings=[],cores=[],ranges=[],samdots=[],pdots=[],pline=[];
+  const movers=[],travel=[],dashes=[],stalks=[],glow=[],marks=[],rings=[],cores=[],ranges=[],samdots=[],pdots=[],pline=[],cityRings=[],retic=[];
   const level=new Float32Array(OBLASTS.features.length);
   for(const p of S.pvo){ranges.push({pos:p.pos,r:p.r*1000});samdots.push({pos:[p.pos[0],p.pos[1],0]});}
+  // концентричні кільця-цілевказівники навколо міст (топо-стиль референсів)
+  for(const c of CITIES){const base=9000+c[3]*5000;
+    for(let k=0;k<3;k++)cityRings.push({pos:[c[1],c[2]],r:base*(1+k*0.62),a:34-k*9});}
   // pending (малювання маршруту цілі)
   if(pending.pts.length){const col=pending.col||[255,255,255];
     for(const pt of pending.pts)pdots.push({pos:[pt[0],pt[1],0],c:[...col,255]});
@@ -516,6 +531,7 @@ function rebuild(){
       const pulse=200+Math.round(45*(0.5+0.5*Math.sin(ENV.t*0.7+th.id)));
       glow.push({pos:th.pos,r:th.cheap?4000:6500,c:[th.col[0],th.col[1],th.col[2],45]});
       movers.push({pos:th.pos,heading:th.heading,icon:th.icon,size:th.size,color:[th.col[0],th.col[1],th.col[2],pulse],__t:th});
+      if(!th.cheap)retic.push({pos:th.pos,col:[th.col[0],th.col[1],th.col[2]],alt:Math.round(th.altitude)});
       marks.push({pos:[th.origin[0],th.origin[1],0],kind:PLAT_ICON[th.plat],size:PLAT_SIZE[th.plat]});
     }}
   for(const m of S.inter){if(m.done)continue;
@@ -539,6 +555,8 @@ function rebuild(){
       getLineWidth:f=>level[f.properties.i]>=2?1.6:1,lineWidthUnits:"pixels",lineWidthMinPixels:1,parameters:{depthTest:false},
       updateTriggers:{getFillColor:[levelKey],getLineColor:[levelKey],getLineWidth:[levelKey]}}),
     new SolidPolygonLayer({id:"sweep",data:sweepPolys(),getPolygon:d=>d.poly,getFillColor:d=>d.c,parameters:{depthTest:false}}),
+    new ScatterplotLayer({id:"cityRings",data:cityRings,getPosition:d=>d.pos,getRadius:d=>d.r,radiusUnits:"meters",
+      stroked:true,filled:false,getLineColor:d=>[150,180,205,d.a],getLineWidth:1,lineWidthUnits:"pixels",parameters:{depthTest:false}}),
     new ScatterplotLayer({id:"ranges",data:ranges,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:d=>d.r,radiusUnits:"meters",
       stroked:true,filled:false,getLineColor:d=>d.col||[52,211,153,130],getLineWidth:1.3,lineWidthUnits:"pixels",parameters:{depthTest:false}}),
     new PathLayer({id:"travel",data:travel,getPath:d=>d.path,getColor:d=>d.color,getWidth:d=>d.w,widthUnits:"pixels",widthMinPixels:1.5,capRounded:true,jointRounded:true,parameters:{depthTest:false}}),
@@ -555,8 +573,13 @@ function rebuild(){
     new IconLayer({id:"marks",data:marks,getPosition:d=>d.pos,getIcon:d=>M[d.kind],getSize:d=>d.size,sizeUnits:"pixels",billboard:true,parameters:{depthTest:false}}),
     new IconLayer({id:"movers",data:movers,getPosition:d=>d.pos,getIcon:d=>I[d.icon],getSize:d=>d.size,sizeUnits:"pixels",
       getAngle:d=>-d.heading,getColor:d=>d.color,billboard:true,pickable:true,parameters:{depthTest:false}}),
-    new TextLayer({id:"labels",data:movers.filter(m=>m.__t),getPosition:d=>d.pos,getText:d=>"#"+d.__t.id,characterSet:"auto",
-      getColor:d=>[d.color[0],d.color[1],d.color[2],235],getSize:10,sizeUnits:"pixels",getPixelOffset:[13,-11],
+    new ScatterplotLayer({id:"retic",data:retic,getPosition:d=>d.pos,getRadius:13,radiusUnits:"pixels",
+      stroked:true,filled:false,getLineColor:d=>[d.col[0],d.col[1],d.col[2],205],getLineWidth:1.2,lineWidthUnits:"pixels",parameters:{depthTest:false}}),
+    new ScatterplotLayer({id:"retic2",data:retic,getPosition:d=>d.pos,getRadius:19,radiusUnits:"pixels",
+      stroked:true,filled:false,getLineColor:d=>[d.col[0],d.col[1],d.col[2],70],getLineWidth:1,lineWidthUnits:"pixels",parameters:{depthTest:false}}),
+    new TextLayer({id:"labels",data:retic,getPosition:d=>d.pos,
+      getText:d=>d.alt>=1000?(d.alt/1000).toFixed(d.alt>=10000?0:1)+" км":d.alt+" м",characterSet:"auto",
+      getColor:d=>[d.col[0],d.col[1],d.col[2],235],getSize:9.5,sizeUnits:"pixels",getPixelOffset:[17,-14],
       fontFamily:"Jura, sans-serif",getTextAnchor:"start",getAlignmentBaseline:"center",outlineWidth:2,outlineColor:[5,9,14,255],fontSettings:{sdf:true}}),
     new TextLayer({id:"city-labels",data:CITIES,getPosition:c=>[c[1],c[2],0],getText:c=>c[0],characterSet:"auto",
       getColor:[150,180,205,150],getSize:c=>9.5+c[3],sizeUnits:"pixels",getPixelOffset:[0,12],fontFamily:"Jura, sans-serif",
