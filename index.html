@@ -391,7 +391,7 @@ function spawnThreat(model,path,delay){
 }
 function threatTo(model,origin,city,delay){const before=S.threats.length;const w=WP[model];
   let o=[origin[0]+rint(-0.4,0.4),origin[1]+rint(-0.4,0.4)];const tgt=[city[1]+rint(-0.1,0.1),city[2]+rint(-0.1,0.1)];
-  if(hav(o,tgt)>w.maxRange*0.95)o=dest(tgt,w.maxRange*0.9,bearing(tgt,o)); // п.1 — старт у межах реальної дальності
+  if(hav(o,tgt)>w.maxRange*0.95)o=dest(tgt,w.maxRange*0.9,bearing(tgt,o));
   spawnThreat(model,[o,tgt],delay);
   if(S.threats.length>before&&typeof city[0]==="string")S.threats[S.threats.length-1].targetName=city[0];}
 function activeCount(){let n=0;for(const t of S.threats)if(t.active&&!t.dead&&!t.impacted)n++;return n;}
@@ -511,7 +511,6 @@ function rebuild(){
   const movers=[],travel=[],dashes=[],stalks=[],glow=[],marks=[],rings=[],cores=[],ranges=[],samdots=[],pdots=[],pline=[],cityRings=[],retic=[];
   const level=new Float32Array(OBLASTS.features.length);
   for(const p of S.pvo){ranges.push({pos:p.pos,r:p.r*1000});samdots.push({pos:[p.pos[0],p.pos[1],0]});}
-  // концентричні кільця-цілевказівники навколо міст (топо-стиль референсів)
   for(const c of CITIES){const base=9000+c[3]*5000;
     for(let k=0;k<3;k++)cityRings.push({pos:[c[1],c[2]],r:base*(1+k*0.62),a:34-k*9});}
   // pending (малювання маршруту цілі)
