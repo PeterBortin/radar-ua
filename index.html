@@ -117,7 +117,7 @@
   .wide.def{border-color:var(--int);color:var(--int)}.wide.dng{border-color:var(--threat);color:var(--threat)}
 
   /* threat card */
-  #card{position:absolute;z-index:8;left:10px;bottom:calc(80px + var(--sb));width:min(280px,calc(100% - 20px));
+  #card{position:absolute;z-index:8;left:10px;bottom:calc(128px + var(--sb));width:min(280px,calc(100% - 20px));
     border:1px solid var(--line);background:var(--panel2);backdrop-filter:blur(10px);border-radius:var(--r2);box-shadow:var(--sh1);padding:11px 13px;display:none}
   #card.show{display:block}
   #card .ct{font-weight:700;font-size:13px;letter-spacing:.03em}#card .cs{font-size:10.5px;color:var(--mut);line-height:1.7;margin-top:5px}
@@ -140,6 +140,11 @@
   .rbtns button{flex:1;min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--s1);color:var(--txt);font-family:inherit;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
   .rbtns .pri{border-color:var(--acc);color:var(--acc)}
 
+  #tlwrap{position:absolute;left:0;right:0;bottom:calc(70px + var(--sb));z-index:8;display:none;padding:6px 10px 0;background:linear-gradient(0deg,rgba(5,8,12,.92),rgba(5,8,12,.4) 70%,transparent)}
+  body[data-phase="run"] #tlwrap{display:block}
+  .tlhead{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.12em;color:var(--mut);font-variant-numeric:tabular-nums;padding:0 2px 3px;text-transform:uppercase}
+  #tl-now{color:var(--acc)}
+  #tlc{width:100%;height:44px;display:block;touch-action:none;cursor:pointer}
   #toast{position:absolute;z-index:14;left:50%;top:44%;transform:translate(-50%,-50%);pointer-events:none;padding:8px 16px;border:1px solid var(--acc);
     background:rgba(6,9,14,.92);color:#eef5fb;font-size:11px;letter-spacing:.16em;text-transform:uppercase;border-radius:9px;opacity:0;transition:opacity .25s;max-width:84vw;text-align:center}
   #toast.show{opacity:1}
@@ -185,11 +190,13 @@
   <button class="cbtn go setuponly" id="b-launch">▶ Пуск</button>
   <!-- run -->
   <button class="cbtn play runonly" id="b-play">❚❚</button>
+  <button class="cbtn sm runonly" id="b-bk" title="назад">◀◀</button>
+  <button class="cbtn sm runonly" id="b-fw" title="вперед">▶▶</button>
   <div class="speed runonly" id="speeds"></div>
-  <div id="timeline" class="runonly"><input id="scrub" type="range" min="0" max="1000" value="0"></div>
   <button class="cbtn sm runonly" id="b-back" title="До підготовки">⟲</button>
 </div>
 
+<div id="tlwrap"><div class="tlhead"><span id="tl-now">00:00:00</span><span id="tl-end">/ 00:00:00</span></div><canvas id="tlc"></canvas></div>
 <div id="scrim"></div>
 <div id="sheet">
   <div class="grip"></div>
@@ -239,6 +246,7 @@
    Синтетичні навчальні дані. Не реальне відстеження й не система наведення.
    =========================================================================== */
 const {MapboxOverlay,IconLayer,PathLayer,ScatterplotLayer,TextLayer,LineLayer,GeoJsonLayer,SolidPolygonLayer}=deck;
+const SimpleMeshLayer=deck.SimpleMeshLayer||deck._SimpleMeshLayer||null;
 const OBLASTS=JSON.parse(document.getElementById("oblast-data").textContent);
 
 /* ---- RNG (детермінований) ---- */
@@ -299,6 +307,20 @@ const MARK={
  skull(x){x.fillStyle="#e8eef5";x.beginPath();x.arc(0,-3,12,0,7);x.fill();x.fillRect(-8,4,16,9);x.fillStyle="#11161d";x.beginPath();x.arc(-4.6,-3,3.2,0,7);x.fill();x.beginPath();x.arc(4.6,-3,3.2,0,7);x.fill();x.fillRect(-6,10,2,4);x.fillRect(-1,10,2,4);x.fillRect(4,10,2,4);},
  boom(x){const star=(n,r1,r2,c)=>{x.fillStyle=c;x.beginPath();for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2-Math.PI/2,r=i%2?r1:r2;x[i?"lineTo":"moveTo"](Math.cos(a)*r,Math.sin(a)*r);}x.closePath();x.fill();};star(11,7,20,"#ff7a1a");star(11,4,11,"#ffd24a");x.fillStyle="#fff3c4";x.beginPath();x.arc(0,0,4.5,0,7);x.fill();}};
 const I={};for(const k in MOVE)I[k]=makeIcon(MOVE[k],true);
+/* 3D-меш «дротик» для обʼємних іконок (SimpleMeshLayer); запасний шлях — пласка іконка */
+function buildDart(){const v=[[1.3,0,0],[-0.7,0,0.22],[-0.7,0,-0.22],[-0.7,0.34,0],[-0.7,-0.34,0],[-1.0,0,0]];
+  const faces=[[0,3,1],[0,1,4],[0,4,2],[0,2,3],[5,1,3],[5,4,1],[5,2,4],[5,3,2]];const P=[],N=[],IDX=[];let id=0;
+  for(const fa of faces){const a=v[fa[0]],b=v[fa[1]],c=v[fa[2]];
+    const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],wx=c[0]-a[0],wy=c[1]-a[1],wz=c[2]-a[2];
+    let nx=uy*wz-uz*wy,ny=uz*wx-ux*wz,nz=ux*wy-uy*wx;const ln=Math.hypot(nx,ny,nz)||1;nx/=ln;ny/=ln;nz/=ln;
+    for(const p of[a,b,c]){P.push(p[0],p[1],p[2]);N.push(nx,ny,nz);IDX.push(id++);}}
+  return{positions:new Float32Array(P),normals:new Float32Array(N),indices:new Uint16Array(IDX)};}
+const DART=buildDart();
+function makeMovers(data){
+  if(SimpleMeshLayer){return new SimpleMeshLayer({id:"movers",data,mesh:DART,getPosition:d=>d.pos,getColor:d=>d.color,
+    getOrientation:d=>[0,0,90-d.heading],getScale:d=>[d.scale,d.scale,d.scale],sizeScale:1,
+    material:{ambient:0.5,diffuse:0.7,shininess:40,specularColor:[90,90,90]},pickable:true,onClick:onMoverClick,parameters:{depthTest:false}});}
+  return new IconLayer({id:"movers",data,getPosition:d=>d.pos,getIcon:d=>I[d.icon],getSize:d=>d.size,sizeUnits:"pixels",getAngle:d=>-d.heading,getColor:d=>d.color,billboard:true,pickable:true,onClick:onMoverClick,parameters:{depthTest:false}});}
 const M={};for(const k in MARK)M[k]=makeIcon(MARK[k],false);
 function legIcon(key,mark){const c=document.createElement("canvas");c.width=c.height=64;const x=c.getContext("2d");x.translate(32,32);if(!mark)x.fillStyle="#cdd9e4";(mark?MARK:MOVE)[key](x);return`<img src="${c.toDataURL()}"/>`;}
 
@@ -329,21 +351,21 @@ const PLAT_UK={ground:"наземна ПУ",coast:"берег. «Бастіон�
 
 /* ---- ТТХ ППО ---- */
 const PVO={
- patriot:{name:"Patriot PAC-3",r:160,mSpeed:6200,ammo:8,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
- samp:{name:"SAMP/T",r:100,mSpeed:5000,ammo:8,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
- s300:{name:"С-300ПС",r:75,mSpeed:4500,ammo:16,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
- hawk:{name:"MIM-23 Hawk",r:45,mSpeed:3000,ammo:8,cr:1,bal:0,dr:1,grp:"Середньої дії"},
- buk:{name:"Бук-М1",r:35,mSpeed:3500,ammo:8,cr:1,bal:0,dr:1,grp:"Середньої дії"},
- iris:{name:"IRIS-T SLM",r:40,mSpeed:3700,ammo:8,cr:1,bal:0,dr:1,grp:"Середньої дії"},
- s125:{name:"С-125 «Нева»",r:30,mSpeed:3400,ammo:8,cr:1,bal:0,dr:1,grp:"Середньої дії"},
- nasams:{name:"NASAMS",r:25,mSpeed:4100,ammo:6,cr:1,bal:0,dr:1,grp:"Середньої дії"},
- irisls:{name:"IRIS-T SLS",r:12,mSpeed:3600,ammo:12,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
- crotale:{name:"Crotale",r:11,mSpeed:3000,ammo:12,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
- osa:{name:"Оса-АКМ",r:10,mSpeed:3000,ammo:12,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
- gepard:{name:"Gepard",r:4.5,mSpeed:3000,ammo:120,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
- skynex:{name:"Skynex",r:4,mSpeed:3200,ammo:120,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
- manpad:{name:"ПЗРК (Stinger)",r:5,mSpeed:2600,ammo:6,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
- zu23:{name:"ЗУ-23 / Шилка",r:2.5,mSpeed:2500,ammo:400,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"}};
+ patriot:{name:"Patriot PAC-3",r:160,mSpeed:6100,ammo:16,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
+ samp:{name:"SAMP/T",r:100,mSpeed:5400,ammo:16,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
+ s300:{name:"С-300ПС",r:75,mSpeed:6000,ammo:24,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
+ hawk:{name:"MIM-23 Hawk",r:40,mSpeed:3000,ammo:18,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ buk:{name:"Бук-М1",r:35,mSpeed:3000,ammo:12,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ iris:{name:"IRIS-T SLM",r:40,mSpeed:3700,ammo:24,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ s125:{name:"С-125 «Нева»",r:25,mSpeed:3000,ammo:8,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ nasams:{name:"NASAMS",r:25,mSpeed:3600,ammo:18,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ irisls:{name:"IRIS-T SLS",r:12,mSpeed:3000,ammo:12,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
+ crotale:{name:"Crotale",r:11,mSpeed:2900,ammo:8,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
+ osa:{name:"Оса-АКМ",r:10,mSpeed:3000,ammo:6,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
+ gepard:{name:"Gepard (35мм)",r:4,mSpeed:3600,ammo:40,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
+ skynex:{name:"Skynex (35мм)",r:4,mSpeed:3600,ammo:40,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
+ manpad:{name:"ПЗРК (Stinger/Igla)",r:5,mSpeed:2600,ammo:4,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
+ zu23:{name:"ЗУ-23 / Шилка",r:2.5,mSpeed:3000,ammo:60,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"}};
 
 const CITIES=[["Київ",30.52,50.45,4],["Харків",36.23,49.99,3],["Одеса",30.74,46.48,3],["Дніпро",35.04,48.46,3],
  ["Львів",24.03,49.84,2],["Запоріжжя",35.14,47.84,2],["Миколаїв",31.99,46.97,2],["Кривий Ріг",33.39,47.91,2],
@@ -368,7 +390,7 @@ const PRESETS=[
 
 /* ---- стан підготовки ---- */
 const SETUP={presetIdx:0,intensity:55,classes:{drone:true,cruise:true,ballistic:true,hyper:true},focusCity:null,pvo:[],tool:null,sel:null};
-const CAP=60,BASE=60; // BASE: реальних секунд на 1 c відтворення при ×1
+const CAP=60,BASE=1; // ×1 = реальний час (1 c відтворення = 1 реальна c); прискорення ×2/×5
 let RUN=null;
 const ENV={phase:"setup",t:0,endT:1,playing:false,speed:2,last:0,sat:false};
 
@@ -479,7 +501,7 @@ function render(){if(!overlay)return;
   const ranges=[],samdots=[],movers=[],travel=[],dashes=[],stalks=[],glow=[],marks=[],rings=[],cores=[];
   const level=new Float32Array(OBLASTS.features.length);
   // ППО (видно завжди)
-  for(const p of SETUP.pvo){const cfg=PVO[p.key];ranges.push({pos:p.pos,r:cfg.r*1000});samdots.push({pos:[p.pos[0],p.pos[1],0],gun:cfg.r<=5});}
+  for(const p of SETUP.pvo){const cfg=PVO[p.key];ranges.push({pos:p.pos,r:cfg.r*1000});samdots.push({pos:[p.pos[0],p.pos[1],0],gun:cfg.r<=5,key:p.key,id:p.id});}
   if(st){
     for(const a of st.air){const th=a.th,col=COL[th.cat];
       const idx=oblastAt(a.pos[0],a.pos[1]);if(idx>=0)level[idx]=Math.max(level[idx],2);
@@ -491,11 +513,11 @@ function render(){if(!overlay)return;
       dashes.push(...dashAlong(ahead,7,8,[col[0],col[1],col[2],110]));
       stalks.push({s:[a.pos[0],a.pos[1],0],e:a.pos,c:[col[0],col[1],col[2],55]});
       glow.push({pos:a.pos,r:th.cheap?4000:6500,c:[col[0],col[1],col[2],45]});
-      movers.push({pos:a.pos,heading:th.hd,icon:th.icon=th.w.icon,size:th.w.size,color:[col[0],col[1],col[2],230],__a:a});
+      movers.push({pos:a.pos,heading:th.hd,icon:th.icon=th.w.icon,size:th.w.size,scale:th.cheap?5200:8200,color:[col[0],col[1],col[2],230],__a:a});
       marks.push({pos:[th.path[0][0],th.path[0][1],0],kind:PLAT_ICON[th.w.plat],size:20});}
     for(const m of st.intersNow){travel.push({path:[[m.pos[0],m.pos[1],0],m.pos],color:[52,211,153,120]});
       dashes.push(...dashAlong([m.pos,m.to],7,8,[52,211,153,120]));
-      movers.push({pos:m.pos,heading:bearing(m.pos,m.to),icon:"interceptor",size:19,color:[52,211,153,235],__a:null});}
+      movers.push({pos:m.pos,heading:bearing(m.pos,m.to),icon:"interceptor",size:19,scale:5200,color:[52,211,153,235],__a:null});}
     for(const k of st.kills)marks.push({pos:k,kind:"skull",size:24});
     for(const b of st.booms)marks.push({pos:b,kind:"boom",size:28});
     for(const e of st.fx){const k=e.a/e.dur;
@@ -520,12 +542,12 @@ function render(){if(!overlay)return;
     new ScatterplotLayer({id:"rings",data:rings,getPosition:d=>d.pos,getRadius:d=>d.r,radiusUnits:"meters",stroked:true,filled:false,getLineColor:d=>d.c,getLineWidth:2,lineWidthUnits:"pixels",parameters:{depthTest:false}}),
     new ScatterplotLayer({id:"cores",data:cores,getPosition:d=>d.pos,getRadius:d=>d.r,radiusUnits:"meters",getFillColor:d=>d.c,radiusMinPixels:1,parameters:{depthTest:false}}),
     new ScatterplotLayer({id:"glow",data:glow,getPosition:d=>d.pos,getRadius:d=>d.r,radiusUnits:"meters",getFillColor:d=>d.c,radiusMinPixels:6,radiusMaxPixels:24,parameters:{depthTest:false}}),
-    new IconLayer({id:"samdots",data:samdots,getPosition:d=>d.pos,getIcon:d=>d.gun?M.samg:M.sam,getSize:24,sizeUnits:"pixels",billboard:true,parameters:{depthTest:false}}),
+    new IconLayer({id:"samdots",data:samdots,getPosition:d=>d.pos,getIcon:d=>d.gun?M.samg:M.sam,getSize:24,sizeUnits:"pixels",billboard:true,pickable:true,onClick:onSamClick,parameters:{depthTest:false}}),
     new IconLayer({id:"marks",data:marks,getPosition:d=>d.pos,getIcon:d=>M[d.kind],getSize:d=>d.size,sizeUnits:"pixels",billboard:true,parameters:{depthTest:false}}),
-    new IconLayer({id:"movers",data:movers,getPosition:d=>d.pos,getIcon:d=>I[d.icon],getSize:d=>d.size,sizeUnits:"pixels",getAngle:d=>-d.heading,getColor:d=>d.color,billboard:true,pickable:true,onClick:onMoverClick,parameters:{depthTest:false}}),
+    makeMovers(movers),
     new TextLayer({id:"clbl",data:CITIES,getPosition:c=>[c[1],c[2],0],getText:c=>c[0],characterSet:"auto",getColor:[160,185,208,150],getSize:c=>9.5+c[3],sizeUnits:"pixels",getPixelOffset:[0,12],fontFamily:"Jura, sans-serif",getTextAnchor:"middle",outlineWidth:2.5,outlineColor:[5,9,14,255],fontSettings:{sdf:true}})
   ]});
-  updateHUD(st);}
+  updateHUD(st);if(ENV.phase==="run"&&RUN)drawTimeline();}
 function dashAlong(pts,dashKm,gapKm,col){const segs=[];let carry=0,on=true;
   for(let i=0;i<pts.length-1;i++){const A=pts[i],B=pts[i+1],L=hav(A,B);if(L<1e-4)continue;let pos=0;
     while(pos<L){const want=(on?dashKm:gapKm)-carry,take=Math.min(want,L-pos),t0=pos/L,t1=(pos+take)/L;
@@ -552,7 +574,7 @@ const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
 function loop(ts){if(ENV.phase==="run"&&ENV.playing){if(!ENV.last)ENV.last=ts;let dt=(ts-ENV.last)/1000;ENV.last=ts;dt=Math.min(dt,0.05);
     ENV.t+=dt*BASE*ENV.speed;
     if(ENV.t>=ENV.endT){ENV.t=ENV.endT;ENV.playing=false;syncPlay();showReport();}
-    const sc=document.getElementById("scrub");sc.value=Math.round(ENV.t/ENV.endT*1000);}
+  }
   else ENV.last=ts;
   render();requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
@@ -567,7 +589,7 @@ const sheet=document.getElementById("sheet"),scrim=document.getElementById("scri
 function openSheet(){sheet.classList.add("open");scrim.classList.add("show");}
 function closeSheet(){sheet.classList.remove("open");scrim.classList.remove("show");}
 catBtn.onclick=()=>sheet.classList.contains("open")?closeSheet():openSheet();
-scrim.onclick=closeSheet;document.querySelector(".grip").onclick=closeSheet;
+scrim.onclick=closeSheet;
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
   document.getElementById("pane-atk").hidden=t.dataset.t!=="atk";document.getElementById("pane-pvo").hidden=t.dataset.t!=="pvo";});
 
@@ -617,11 +639,41 @@ document.getElementById("b-launch").onclick=()=>{if(SETUP.pvo.length===0)autoDep
 /* run controls */
 function syncPlay(){const b=document.getElementById("b-play");b.textContent=ENV.playing?"❚❚":"▶";}
 document.getElementById("b-play").onclick=()=>{if(ENV.t>=ENV.endT){ENV.t=0;}ENV.playing=!ENV.playing;ENV.last=0;syncPlay();};
-const SP=[1,2,5,10],spEl=document.getElementById("speeds");
+const SP=[1,2,5],spEl=document.getElementById("speeds");
 SP.forEach(s=>{const b=document.createElement("button");b.textContent=s+"×";if(s===ENV.speed)b.className="on";
   b.onclick=()=>{ENV.speed=s;[...spEl.children].forEach(c=>c.className="");b.className="on";};spEl.appendChild(b);});
-document.getElementById("scrub").addEventListener("input",e=>{ENV.t=(+e.target.value/1000)*ENV.endT;ENV.playing=false;ENV.last=0;syncPlay();
-  document.getElementById("report").classList.remove("show");render();});
+const tlc=document.getElementById("tlc");let tlDrag=false;
+function tlSeek(clientX){const r=tlc.getBoundingClientRect(),padX=10,W=Math.max(1,r.width-padX*2);let f=(clientX-r.left-padX)/W;f=Math.max(0,Math.min(1,f));
+  ENV.t=f*ENV.endT;ENV.playing=false;ENV.last=0;syncPlay();document.getElementById("report").classList.remove("show");}
+tlc.addEventListener("pointerdown",e=>{tlDrag=true;try{tlc.setPointerCapture(e.pointerId);}catch(_){}tlSeek(e.clientX);});
+tlc.addEventListener("pointermove",e=>{if(tlDrag)tlSeek(e.clientX);});
+tlc.addEventListener("pointerup",()=>{tlDrag=false;});
+function niceStep(r){const p=Math.pow(10,Math.floor(Math.log10(Math.max(1,r))));const n=r/p,m=n<1.5?1:n<3.5?2:n<7.5?5:10;return m*p;}
+function fmtShort(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60;return h>0?h+":"+String(m).padStart(2,"0"):m+":"+String(ss).padStart(2,"0");}
+function drawTimeline(){const c=tlc;if(!c||ENV.phase!=="run")return;const wcss=c.clientWidth||(window.innerWidth-20),hh=44,dpr=Math.min(2,window.devicePixelRatio||1);
+  if(c.width!==Math.round(wcss*dpr)){c.width=Math.round(wcss*dpr);c.height=Math.round(hh*dpr);}
+  const x=c.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,wcss,hh);
+  const padX=10,W=wcss-padX*2,baseY=26,end=ENV.endT||1;
+  x.strokeStyle="rgba(120,150,175,.28)";x.lineWidth=1;x.beginPath();x.moveTo(padX,baseY);x.lineTo(padX+W,baseY);x.stroke();
+  for(const e of RUN.events){if(e.kind!=="impact"&&e.kind!=="kill")continue;const px=padX+(e.t/end)*W;
+    x.strokeStyle=e.kind==="impact"?"rgba(255,59,59,.65)":"rgba(52,211,153,.6)";x.beginPath();x.moveTo(px,baseY-10);x.lineTo(px,baseY-2);x.stroke();}
+  const sv=niceStep(end/6);x.fillStyle="rgba(160,185,208,.75)";x.font='600 9px Jura,sans-serif';x.textAlign="center";x.textBaseline="top";
+  for(let tt=0;tt<=end+0.5;tt+=sv){const px=padX+(tt/end)*W;x.strokeStyle="rgba(120,150,175,.3)";x.beginPath();x.moveTo(px,baseY-3);x.lineTo(px,baseY+3);x.stroke();x.fillText(fmtShort(tt),px,baseY+6);}
+  const hx=padX+(Math.min(ENV.t,end)/end)*W;x.strokeStyle="#22d3ee";x.lineWidth=2;x.beginPath();x.moveTo(hx,2);x.lineTo(hx,baseY+4);x.stroke();
+  x.fillStyle="#22d3ee";x.beginPath();x.arc(hx,3,3.2,0,7);x.fill();
+  document.getElementById("tl-now").textContent=fmt(ENV.t);document.getElementById("tl-end").textContent="/ "+fmt(end);}
+document.getElementById("b-bk").onclick=()=>{const s=Math.max(20,ENV.endT/30);ENV.t=Math.max(0,ENV.t-s);ENV.playing=false;ENV.last=0;syncPlay();document.getElementById("report").classList.remove("show");};
+document.getElementById("b-fw").onclick=()=>{const s=Math.max(20,ENV.endT/30);ENV.t=Math.min(ENV.endT,ENV.t+s);ENV.playing=false;ENV.last=0;syncPlay();};
+function onSamClick(info){const o=info&&info.object;if(!o||o.key===undefined)return;const cfg=PVO[o.key];
+  let ammoTxt=cfg.ammo+" / "+cfg.ammo;if(RUN){const used=RUN.inters.filter(z=>z.samId===o.id&&z.launchT<=ENV.t).length;ammoTxt=(cfg.ammo-used)+" / "+cfg.ammo;}
+  const roles=[];if(cfg.bal)roles.push("балістика/ПРО");if(cfg.cr)roles.push("крилаті");if(cfg.dr&&!cfg.ignoreCheap)roles.push("дрони");if(cfg.r<=5)roles.push("гармата");
+  document.getElementById("card-t").textContent="🛡 "+cfg.name;
+  document.getElementById("card-s").innerHTML='<span style="color:var(--mut)">дальність:</span> '+cfg.r+' км · ЗКР '+cfg.mSpeed.toLocaleString("uk")+' км/год<br><span style="color:var(--mut)">боєкомплект:</span> '+ammoTxt+'<br><span style="color:var(--mut)">цілі:</span> '+roles.join(", ");
+  document.getElementById("card").classList.add("show");}
+(function(){const grip=document.querySelector(".grip");let y0=null;
+  grip.addEventListener("pointerdown",e=>{y0=e.clientY;try{grip.setPointerCapture(e.pointerId);}catch(_){}});
+  grip.addEventListener("pointermove",e=>{if(y0===null)return;sheet.style.transform="translateY("+Math.max(0,e.clientY-y0)+"px)";});
+  grip.addEventListener("pointerup",e=>{if(y0===null)return;const dy=Math.max(0,e.clientY-y0);sheet.style.transform="";if(dy<6||dy>80)closeSheet();y0=null;});})();
 document.getElementById("b-back").onclick=()=>{setPhase("setup");ENV.playing=false;ENV.t=0;document.getElementById("report").classList.remove("show");render();};
 
 /* report */
