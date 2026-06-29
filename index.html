@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>Повітряна оборона — сценарний симулятор</title>
+<title>Δ⁹ | delta⁹</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jura:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -117,7 +117,7 @@
   .wide.def{border-color:var(--int);color:var(--int)}.wide.dng{border-color:var(--threat);color:var(--threat)}
 
   /* threat card */
-  #card{position:absolute;z-index:8;left:10px;bottom:calc(128px + var(--sb));width:min(280px,calc(100% - 20px));
+  #card{position:absolute;z-index:8;left:10px;bottom:calc(216px + var(--sb));width:min(280px,calc(100% - 20px));
     border:1px solid var(--line);background:var(--panel2);backdrop-filter:blur(10px);border-radius:var(--r2);box-shadow:var(--sh1);padding:11px 13px;display:none}
   #card.show{display:block}
   #card .ct{font-weight:700;font-size:13px;letter-spacing:.03em}#card .cs{font-size:10.5px;color:var(--mut);line-height:1.7;margin-top:5px}
@@ -149,6 +149,29 @@
   #card .crow{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;margin:3px 0}
   #card .crow span{color:var(--mut)}#card .crow b{color:var(--txt);font-weight:700;text-align:right}
   #sheet.dragging{transition:none!important}
+  #banner{display:none}
+  #dock{position:absolute;left:0;right:0;bottom:0;z-index:9;background:linear-gradient(0deg,rgba(5,8,12,.98),rgba(5,8,12,.9));border-top:1px solid var(--line);padding-bottom:calc(6px + var(--sb));backdrop-filter:blur(12px)}
+  #tlbar{padding:6px 10px 2px}
+  #tlbar .tlhead{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.12em;color:var(--mut);text-transform:uppercase;font-variant-numeric:tabular-nums;padding:0 2px 3px}
+  #cols{display:flex;padding:2px 6px 0}
+  .col{flex:1 1 0;min-width:0;padding:6px 8px;display:flex;flex-direction:column;gap:7px}
+  #col-add{border-right:1px solid var(--line2)}
+  body[data-phase="run"] #col-add{opacity:.45;pointer-events:none}
+  .ctitle{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700}
+  .sel{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--mut);font-weight:600}
+  .sel .hint{font-size:8px;color:var(--dim);font-weight:500;letter-spacing:.02em}
+  .sel select{font-family:inherit;font-weight:600;font-size:12px;color:var(--txt);background:var(--s1);border:1px solid var(--line2);border-radius:9px;padding:10px 26px 10px 9px;outline:none;-webkit-appearance:none;appearance:none}
+  #armed{font-size:10px;color:var(--mut);font-weight:600;min-height:13px;line-height:1.35}#armed b{color:var(--acc)}
+  .mini{display:flex;gap:6px}
+  .mini button{flex:1;font-family:inherit;font-size:10px;font-weight:600;color:var(--mut);background:var(--s1);border:1px solid var(--line2);border-radius:8px;padding:8px 4px;cursor:pointer}
+  .simrow{display:flex;align-items:center;gap:7px}
+  .slabel{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;white-space:nowrap}
+  .simbtn{flex:1;font-family:inherit;font-weight:700;font-size:12px;color:var(--txt);background:var(--s1);border:1px solid var(--line);border-radius:10px;height:46px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .simbtn.go{background:var(--int);border-color:var(--int);color:#04201a}
+  .simbtn:active{transform:scale(.97)}
+  .speed{display:flex;gap:3px;flex:1;background:var(--s1);border:1px solid var(--line2);border-radius:10px;padding:4px}
+  .speed button{flex:1;font-family:inherit;font-weight:700;font-size:12px;height:38px;border-radius:7px;border:0;background:transparent;color:var(--mut);cursor:pointer}
+  .speed button.on{background:rgba(34,211,238,.16);color:var(--acc)}
   .phase{margin-left:auto;display:flex;gap:0;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel);backdrop-filter:blur(8px)}
   .ps{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:5px 9px;white-space:nowrap}
   .ps.on{color:#03161b;background:var(--acc);font-weight:700}
@@ -163,13 +186,10 @@
   .lr input{width:16px;height:16px;accent-color:var(--acc)}
   .lg{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--mut);margin:3px 0}.lg img{width:20px;height:20px}
   @media(min-width:1000px){
-    #b-cat{display:none!important}
-    #sheet{left:10px;right:auto;top:96px;bottom:96px;width:332px;max-height:none;transform:none!important;border:1px solid var(--line);border-radius:14px}
-    #scrim{display:none!important}
-    #card{left:auto;right:10px;bottom:auto;top:96px;width:300px}
-    #panelLR{top:96px;right:322px}
-    #tlwrap{left:354px;right:322px}
-    #setuphint{left:auto;right:340px;transform:none}
+    #dock{left:50%;transform:translateX(-50%);max-width:1080px;border-radius:14px 14px 0 0;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+    .col{padding:8px 14px}
+    .sel select{font-size:13px}
+    #card{bottom:calc(228px + var(--sb))}
   }
   #toast{position:absolute;z-index:14;left:50%;top:44%;transform:translate(-50%,-50%);pointer-events:none;padding:8px 16px;border:1px solid var(--acc);
     background:rgba(6,9,14,.92);color:#eef5fb;font-size:11px;letter-spacing:.16em;text-transform:uppercase;border-radius:9px;opacity:0;transition:opacity .25s;max-width:84vw;text-align:center}
@@ -187,7 +207,7 @@
 
 <div id="hud">
   <div class="hrow">
-    <div class="brand"><div class="t">Повітряна оборона</div><div class="s">сценарний симулятор · синтетичні дані</div></div>
+    <div class="brand"><div class="t">Δ⁹</div><div class="s">delta⁹ · синтетичні дані</div></div>
     <div class="phase" id="phaseLbl"><span class="ps on" data-p="setup">1·Підготовка</span><span class="ps" data-p="run">2·Прогон</span><span class="ps" data-p="report">3·Звіт</span></div>
     <div class="clk" id="clk">00:00:00</div>
   </div>
@@ -203,59 +223,25 @@
 
 <div id="rtools">
   <button class="tb" id="t-base" title="Супутник">🛰</button>
-  <button class="tb" id="t-brush" title="Пензель виділення">✦</button>
-  <button class="tb" id="t-layers" title="Шари та легенда">▦</button>
 </div>
-
-<div id="chip"><span id="chip-txt"></span><button class="x" id="chip-x">✕</button></div>
-<div id="banner">Синтетичні навчальні дані · не реальне відстеження</div>
-<div id="setuphint" class="setuponly"><b>1</b> Каталог ▸ тактика й ППО &nbsp;·&nbsp; <b>2</b> ▶ Пуск</div>
 
 <div id="card"><span class="cx" id="card-x">✕</span><div class="ct" id="card-t"></div><div class="cs" id="card-s"></div></div>
+<div id="banner">Синтетичні навчальні дані · не реальне відстеження</div>
 
-<div id="cmd">
-  <!-- setup -->
-  <button class="cbtn setuponly" id="b-cat"><span class="ic">▤</span> Каталог</button>
-  <button class="cbtn go setuponly" id="b-launch">▶ Пуск</button>
-  <!-- run -->
-  <button class="cbtn play runonly" id="b-play">❚❚</button>
-  <button class="cbtn sm runonly" id="b-bk" title="назад">◀◀</button>
-  <button class="cbtn sm runonly" id="b-fw" title="вперед">▶▶</button>
-  <div class="speed runonly" id="speeds"></div>
-  <button class="cbtn sm runonly" id="b-back" title="До підготовки">⟲</button>
-</div>
-
-<div id="tlwrap"><div class="tlhead"><span id="tl-now">00:00:00</span><span id="tl-end">/ 00:00:00</span></div><canvas id="tlc"></canvas></div>
-<div id="panelLR">
-  <div class="ph">Шари</div>
-  <label class="lr"><input type="checkbox" id="ly-ranges" checked> Зони ППО</label>
-  <label class="lr"><input type="checkbox" id="ly-paths" checked> Траєкторії</label>
-  <label class="lr"><input type="checkbox" id="ly-labels" checked> Підписи міст</label>
-  <div class="ph">Легенда</div>
-  <div id="legendRows"></div>
-</div>
-<div id="scrim"></div>
-<div id="sheet">
-  <div class="grip"></div>
-  <div class="tabs"><button class="tab on" data-t="atk">Атака</button><button class="tab" data-t="pvo">Оборона</button></div>
-  <div class="sbody">
-    <div class="pane" id="pane-atk">
-      <div class="grp">Пресет-тактика</div>
-      <div class="chips" id="presets"></div>
-      <div class="grp">Класи цілей (увімкнено)</div>
-      <div class="tog" id="classes"></div>
-      <label class="sl">Інтенсивність нальоту: <b id="int-val">55%</b></label>
-      <input id="intensity" class="big" type="range" min="0" max="100" value="55">
-      <label class="sl">Фокус по цілях: <b id="focus-val">за тактикою</b></label>
-      <div class="chips" id="focus"></div>
+<div id="dock">
+  <div id="tlbar"><div class="tlhead"><span id="tl-now">00:00:00</span><span id="tl-end">/ 00:00:00</span></div><canvas id="tlc"></canvas></div>
+  <div id="cols">
+    <div class="col" id="col-add">
+      <div class="ctitle">Додати на карту</div>
+      <label class="sel">Засіб ППО <span class="hint">тап по суші</span><select id="sel-pvo"></select></label>
+      <label class="sel">Ціль / зброя <span class="hint">тап по точках = траєкторія → Підтвердити</span><select id="sel-threat"></select></label>
+      <div id="armed">Оберіть зі списку</div>
+      <div class="mini"><button id="b-confirm">✓ Підтвердити</button><button id="b-clear">Очистити</button></div>
     </div>
-    <div class="pane" id="pane-pvo" hidden>
-      <div class="swide">
-        <button class="wide def" id="b-auto">🛡 Авто-розставити</button>
-        <button class="wide dng" id="b-clear">✕ Прибрати все</button>
-      </div>
-      <div class="grp">Оберіть систему → тапніть карту</div>
-      <div id="pvolist"></div>
+    <div class="col" id="col-sim">
+      <div class="ctitle">Симуляція</div>
+      <div class="simrow"><button class="simbtn go" id="b-launch">▶ Пуск</button><button class="simbtn" id="b-reset">⟲ Скинути</button></div>
+      <div class="simrow"><span class="slabel">Швидкість</span><div class="speed" id="speeds"></div></div>
     </div>
   </div>
 </div>
@@ -302,6 +288,16 @@ function dest(c,km,brg){const r=Math.PI/180;return[c[0]+(km/(111.32*Math.cos(c[1
 function interp(path,d){let acc=0;for(let i=0;i<path.length-1;i++){const seg=hav(path[i],path[i+1]);
   if(acc+seg>=d){const t=(d-acc)/(seg||1);return[lerp(path[i][0],path[i+1][0],t),lerp(path[i][1],path[i+1][1],t)];}acc+=seg;}
   return path[path.length-1].slice(0,2);}
+function gcInterp(a,b,f){const r=Math.PI/180,la1=a[1]*r,lo1=a[0]*r,la2=b[1]*r,lo2=b[0]*r;
+  const d=2*Math.asin(Math.min(1,Math.sqrt(Math.sin((la2-la1)/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin((lo2-lo1)/2)**2)));
+  if(d<1e-9)return[a[0],a[1]];const A=Math.sin((1-f)*d)/Math.sin(d),B=Math.sin(f*d)/Math.sin(d);
+  const x=A*Math.cos(la1)*Math.cos(lo1)+B*Math.cos(la2)*Math.cos(lo2),y=A*Math.cos(la1)*Math.sin(lo1)+B*Math.cos(la2)*Math.sin(lo2),z=A*Math.sin(la1)+B*Math.sin(la2);
+  return[Math.atan2(y,x)/r,Math.atan2(z,Math.sqrt(x*x+y*y))/r];}
+function nearestCity(p){let best=CITIES[0],bd=Infinity;for(const c of CITIES){const d=hav(p,[c[1],c[2]]);if(d<bd){bd=d;best=c;}}return best;}
+function pathLen(pts){let s=0;for(let i=0;i<pts.length-1;i++)s+=hav(pts[i],pts[i+1]);return s;}
+function posOnPath(pts,total,p){let d=p*total,acc=0;for(let i=0;i<pts.length-1;i++){const seg=hav(pts[i],pts[i+1]);
+  if(acc+seg>=d||i===pts.length-2){const f=seg>1e-9?(d-acc)/seg:0;return{pos:gcInterp(pts[i],pts[i+1],Math.min(1,Math.max(0,f))),hd:bearing(pts[i],pts[i+1])};}acc+=seg;}
+  return{pos:[pts[pts.length-1][0],pts[pts.length-1][1]],hd:bearing(pts[pts.length-2],pts[pts.length-1])};}
 /* point-in-oblast (+coastal fallback) */
 function pip(lng,lat,ring){let c=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
   if(((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi))c=!c;}return c;}
@@ -439,7 +435,7 @@ const PRESETS=[
  {uk:"Удар по енергетиці",mix:[["kab",.3],["x59",.2],["x69",.16],["shahed",.24],["x31p",.1]],focus:["Харків","Запоріжжя","Суми","Дніпро"],count:[12,26]}];
 
 /* ---- стан підготовки ---- */
-const SETUP={presetIdx:0,intensity:55,classes:{drone:true,cruise:true,ballistic:true,hyper:true},focusCity:null,pvo:[],tool:null,sel:null};
+const SETUP={pvo:[],threats:[],tool:null,sel:null,draft:null};
 const CAP=60,BASE=1; // ×1 = реальний час (1 c відтворення = 1 реальна c); прискорення ×2/×5
 let RUN=null;
 const ENV={phase:"setup",t:0,endT:1,playing:false,speed:2,last:0,sat:false,sel:null,brush:false,layers:{ranges:true,paths:true,labels:true}};
@@ -475,23 +471,11 @@ function pkOf(s,th){let b=th.cat==="drone"?(s.gun?0.6:0.85):th.cat==="cruise"?0.
 /* ============ ДЕТЕРМІНОВАНИЙ ПРОГІН ============ */
 function buildRun(seed){
   RND=mulberry32(seed>>>0);
-  const preset=PRESETS[SETUP.presetIdx];
-  const enabled=SETUP.classes;
-  const anyEnabled=Object.values(enabled).some(Boolean);
-  const n=Math.round(lerp(preset.count[0],preset.count[1],SETUP.intensity/100));
-  const focusList=SETUP.focusCity?[CITIES.find(c=>c[0]===SETUP.focusCity)]:(preset.focus?preset.focus.map(nm=>CITIES.find(c=>c[0]===nm)).filter(Boolean):null);
-  const threats=[];let launch=0;const stagger=lerp(7,1.4,SETUP.intensity/100);
-  for(let i=0;i<Math.min(n,CAP);i++){
-    let model=null;for(let tries=0;tries<8;tries++){let r=RND();let m="shahed";for(const[k,w]of preset.mix){r-=w;if(r<=0){m=k;break;}}
-      if(!anyEnabled||enabled[WP[m].cat]){model=m;break;}}
-    if(!model)continue;const w=WP[model];
-    const city=(focusList&&focusList.length?rpick(focusList):rpick(CITIES));
-    const tgt=[city[1]+rr(-0.06,0.06),city[2]+rr(-0.06,0.06)];
-    const origin=originFor(w,tgt);const path=[origin,tgt];const total=hav(origin,tgt);
-    if(total<6)continue;
-    const dur=total/w.speed*3600;launch+=rr(stagger*0.4,stagger*1.6);
-    threats.push({id:i+1,model,w,cat:w.cat,path,total,dur,launchT:launch,hd:bearing(origin,tgt),
-      targetName:city[0],outcome:null});}
+  const threats=[];
+  SETUP.threats.slice(0,CAP).forEach((tt,i)=>{const w=WP[tt.model];const pts=tt.path;if(!pts||pts.length<2)return;
+    const total=pathLen(pts);if(total<2)return;const last=pts[pts.length-1],city=nearestCity(last);
+    threats.push({id:i+1,model:tt.model,w,cat:w.cat,path:pts.map(p=>[p[0],p[1]]),total,dur:total/w.speed*3600,
+      launchT:0,targetName:city[0],outcome:null});});
   // оборона
   const sams=SETUP.pvo.map(p=>{const c=PVO[p.key];const s={id:p.id,key:p.key,name:c.name,pos:p.pos,r:c.r,mSpeed:c.mSpeed,
     cr:c.cr,bal:c.bal,dr:c.dr,ignoreCheap:c.ignoreCheap,gun:c.r<=5,ammoMax:c.ammo,ammoLeft:c.ammo,engaged:new Set()};
@@ -502,24 +486,24 @@ function buildRun(seed){
   for(let t=0;t<=horizon+4;t+=DT){
     for(const th of threats){if(th.outcome||t<th.launchT)continue;
       const p=(t-th.launchT)/th.dur;
-      if(p>=1){th.outcome={kind:"impact",t:th.launchT+th.dur,pos:[th.path[1][0],th.path[1][1],0]};continue;}
-      const gp=interp(th.path,p*th.total);const cur=[gp[0],gp[1]];
+      if(p>=1){const L=th.path[th.path.length-1];th.outcome={kind:"impact",t:th.launchT+th.dur,pos:[L[0],L[1],0]};continue;}
+      const seg=posOnPath(th.path,th.total,p),cur=seg.pos;
       for(const s of sams){if(s.engaged.has(th.id)||!roleOK(s,th.cat))continue;
         const isBal=(th.cat==="ballistic"||th.cat==="hyper");
         const pool=s.key==="patriot"?(isBal?"pac3":"pac2"):"ammoLeft";
         if(s[pool]<=0)continue;
         if(hav(s.pos,cur)>s.r)continue;
-        const sol=leadSolve(s.pos,cur,th.w.speed,th.hd,s.mSpeed);if(!sol)continue;
+        const sol=leadSolve(s.pos,cur,th.w.speed,seg.hd,s.mSpeed);if(!sol)continue;
         if(s.mSpeed/3600*sol.tau>s.r*1.3)continue;
         s.engaged.add(th.id);s[pool]--;
-        const arriveT=t+sol.tau,pp=Math.min(0.999,(arriveT-th.launchT)/th.dur),kp=interp(th.path,pp*th.total);
+        const arriveT=t+sol.tau,pp=Math.min(0.999,(arriveT-th.launchT)/th.dur),kp=posOnPath(th.path,th.total,pp).pos;
         const aim=[kp[0],kp[1],altAt(th.w.profile,th.w.apo,pp)*zmul(th.w.profile)];
         const hit=RND()<pkOf(s,th);
         inters.push({samId:s.id,launchT:t,arriveT,from:[s.pos[0],s.pos[1],60],to:aim,hit,pool});
         events.push({t,kind:"samfire",pos:[s.pos[0],s.pos[1],0]});
         if(hit){th.outcome={kind:"kill",t:arriveT,pos:aim,samId:s.id};events.push({t:arriveT,kind:"kill",pos:aim});}
         break;}}}
-  for(const th of threats){if(!th.outcome)th.outcome={kind:"impact",t:th.launchT+th.dur,pos:[th.path[1][0],th.path[1][1],0]};
+  for(const th of threats){if(!th.outcome){const L=th.path[th.path.length-1];th.outcome={kind:"impact",t:th.launchT+th.dur,pos:[L[0],L[1],0]};}
     events.push({t:th.launchT,kind:"launch",pos:[th.path[0][0],th.path[0][1],0]});
     if(th.outcome.kind==="impact"&&th.w.strike)events.push({t:th.outcome.t,kind:"impact",pos:th.outcome.pos});}
   let endT=0;for(const th of threats)endT=Math.max(endT,th.outcome.t);
@@ -535,8 +519,8 @@ function stateAt(t){const air=[],kills=[],booms=[],intersNow=[],fx=[];const coun
   for(const th of RUN.threats){const o=th.outcome;
     if(t>=o.t){if(o.kind==="kill"){nK++;kills.push(o.pos);}else if(th.w.strike){nI++;booms.push(o.pos);}continue;}
     if(t<th.launchT)continue;
-    const p=Math.min(0.999,(t-th.launchT)/th.dur);const gp=interp(th.path,p*th.total);const alt=altAt(th.w.profile,th.w.apo,p);
-    counts[th.cat]++;air.push({th,pos:[gp[0],gp[1],alt*zmul(th.w.profile)],alt,p});}
+    const p=Math.min(0.999,(t-th.launchT)/th.dur);const sg=posOnPath(th.path,th.total,p),gp=sg.pos,alt=altAt(th.w.profile,th.w.apo,p);
+    counts[th.cat]++;air.push({th,pos:[gp[0],gp[1],alt*zmul(th.w.profile)],alt,p,hd:sg.hd});}
   for(const m of RUN.inters){if(t>=m.launchT&&t<m.arriveT){const f=(t-m.launchT)/((m.arriveT-m.launchT)||1);
     intersNow.push({pos:[lerp(m.from[0],m.to[0],f),lerp(m.from[1],m.to[1],f),lerp(m.from[2],m.to[2],Math.sin(f*Math.PI*0.5))],to:m.to});}}
   for(const e of RUN.events){const a=t-e.t;const dur=e.kind==="impact"?4:e.kind==="launch"?2.6:1.6;if(a>=0&&a<dur)fx.push({kind:e.kind,pos:e.pos,a,dur});}
@@ -565,18 +549,27 @@ function render(){if(!overlay)return;
   const level=new Float32Array(OBLASTS.features.length);
   // ППО (видно завжди)
   for(const p of SETUP.pvo){const cfg=PVO[p.key];ranges.push({pos:p.pos,r:cfg.r*1000});samdots.push({pos:[p.pos[0],p.pos[1],0],gun:cfg.r<=5,key:p.key,id:p.id});}
+  if(ENV.phase==="setup"){
+    for(const tt of SETUP.threats){const w=WP[tt.model],col=COL[w.cat],pts=tt.path,p3=pts.map(q=>[q[0],q[1],0]);
+      travel.push({path:p3,color:[col[0],col[1],col[2],120]});dashes.push(...dashAlong(p3,10,10,[col[0],col[1],col[2],170]));
+      const a=pts[0],b=pts[1]||pts[0];movers.push({pos:[a[0],a[1],0],heading:bearing(a,b),icon:w.icon,size:w.size,scale:5000,color:[col[0],col[1],col[2],235],__a:null});
+      marks.push({pos:[a[0],a[1],0],kind:PLAT_ICON[w.plat],size:18});}
+    if(SETUP.draft&&SETUP.draft.pts.length){const dp=SETUP.draft.pts.map(q=>[q[0],q[1],0]),wd=WP[SETUP.draft.model];
+      if(dp.length>1){travel.push({path:dp,color:[34,211,238,210]});dashes.push(...dashAlong(dp,8,6,[34,211,238,235]));}
+      for(const q of dp)glow.push({pos:q,r:3500,c:[34,211,238,150]});
+      movers.push({pos:dp[0],heading:dp.length>1?bearing(SETUP.draft.pts[0],SETUP.draft.pts[1]):0,icon:wd.icon,size:wd.size,scale:5000,color:[34,211,238,245],__a:null});}}
   if(st){
     for(const a of st.air){const th=a.th,col=COL[th.cat];
       const idx=oblastAt(a.pos[0],a.pos[1]);if(idx>=0)level[idx]=Math.max(level[idx],2);
       const tIdx=oblastAt(th.path[1][0],th.path[1][1]);if(tIdx>=0)level[tIdx]=Math.max(level[tIdx],1);
       // пройдений слід + майбутня дуга
-      const hist=[];for(let k=0;k<=18;k++){const pp=a.p*k/18,g=interp(th.path,pp*th.total);hist.push([g[0],g[1],altAt(th.w.profile,th.w.apo,pp)*zmul(th.w.profile)]);}
+      const hist=[];for(let k=0;k<=18;k++){const pp=a.p*k/18,g=posOnPath(th.path,th.total,pp).pos;hist.push([g[0],g[1],altAt(th.w.profile,th.w.apo,pp)*zmul(th.w.profile)]);}
       travel.push({path:hist,color:[col[0],col[1],col[2],150]});
-      const ahead=[];for(let k=0;k<=14;k++){const pp=a.p+(1-a.p)*k/14,g=interp(th.path,pp*th.total);ahead.push([g[0],g[1],altAt(th.w.profile,th.w.apo,pp)*zmul(th.w.profile)]);}
+      const ahead=[];for(let k=0;k<=14;k++){const pp=a.p+(1-a.p)*k/14,g=posOnPath(th.path,th.total,pp).pos;ahead.push([g[0],g[1],altAt(th.w.profile,th.w.apo,pp)*zmul(th.w.profile)]);}
       dashes.push(...dashAlong(ahead,7,8,[col[0],col[1],col[2],110]));
       stalks.push({s:[a.pos[0],a.pos[1],0],e:a.pos,c:[col[0],col[1],col[2],55]});
       glow.push({pos:a.pos,r:th.cheap?4000:6500,c:[col[0],col[1],col[2],45]});
-      movers.push({pos:a.pos,heading:th.hd,icon:th.icon=th.w.icon,size:th.w.size,scale:th.cheap?5200:8200,color:[col[0],col[1],col[2],230],__a:a});
+      movers.push({pos:a.pos,heading:a.hd,icon:th.icon=th.w.icon,size:th.w.size,scale:th.cheap?5200:8200,color:[col[0],col[1],col[2],230],__a:a});
       marks.push({pos:[th.path[0][0],th.path[0][1],0],kind:PLAT_ICON[th.w.plat],size:20});}
     for(const m of st.intersNow){travel.push({path:[[m.pos[0],m.pos[1],0],m.pos],color:[52,211,153,120]});
       dashes.push(...dashAlong([m.pos,m.to],7,8,[52,211,153,120]));
@@ -591,7 +584,7 @@ function render(){if(!overlay)return;
         if(e.a<0.5)cores.push({pos:e.pos,r:2400*(1-e.a/0.5),c:[255,150,70,220]});}}
   }
   const lk=level.join("");
-  overlay.setProps({layers:[(ENV.brush&&typeof brushExt!=="undefined"&&brushExt&&st)?makeBrush(st):null,
+  overlay.setProps({layers:[
     new GeoJsonLayer({id:"obl",data:OBLASTS,stroked:true,filled:true,
       getFillColor:f=>{const l=level[f.properties.i];return l>=2?[255,45,45,50]:l>=1?[255,60,60,20]:[0,0,0,0];},
       getLineColor:f=>{const l=level[f.properties.i];return l>=2?[255,90,90,170]:l>=1?[255,80,80,80]:[90,110,130,26];},
@@ -675,63 +668,45 @@ let toT=null;function toast(m){const e=document.getElementById("toast");e.textCo
 function setPhase(ph){ENV.phase=ph;document.body.dataset.phase=ph;
   document.querySelectorAll(".ps").forEach(s=>s.classList.toggle("on",s.dataset.p===ph));}
 
-/* sheet */
-const sheet=document.getElementById("sheet"),scrim=document.getElementById("scrim"),catBtn=document.getElementById("b-cat");
-function openSheet(){sheet.classList.add("open");scrim.classList.add("show");}
-function closeSheet(){sheet.classList.remove("open");scrim.classList.remove("show");}
-catBtn.onclick=()=>sheet.classList.contains("open")?closeSheet():openSheet();
-scrim.onclick=closeSheet;
-document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
-  document.getElementById("pane-atk").hidden=t.dataset.t!=="atk";document.getElementById("pane-pvo").hidden=t.dataset.t!=="pvo";});
-
-/* presets */
-const presetsEl=document.getElementById("presets");
-PRESETS.forEach((p,i)=>{const b=document.createElement("button");b.className="pchip"+(i===0?" on":"");b.textContent=p.uk;
-  b.onclick=()=>{SETUP.presetIdx=i;[...presetsEl.children].forEach(c=>c.classList.remove("on"));b.classList.add("on");};presetsEl.appendChild(b);});
-/* classes */
-const CLS=[["drone","Дрони"],["cruise","Крилаті"],["ballistic","Балістика"],["hyper","Гіперзвук"]];
-const classesEl=document.getElementById("classes");
-CLS.forEach(([k,nm])=>{const b=document.createElement("button");b.className="tgl on";b.dataset.c=k;b.textContent=nm;
-  b.onclick=()=>{SETUP.classes[k]=!SETUP.classes[k];b.classList.toggle("on",SETUP.classes[k]);};classesEl.appendChild(b);});
-/* focus */
-const focusEl=document.getElementById("focus");
-const fAll=document.createElement("button");fAll.className="pchip on";fAll.textContent="за тактикою";
-fAll.onclick=()=>{SETUP.focusCity=null;[...focusEl.children].forEach(c=>c.classList.remove("on"));fAll.classList.add("on");document.getElementById("focus-val").textContent="за тактикою";};
-focusEl.appendChild(fAll);
-CITIES.forEach(c=>{const b=document.createElement("button");b.className="pchip";b.textContent=c[0];
-  b.onclick=()=>{SETUP.focusCity=c[0];[...focusEl.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");document.getElementById("focus-val").textContent=c[0];};focusEl.appendChild(b);});
-/* intensity */
-document.getElementById("intensity").oninput=e=>{SETUP.intensity=+e.target.value;document.getElementById("int-val").textContent=SETUP.intensity+"%";};
-
-/* PVO list */
-(function(){const list=document.getElementById("pvolist"),groups={};for(const k in PVO)(groups[PVO[k].grp]=groups[PVO[k].grp]||[]).push(k);
-  for(const g in groups){const gd=document.createElement("div");gd.className="grp";gd.textContent=g;list.appendChild(gd);
-    for(const k of groups[g]){const c=PVO[k],row=document.createElement("button");row.className="row";row.dataset.k=k;
-      let badges="";if(c.bal)badges+='<span class="badge b-abm">ПРО</span>';if(c.cr)badges+='<span class="badge b-cr">крилаті</span>';if(c.dr&&!c.ignoreCheap)badges+='<span class="badge b-dr">дрони</span>';if(c.r<=5)badges+='<span class="badge b-gun">гармата</span>';
-      row.innerHTML=`<span class="ico">${legIcon(c.r<=5?"samg":"sam",true)}</span><span class="info"><span class="nm">${c.name}</span><span class="sub">дальність ${c.r} км · ЗКР ${c.mSpeed.toLocaleString("uk")} · БК ${c.ammo}</span>${badges}</span>`;
-      row.onclick=()=>selectPVO(k,row);list.appendChild(row);}}})();
-function selectPVO(k,row){document.querySelectorAll("#pvolist .row.sel").forEach(r=>r.classList.remove("sel"));row.classList.add("sel");
-  SETUP.tool="pvo";SETUP.sel=k;document.getElementById("chip-txt").textContent="Ставлю: "+PVO[k].name+" · тапніть карту";document.getElementById("chip").classList.add("show");closeSheet();}
-document.getElementById("chip-x").onclick=()=>{SETUP.tool=null;SETUP.sel=null;document.getElementById("chip").classList.remove("show");document.querySelectorAll("#pvolist .row.sel").forEach(r=>r.classList.remove("sel"));};
-let pvoSeq=1;
-map.on("click",e=>{if(ENV.phase!=="setup"||SETUP.tool!=="pvo"||!SETUP.sel)return;
-  if(!isLand(e.lngLat.lng,e.lngLat.lat)){toast("НА ВОДІ НЕ МОЖНА · лише суша");return;}
-  SETUP.pvo.push({id:pvoSeq++,key:SETUP.sel,pos:[e.lngLat.lng,e.lngLat.lat]});toast("РОЗГОРНУТО · "+PVO[SETUP.sel].name);render();});
-document.getElementById("b-auto").onclick=()=>{autoDeploy();render();toast("ППО РОЗГОРНУТО ("+SETUP.pvo.length+")");};
-document.getElementById("b-clear").onclick=()=>{SETUP.pvo=[];render();toast("ППО ПРИБРАНО");};
+/* ---- селекти додавання (єдина оболонка) ---- */
+function closeSheet(){} // сумісність
+let pvoSeq=1,thrSeq=1;
+function fillSelect(id,groupsObj,fmt){const s=document.getElementById(id);s.innerHTML='<option value="">— оберіть —</option>';
+  for(const g in groupsObj){const og=document.createElement("optgroup");og.label=g;for(const k of groupsObj[g]){const o=document.createElement("option");o.value=k;o.textContent=fmt(k);og.appendChild(o);}s.appendChild(og);}}
+const pvoGroups={};for(const k in PVO)(pvoGroups[PVO[k].grp]=pvoGroups[PVO[k].grp]||[]).push(k);
+fillSelect("sel-pvo",pvoGroups,k=>PVO[k].name+" · "+PVO[k].r+" км");
+const CATUK={drone:"БпЛА / дрони",cruise:"Крилаті / КР",ballistic:"Балістичні",hyper:"Гіперзвук"};
+const thrGroups={};for(const k in WP)(thrGroups[CATUK[WP[k].cat]]=thrGroups[CATUK[WP[k].cat]]||[]).push(k);
+fillSelect("sel-threat",thrGroups,k=>WP[k].uk);
+function setArmed(){const a=document.getElementById("armed");
+  if(SETUP.tool==="pvo")a.innerHTML='Ставлю ППО: <b>'+PVO[SETUP.sel].name+'</b> · тап по суші';
+  else if(SETUP.tool==="threat")a.innerHTML='Малюю: <b>'+WP[SETUP.sel].uk+'</b> · точок: <b>'+((SETUP.draft&&SETUP.draft.pts.length)||0)+'</b> → Підтвердити';
+  else a.innerHTML='Розставлено — ППО: <b>'+SETUP.pvo.length+'</b> · цілі: <b>'+SETUP.threats.length+'</b>';}
+document.getElementById("sel-pvo").onchange=e=>{if(!e.target.value){SETUP.tool=null;setArmed();return;}SETUP.tool="pvo";SETUP.sel=e.target.value;SETUP.draft=null;document.getElementById("sel-threat").value="";setArmed();render();};
+document.getElementById("sel-threat").onchange=e=>{if(!e.target.value){SETUP.tool=null;SETUP.draft=null;setArmed();return;}SETUP.tool="threat";SETUP.sel=e.target.value;SETUP.draft={model:e.target.value,pts:[]};document.getElementById("sel-pvo").value="";setArmed();render();};
+map.on("click",e=>{if(ENV.phase!=="setup"||!SETUP.tool||!SETUP.sel)return;const lng=e.lngLat.lng,lat=e.lngLat.lat;
+  if(SETUP.tool==="pvo"){if(!isLand(lng,lat)){toast("НА ВОДІ НЕ МОЖНА · лише суша");return;}
+    SETUP.pvo.push({id:pvoSeq++,key:SETUP.sel,pos:[lng,lat]});toast("ППО · "+PVO[SETUP.sel].name);}
+  else{if(!SETUP.draft)SETUP.draft={model:SETUP.sel,pts:[]};SETUP.draft.pts.push([lng,lat]);toast("ТОЧКА "+SETUP.draft.pts.length+" · Підтвердь траєкторію");}
+  setArmed();render();});
+document.getElementById("b-clear").onclick=()=>{SETUP.pvo=[];SETUP.threats=[];SETUP.draft=null;SETUP.tool=null;SETUP.sel=null;document.getElementById("sel-pvo").value="";document.getElementById("sel-threat").value="";setArmed();render();toast("ОЧИЩЕНО");};
+document.getElementById("b-confirm").onclick=()=>{if(!SETUP.draft||SETUP.draft.pts.length<2){toast("ПОСТАВ ≥2 ТОЧКИ ТРАЄКТОРІЇ");return;}
+  if(SETUP.threats.length>=CAP){toast("ЛІМІТ ЦІЛЕЙ "+CAP);return;}
+  const c=nearestCity(SETUP.draft.pts[SETUP.draft.pts.length-1]);
+  SETUP.threats.push({id:thrSeq++,model:SETUP.draft.model,path:SETUP.draft.pts.slice()});
+  SETUP.draft={model:SETUP.draft.model,pts:[]};setArmed();render();toast("ЦІЛЬ ЗАФІКСОВАНО → "+c[0]);};
 const SYS_PLAN=[["patriot","Київ"],["iris","Харків"],["nasams","Одеса"],["buk","Дніпро"],["s300","Львів"],["samp","Запоріжжя"],["gepard","Миколаїв"],["skynex","Кривий Ріг"],["hawk","Вінниця"],["irisls","Полтава"],["s125","Суми"],["crotale","Чернігів"]];
-function autoDeploy(){SETUP.pvo=[];const n=Math.round(lerp(5,SYS_PLAN.length,SETUP.intensity/100));
+function autoDeploy(){SETUP.pvo=[];const n=SYS_PLAN.length;
   for(let i=0;i<n;i++){const[key,cn]=SYS_PLAN[i],c=CITIES.find(x=>x[0]===cn);let pos=[c[1]+(Math.random()-.5)*0.4,c[2]+(Math.random()-.5)*0.4];if(!isLand(pos[0],pos[1]))pos=snapToLand(pos,[c[1],c[2]]);SETUP.pvo.push({id:pvoSeq++,key,pos});}}
 
 /* launch */
 function startRun(seed){RUN=buildRun(seed);ENV.endT=RUN.endT;ENV.t=0;ENV.playing=true;ENV.last=0;setPhase("run");syncPlay();closeSheet();
   document.getElementById("card").classList.remove("show");document.getElementById("report").classList.remove("show");}
-document.getElementById("b-launch").onclick=()=>{if(SETUP.pvo.length===0)autoDeploy();startRun((Math.random()*1e9)>>>0);toast("ПУСК · "+PRESETS[SETUP.presetIdx].uk.toUpperCase());};
+document.getElementById("b-launch").onclick=()=>{if(ENV.phase!=="run"){if(!SETUP.threats.length){toast("ДОДАЙ ЦІЛЬ: ОБЕРИ ЗБРОЮ Й НАМАЛЮЙ ТРАЄКТОРІЮ");return;}startRun((Math.random()*1e9)>>>0);toast("ПУСК · цілей "+SETUP.threats.length);}else{if(ENV.t>=ENV.endT)ENV.t=0;ENV.playing=!ENV.playing;ENV.last=0;syncPlay();}};
 
 /* run controls */
-function syncPlay(){const b=document.getElementById("b-play");b.textContent=ENV.playing?"❚❚":"▶";}
-document.getElementById("b-play").onclick=()=>{if(ENV.t>=ENV.endT){ENV.t=0;}ENV.playing=!ENV.playing;ENV.last=0;syncPlay();};
-const SP=[1,2,5],spEl=document.getElementById("speeds");
+function syncPlay(){const b=document.getElementById("b-launch");if(!b)return;b.innerHTML=ENV.phase!=="run"?"▶ Пуск":(ENV.playing?"❚❚ Пауза":"▶ Далі");}
+const SP=[1,2,5,10],spEl=document.getElementById("speeds");
 SP.forEach(s=>{const b=document.createElement("button");b.textContent=s+"×";if(s===ENV.speed)b.className="on";
   b.onclick=()=>{ENV.speed=s;[...spEl.children].forEach(c=>c.className="");b.className="on";};spEl.appendChild(b);});
 const tlc=document.getElementById("tlc");let tlDrag=false;
@@ -754,15 +729,9 @@ function drawTimeline(){const c=tlc;if(!c||ENV.phase!=="run")return;const wcss=c
   const hx=padX+(Math.min(ENV.t,end)/end)*W;x.strokeStyle="#22d3ee";x.lineWidth=2;x.beginPath();x.moveTo(hx,2);x.lineTo(hx,baseY+4);x.stroke();
   x.fillStyle="#22d3ee";x.beginPath();x.arc(hx,3,3.2,0,7);x.fill();
   document.getElementById("tl-now").textContent=fmt(ENV.t);document.getElementById("tl-end").textContent="/ "+fmt(end);}
-document.getElementById("b-bk").onclick=()=>{const s=Math.max(20,ENV.endT/30);ENV.t=Math.max(0,ENV.t-s);ENV.playing=false;ENV.last=0;syncPlay();document.getElementById("report").classList.remove("show");};
-document.getElementById("b-fw").onclick=()=>{const s=Math.max(20,ENV.endT/30);ENV.t=Math.min(ENV.endT,ENV.t+s);ENV.playing=false;ENV.last=0;syncPlay();};
+document.getElementById("b-reset").onclick=()=>{location.reload();};
 function onSamClick(info){const o=info&&info.object;if(!o||o.key===undefined)return;ENV.sel={kind:"sam",id:o.id,key:o.key};updateCard();}
-(function(){const grip=document.querySelector(".grip");let y0=null,lastY=0,lastT=0,vel=0,moved=false;
-  function down(e){y0=e.clientY;lastY=e.clientY;lastT=performance.now();vel=0;moved=false;sheet.classList.add("dragging");try{grip.setPointerCapture(e.pointerId);}catch(_){}}
-  function move(e){if(y0===null)return;const dy=Math.max(0,e.clientY-y0);if(dy>3)moved=true;sheet.style.transform="translateY("+dy+"px)";const now=performance.now();if(now>lastT){vel=(e.clientY-lastY)/(now-lastT);lastY=e.clientY;lastT=now;}}
-  function up(e){if(y0===null)return;const dy=Math.max(0,e.clientY-y0);sheet.classList.remove("dragging");sheet.style.transform="";if(!moved||dy>110||vel>0.55)closeSheet();y0=null;}
-  grip.addEventListener("pointerdown",down);grip.addEventListener("pointermove",move);grip.addEventListener("pointerup",up);grip.addEventListener("pointercancel",up);})();
-document.getElementById("b-back").onclick=()=>{setPhase("setup");ENV.playing=false;ENV.t=0;document.getElementById("report").classList.remove("show");render();};
+/* шторку замінено докою; свайп не потрібен */
 
 /* report */
 function showReport(){const s=RUN.stat;set("r-int",s.killed);set("r-imp",s.impacted);
@@ -773,24 +742,13 @@ function showReport(){const s=RUN.stat;set("r-int",s.killed);set("r-imp",s.impac
   document.getElementById("r-types").innerHTML=html;document.getElementById("report").classList.add("show");}
 document.getElementById("r-again").onclick=()=>{startRun(RUN.seed);};
 document.getElementById("r-new").onclick=()=>{startRun((Math.random()*1e9)>>>0);};
-document.getElementById("r-setup").onclick=()=>{setPhase("setup");document.getElementById("report").classList.remove("show");ENV.t=0;render();};
+document.getElementById("r-setup").onclick=()=>{setPhase("setup");document.getElementById("report").classList.remove("show");ENV.t=0;syncPlay();render();};
 
 /* base toggle */
 document.getElementById("t-base").onclick=()=>{ENV.sat=!ENV.sat;if(map.getLayer("esri-sat"))map.setLayoutProperty("esri-sat","visibility",ENV.sat?"visible":"none");
   document.getElementById("t-base").classList.toggle("on",ENV.sat);toast(ENV.sat?"СУПУТНИК":"ТЕМНА КАРТА");};
 
-const LEG=[["drone","Shahed / дрон",false],["cruise","Крилата / КР",false],["ballistic","Балістика",false],["hyper","Гіперзвук",false],["interceptor","Ракета ППО",false],["bomber","Бомбардувальник",true],["mig","МіГ-31К",true],["ship","Корабель",true],["tel","Наземна ПУ",true],["bastion","«Бастіон»",true],["sam","ППО (ЗКР)",true],["samg","ППО (гармата)",true],["skull","Збито",true],["boom","Приліт",true]];
-document.getElementById("legendRows").innerHTML=LEG.map(function(r){return '<div class="lg">'+legIcon(r[0],r[2])+'<span>'+r[1]+'</span></div>';}).join("");
-document.getElementById("t-layers").onclick=()=>{document.getElementById("panelLR").classList.toggle("show");document.getElementById("t-layers").classList.toggle("on");};
-function bindLy(id,key){const el=document.getElementById(id);el.onchange=()=>{ENV.layers[key]=el.checked;render();};}
-bindLy("ly-ranges","ranges");bindLy("ly-paths","paths");bindLy("ly-labels","labels");
-const BrushingExtension=deck.BrushingExtension||deck._BrushingExtension||null;
-const brushExt=BrushingExtension?new BrushingExtension():null;
-function makeBrush(st){return new ScatterplotLayer({id:"brush",data:st.air.map(a=>({pos:[a.pos[0],a.pos[1]]})),getPosition:d=>d.pos,
-  getRadius:11,radiusUnits:"pixels",radiusMinPixels:11,stroked:true,filled:false,getLineColor:[34,211,238,255],getLineWidth:2,lineWidthUnits:"pixels",
-  brushingEnabled:true,brushingRadius:110000,brushingTarget:"source",extensions:brushExt?[brushExt]:[],parameters:{depthTest:false}});}
-document.getElementById("t-brush").onclick=()=>{if(!brushExt){toast("ПЕНЗЕЛЬ НЕДОСТУПНИЙ У ЦІЙ ЗБІРЦІ");return;}ENV.brush=!ENV.brush;
-  document.getElementById("t-brush").classList.toggle("on",ENV.brush);toast(ENV.brush?"ПЕНЗЕЛЬ: ВЕДИ ПАЛЬЦЕМ ПО КАРТІ":"ПЕНЗЕЛЬ ВИМКНЕНО");};
+setArmed();
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>render());
 </script>
 </body>
