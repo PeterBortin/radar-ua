@@ -8,334 +8,939 @@
 <body>
 <x-dc>
 <helmet>
-<meta name="design_doc_mode" content="canvas">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: #040706; color: #bff5da; font-family: 'Share Tech Mono', monospace; }
-  a { color: #22ff99; text-decoration: none; border-bottom: 1px dotted rgba(34,255,153,.5); }
-  a:hover { color: #7dffc4; border-bottom-color: #7dffc4; }
-  @keyframes sweep { to { transform: rotate(360deg); } }
-  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-  @keyframes flick { 0%,100% { opacity: .5; } 92% { opacity: .5; } 94% { opacity: .35; } 96% { opacity: .55; } }
+@font-face{font-family:'SF Pro Text';src:url('uploads/SF-Pro-Text-Regular.otf') format('opentype');font-weight:400;font-display:swap;}
+@font-face{font-family:'SF Pro Text';src:url('uploads/SF-Pro-Text-Medium.otf') format('opentype');font-weight:500;font-display:swap;}
+@font-face{font-family:'SF Pro Text';src:url('uploads/SF-Pro-Text-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
+@font-face{font-family:'SF Pro Text';src:url('uploads/SF-Pro-Text-Bold.otf') format('opentype');font-weight:700;font-display:swap;}
+@font-face{font-family:'SF Pro Display';src:url('uploads/SF-Pro-Display-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
+@font-face{font-family:'SF Pro Display';src:url('uploads/SF-Pro-Display-Bold.otf') format('opentype');font-weight:700;font-display:swap;}
+:root{--bg:#040706;--panel:rgba(6,13,10,.82);--border:rgba(34,255,153,.22);--green:#22ff99;--dim:#0fae74;--amber:#ffb84d;--red:#ff5555;--blue:#4ec3ff;--gold:#ffd24d;--mpvo:#e1ff00;--text:#bff5da;--muted:#4f8570;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;width:100%;margin:0;background:var(--bg);color:var(--text);font-family:'SF Pro Text',-apple-system,sans-serif;overflow:hidden;}
+#map{position:absolute;inset:0;z-index:1;background:#050a08;}
+.leaflet-container{background:#050a08;font-family:inherit;}
+a{color:var(--green);} a:hover{color:#7dffc4;}
+.radar-container{display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.radar-sweep{position:absolute;border-radius:50%;background:conic-gradient(from 0deg,rgba(34,255,153,.30),rgba(34,255,153,.05) 55deg,rgba(34,255,153,0) 82deg);animation:radarSpin 4s linear infinite;pointer-events:none;will-change:transform;box-shadow:inset 0 0 0 1px rgba(34,255,153,.16);}
+@keyframes radarSpin{from{transform:rotate(360deg);}to{transform:rotate(0deg);}}
+.rotated-icon{display:flex;align-items:center;justify-content:center;width:30px;height:30px;transform-origin:center;will-change:transform;}
+.static-icon,.event-marker{display:flex;align-items:center;justify-content:center;}
+.obj-toolbar{position:absolute;background:var(--panel);color:#eafff4;padding:3px 7px;backdrop-filter:blur(6px);border-radius:5px;font-size:10px;pointer-events:none;z-index:600;transform:translate(14px,-14px);white-space:nowrap;border:1px solid var(--border);line-height:1.35;}
+.explosion{position:absolute;width:60px;height:60px;background:radial-gradient(circle,#fff 10%,var(--red) 30%,transparent 70%);border-radius:50%;z-index:700;animation:explode .5s ease-out forwards;pointer-events:none;transform:translate(-50%,-50%);}
+@keyframes explode{0%{transform:translate(-50%,-50%) scale(0);opacity:1;}100%{transform:translate(-50%,-50%) scale(3);opacity:0;}}
+.map-notification{position:absolute;padding:6px 11px;border-radius:6px;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;z-index:750;pointer-events:none;animation:floatUp 3s ease-out forwards;border:1px solid rgba(255,255,255,.2);box-shadow:0 4px 15px rgba(0,0,0,.5);backdrop-filter:blur(4px);letter-spacing:.5px;}
+@keyframes floatUp{0%{transform:translate(-50%,0);opacity:0;}10%{transform:translate(-50%,-18px);opacity:1;}80%{opacity:1;}100%{transform:translate(-50%,-56px);opacity:0;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes pulseRed{0%{box-shadow:0 0 0 0 rgba(255,85,85,.6);}70%{box-shadow:0 0 0 10px rgba(255,85,85,0);}100%{box-shadow:0 0 0 0 rgba(255,85,85,0);}}
+.hud-top{position:absolute;top:0;left:0;right:0;z-index:900;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:linear-gradient(180deg,rgba(4,7,6,.92),rgba(4,7,6,0));pointer-events:none;flex-wrap:wrap;}
+.hud-top>*{pointer-events:auto;}
+.ht-left{display:flex;align-items:center;gap:9px;}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s infinite;}
+.clock{font-family:'SF Pro Display';font-weight:600;font-size:18px;color:#eafff4;letter-spacing:.5px;font-variant-numeric:tabular-nums;}
+.ht-sub{font-size:10px;color:var(--muted);letter-spacing:1px;}
+.ht-title{font-family:'SF Pro Display';font-weight:700;font-size:12px;letter-spacing:3px;color:var(--dim);}
+.ht-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.chip{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--border);padding:5px 9px;border-radius:7px;backdrop-filter:blur(6px);}
+.chip i{font-size:11px;color:var(--muted);}
+.chip-red i{color:var(--red);}.chip-green i{color:var(--green);}.chip-gold i{color:var(--gold);}.chip-blue i{color:var(--blue);}.chip-yellow i{color:var(--mpvo);}
+.chip b{color:#eafff4;font-weight:600;}
+.lang{display:flex;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:3px;backdrop-filter:blur(6px);}
+.lang span{font-size:11px;padding:4px 8px;border-radius:5px;color:var(--muted);cursor:pointer;}
+.lang span.active{background:var(--green);color:#040706;font-weight:600;}
+.stat-cluster{position:absolute;bottom:24px;left:16px;z-index:850;display:flex;gap:8px;}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 12px;backdrop-filter:blur(6px);min-width:66px;text-align:center;}
+.stat-n{font-family:'SF Pro Display';font-weight:700;font-size:19px;color:#eafff4;line-height:1;}
+.stat-l{font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:4px;}
+.detail-card{position:absolute;top:60px;right:16px;width:252px;z-index:880;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px;backdrop-filter:blur(10px);box-shadow:0 12px 40px rgba(0,0,0,.5);transform:translateX(20px);opacity:0;pointer-events:none;transition:all .2s;}
+.detail-card.show{transform:none;opacity:1;pointer-events:auto;}
+.detail-card.hostile{border-color:rgba(255,85,85,.45);}
+.dc-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+#dcName{font-family:'SF Pro Display';font-weight:600;font-size:14px;color:#eafff4;flex:1;}
+.dc-badge{font-size:9px;padding:2px 6px;border-radius:3px;border:1px solid var(--red);color:var(--red);white-space:nowrap;}
+.dc-badge.friend{border-color:var(--green);color:var(--green);}
+.dc-close{color:var(--muted);cursor:pointer;font-size:13px;}
+.dc-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px 8px;}
+.dc-cell .k{font-size:9px;color:var(--muted);}
+.dc-cell .v{font-size:15px;color:#eafff4;font-family:'SF Pro Display';font-weight:600;}
+.dc-bar{margin-top:13px;}
+.dc-bar-head{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:4px;}
+.dc-bar-track{height:6px;background:rgba(34,255,153,.12);border-radius:3px;overflow:hidden;}
+.dc-bar-fill{height:100%;background:linear-gradient(90deg,var(--dim),var(--green));box-shadow:0 0 8px var(--green);transition:width .3s;}
+.dock{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:900;display:flex;flex-direction:column;gap:10px;width:min(720px,calc(100% - 24px));}
+.dock-selects{display:flex;gap:10px;}
+.tool-card{flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 10px;backdrop-filter:blur(10px);cursor:pointer;}
+.tool-card.active{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green);}
+#targetCard.active{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red);}
+.tc-label{display:block;font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:6px;}
+select{width:100%;background:#0a1310;color:#eafff4;border:1px solid var(--border);border-radius:6px;padding:7px;font-family:inherit;font-size:12px;outline:none;}
+optgroup{background:#040706;color:var(--muted);}
+option{background:#0a1310;color:#eafff4;}
+.dock-actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
+.btn{width:46px;height:46px;border-radius:50%;border:1px solid var(--border);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;backdrop-filter:blur(8px);transition:.15s;flex-shrink:0;}
+.btn:hover{border-color:var(--green);color:#eafff4;}
+.btn:active{transform:scale(.92);}
+.btn.on{border-color:var(--green);color:var(--green);}
+.btn-play{width:58px;height:58px;background:var(--green);color:#040706;border:none;font-size:20px;box-shadow:0 0 22px rgba(34,255,153,.45);}
+.btn-play.simulating{background:#0a1310;color:var(--green);border:1px solid var(--green);box-shadow:none;}
+.btn-play.confirm{background:var(--green);color:#040706;box-shadow:0 0 26px rgba(34,255,153,.6);}
+.btn-undo{opacity:.3;pointer-events:none;}
+.btn-undo.visible{opacity:1;pointer-events:auto;}
+.btn-attack{background:rgba(139,0,0,.5);border:1px solid var(--red);color:#fff;display:none;animation:pulseRed 2s infinite;}
+.btn-attack:disabled{opacity:.4;animation:none;cursor:not-allowed;}
+.speed-pill{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:4px;backdrop-filter:blur(8px);}
+.speed-pill span{padding:6px 9px;border-radius:6px;font-size:12px;color:var(--muted);cursor:pointer;}
+.speed-pill span.active{background:var(--green);color:#040706;font-weight:600;}
+#timelinePanel{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);width:min(680px,calc(100% - 24px));background:var(--panel);border:1px solid var(--border);border-radius:12px;z-index:950;padding:14px 16px 16px;backdrop-filter:blur(12px);box-shadow:0 12px 40px rgba(0,0,0,.6);display:none;}
+#timelinePanel.show{display:block;}
+.tl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.tl-title{font-family:'SF Pro Display';font-weight:600;font-size:11px;letter-spacing:1px;color:#eafff4;}
+.tl-time{font-size:12px;color:var(--green);font-variant-numeric:tabular-nums;}
+.tl-track{position:relative;height:44px;cursor:pointer;touch-action:none;}
+.tl-rail{position:absolute;top:24px;left:0;right:0;height:4px;background:rgba(34,255,153,.15);border-radius:2px;}
+.tl-fill{position:absolute;top:24px;left:0;height:4px;width:0;background:var(--green);border-radius:2px;box-shadow:0 0 8px var(--green);}
+.tl-ticks{position:absolute;inset:0;pointer-events:none;}
+.tl-tick{position:absolute;top:22px;width:9px;height:9px;border-radius:50%;transform:translate(-50%,0);border:1px solid rgba(4,7,6,.6);cursor:pointer;pointer-events:auto;}
+.tl-tick.launch{background:var(--gold);}.tl-tick.intercept{background:var(--green);}.tl-tick.hit{background:var(--red);}.tl-tick.deploy{background:var(--blue);}
+.tl-head-h{position:absolute;top:18px;width:3px;height:18px;background:#fff;border-radius:2px;transform:translateX(-50%);box-shadow:0 0 6px #fff;pointer-events:none;}
+.tl-axis{position:absolute;bottom:0;left:0;right:0;height:12px;pointer-events:none;}
+.tl-lbl{position:absolute;font-size:9px;color:var(--muted);transform:translateX(-50%);}
+.tl-tip{position:absolute;bottom:46px;background:#040706;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:10px;color:var(--text);white-space:nowrap;transform:translateX(-50%);pointer-events:none;display:none;z-index:6;}
+.popover{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);z-index:950;width:min(300px,calc(100% - 24px));background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;backdrop-filter:blur(12px);box-shadow:0 12px 40px rgba(0,0,0,.6);display:none;flex-direction:column;gap:6px;}
+.popover.show{display:flex;}
+.pop-title{font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;}
+.pop-item{text-align:left;background:transparent;border:1px solid var(--border);border-radius:7px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:13px;cursor:pointer;}
+.pop-item:hover{border-color:var(--green);}
+.pop-item.red{border-color:rgba(255,85,85,.4);color:#ff9a9a;}
+.pop-item.amber{color:var(--amber);}
+.pop-item.blue{color:var(--blue);}
+#historyModal{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));max-height:44vh;background:var(--panel);border:1px solid var(--border);border-radius:12px;z-index:950;padding:14px;display:none;flex-direction:column;backdrop-filter:blur(12px);box-shadow:0 12px 40px rgba(0,0,0,.6);}
+#historyModal.show{display:flex;}
+.hm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:9px;}
+.hm-content{overflow-y:auto;scrollbar-width:thin;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+th{text-align:left;color:var(--muted);padding:7px;border-bottom:1px solid var(--border);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+td{padding:7px;border-bottom:1px solid rgba(34,255,153,.06);}
+tbody tr{cursor:pointer;}
+tbody tr:hover{background:rgba(34,255,153,.05);}
+.badge{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;text-transform:uppercase;}
+.badge-intercept{color:var(--green);border:1px solid var(--green);}
+.badge-launch{color:var(--gold);border:1px solid var(--gold);}
+.badge-hit{color:var(--red);border:1px solid var(--red);}
+.badge-deploy{color:var(--blue);border:1px solid var(--blue);}
+.onboard{position:absolute;inset:0;z-index:2000;background:rgba(2,4,3,.82);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;}
+.onboard.hide{display:none;}
+.ob-box{max-width:430px;background:var(--panel);border:1px solid var(--green);border-radius:16px;padding:26px;box-shadow:0 0 60px rgba(34,255,153,.15);}
+.ob-title{font-family:'SF Pro Display';font-weight:700;letter-spacing:2px;color:var(--green);font-size:13px;margin-bottom:16px;}
+.ob-steps{margin:0 0 20px;padding-left:20px;color:var(--text);font-size:14px;line-height:1.85;}
+.ob-btn{width:100%;background:var(--green);color:#040706;border:none;border-radius:10px;padding:13px;font-family:'SF Pro Display';font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer;}
+.hint{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:870;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 14px;font-size:11px;color:var(--text);backdrop-filter:blur(8px);pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;}
+.hint.show{opacity:1;}
+@media (max-width:640px){
+.ht-title{display:none;}
+.clock{font-size:15px;}
+.ht-sub{display:none;}
+.chip{padding:4px 7px;font-size:11px;}
+.stat-cluster{bottom:auto;top:50px;left:8px;gap:5px;}
+.stat{padding:5px 9px;min-width:56px;}
+.stat-n{font-size:16px;}
+.detail-card{top:auto;bottom:206px;right:8px;left:8px;width:auto;}
+.dock{bottom:12px;width:calc(100% - 16px);gap:8px;}
+.dock-selects{flex-direction:column;}
+.btn{width:42px;height:42px;font-size:14px;}
+.btn-play{width:50px;height:50px;font-size:17px;}
+.speed-pill span{padding:5px 7px;}
+#historyModal,.popover,#timelinePanel{bottom:92px;}
+#timelinePanel{width:calc(100% - 16px);}
+}
 </style>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/deck.gl@8.9.35/dist.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/deck.gl-leaflet@1.2.1/dist/deck.gl-leaflet.min.js"></script>
 </helmet>
 
-<div style="padding:40px 48px 8px; max-width:1400px;">
-  <div style="font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:4px; color:#0fae74;">RADAR-UA · КОМАНДНИЙ ЦЕНТР</div>
-  <h1 style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:30px; margin:10px 0 14px; color:#eafff4; letter-spacing:1px;">Напрямок UI/UX — 3 концепти</h1>
-  <p style="max-width:760px; line-height:1.7; font-size:14px; color:#7fbfa4; margin:0 0 10px;">Ретро-фосфорна CRT-естетика, серйозний C2-настрій. Кожен концепт показує, <b style="color:#bff5da;">де і як з'являються нові функції</b>: контроль швидкості часу, панель деталей об'єкта, пресети атак, статистика бою, збереження, налаштування, перемикач мов і онбординг. Карта тут стилізована — у робочій версії буде живий рушій.</p>
-  <p style="font-size:13px; color:#4f8570; margin:0;">Оберіть напрямок у чаті за номером: <a href="#1a">1a</a> · <a href="#1b">1b</a> · <a href="#1c">1c</a>. Далі вбудую реальний движок і синхронні desktop/mobile фрейми.</p>
+<div id="map"></div>
+
+<div class="hud-top">
+  <div class="ht-left">
+    <span class="pulse"></span>
+    <span id="simTime" class="clock">00:00:00</span>
+    <span class="ht-sub" data-i18n="sector">СЕКТОР ПІВДЕНЬ</span>
+  </div>
+  <div class="ht-title" data-i18n="title">RADAR-UA · ПЛАНУВАННЯ</div>
+  <div class="ht-right">
+    <span class="chip chip-red" title="threats"><i class="fas fa-bullseye"></i> <b id="targetCount">0</b></span>
+    <span class="chip chip-green" title="pvo"><i class="fas fa-shield-alt"></i> <b id="pvoCount">0</b></span>
+    <span class="chip chip-yellow" title="mrg"><i class="fas fa-truck-pickup"></i> <b id="mobileCount">0</b></span>
+    <span class="chip chip-blue" title="ships"><i class="fas fa-ship"></i> <b id="shipCount">0</b></span>
+    <span class="chip chip-gold" title="air"><i class="fas fa-fighter-jet"></i> <b id="uaPlaneCount">0</b></span>
+    <div class="lang" id="langSwitch">
+      <span data-lang="ua" class="active">UA</span><span data-lang="en">EN</span><span data-lang="ru">RU</span>
+    </div>
+  </div>
 </div>
 
-<section style="padding:24px 48px 80px;">
-  <div style="display:flex; flex-wrap:wrap; gap:48px; align-items:flex-start;">
+<div class="hint" id="hint"></div>
 
-    <!-- ============ OPTION 1A ============ -->
-    <div id="1a" style="display:flex; flex-direction:column; gap:14px;">
-      <div style="display:flex; align-items:baseline; gap:14px;">
-        <span style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; color:#040706; background:#22ff99; padding:4px 10px; border-radius:3px;">1A</span>
-        <span style="font-family:'Orbitron',sans-serif; font-size:17px; color:#eafff4; letter-spacing:1px;">TACTICAL DOCK</span>
-      </div>
-      <p style="max-width:1180px; font-size:13px; color:#7fbfa4; margin:0; line-height:1.6;">Карта на весь екран. Тонка верхня стрічка стану + плаваюча нижня командна док-панель з усіма діями та контролем часу. Праворуч — картка деталей цілі, ліворуч — легенда/мова. Еволюція поточного UI, максимум карти.</p>
+<div class="stat-cluster">
+  <div class="stat"><div class="stat-n" id="statDown" style="color:var(--green)">0</div><div class="stat-l" data-i18n="down">ЗБИТО</div></div>
+  <div class="stat"><div class="stat-n" id="statLeak" style="color:var(--red)">0</div><div class="stat-l" data-i18n="leak">ПРОРВ.</div></div>
+  <div class="stat"><div class="stat-n" id="statEff">100%</div><div class="stat-l" data-i18n="eff">ЕФЕКТ.</div></div>
+</div>
 
-      <div style="position:relative; width:1180px; height:740px; background:#060b09; border:1px solid rgba(34,255,153,.28); border-radius:10px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 0 120px rgba(0,40,20,.4);">
-        <svg viewBox="0 0 1180 740" style="position:absolute; inset:0; width:100%; height:100%;">
-          <defs>
-            <pattern id="gA" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="rgba(34,255,153,.07)" stroke-width="1"/></pattern>
-          </defs>
-          <rect width="1180" height="740" fill="#050a08"/>
-          <rect width="1180" height="740" fill="url(#gA)"/>
-          <path d="M0 640 Q 340 700 640 630 T 1180 600 L1180 740 L0 740 Z" fill="rgba(15,60,40,.35)"/>
-          <polyline points="240,660 320,600 460,560 580,530 720,540 860,500 980,480 1080,430" fill="none" stroke="rgba(255,85,85,.5)" stroke-width="2" stroke-dasharray="10 8"/>
-          <circle cx="460" cy="360" r="130" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.35)" stroke-width="1"/>
-          <circle cx="760" cy="300" r="95" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.35)" stroke-width="1"/>
-          <circle cx="260" cy="270" r="80" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.3)" stroke-width="1"/>
-          <polyline points="1130,110 950,210 760,300" fill="none" stroke="rgba(255,85,85,.7)" stroke-width="1.5"/>
-          <polyline points="1050,610 880,520 720,450" fill="none" stroke="rgba(255,184,77,.7)" stroke-width="1.5"/>
-          <polyline points="620,60 550,180 470,290" fill="none" stroke="rgba(255,85,85,.7)" stroke-width="1.5"/>
-          <g fill="#ff5555"><circle cx="760" cy="300" r="4"/><circle cx="470" cy="290" r="4"/></g>
-          <g fill="#ffb84d"><circle cx="720" cy="450" r="4"/></g>
-          <g fill="#22ff99"><circle cx="460" cy="360" r="5"/><circle cx="760" cy="300" r="0"/><circle cx="260" cy="270" r="5"/></g>
-          <g fill="#4ec3ff"><circle cx="340" cy="700" r="4"/><circle cx="210" cy="690" r="4"/></g>
-        </svg>
-        <div style="position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,25,12,.32) 3px 4px); animation:flick 6s infinite;"></div>
-        <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,.55) 100%);"></div>
-
-        <!-- top status strip -->
-        <div style="position:absolute; top:0; left:0; right:0; height:46px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:linear-gradient(180deg, rgba(4,10,7,.92), rgba(4,10,7,.35)); border-bottom:1px solid rgba(34,255,153,.15);">
-          <div style="display:flex; align-items:center; gap:10px;"><span style="width:8px; height:8px; border-radius:50%; background:#22ff99; box-shadow:0 0 8px #22ff99; animation:blink 2s infinite;"></span><span style="font-size:15px; color:#eafff4; letter-spacing:1px;">02:14:33</span><span style="font-size:10px; color:#4f8570;">Z · SECTOR SOUTH</span></div>
-          <div style="font-family:'Orbitron',sans-serif; font-size:12px; letter-spacing:4px; color:#0fae74;">RADAR-UA · PLANNING</div>
-          <div style="display:flex; gap:16px; font-size:11px;">
-            <span style="color:#ff5555;">◤ THREATS <b style="color:#ff8a8a;">09</b></span>
-            <span style="color:#22ff99;">◤ INTERCEPT <b>87%</b></span>
-            <span style="color:#7fbfa4;">◤ PVO <b style="color:#eafff4;">05</b></span>
-          </div>
-        </div>
-
-        <!-- left legend + lang -->
-        <div style="position:absolute; top:62px; left:16px; width:150px; background:rgba(8,16,12,.72); border:1px solid rgba(34,255,153,.2); border-radius:6px; padding:10px 12px; backdrop-filter:blur(6px);">
-          <div style="display:flex; gap:4px; margin-bottom:10px;">
-            <span style="flex:1; text-align:center; font-size:10px; padding:4px 0; border-radius:3px; background:#22ff99; color:#040706;">UA</span>
-            <span style="flex:1; text-align:center; font-size:10px; padding:4px 0; border-radius:3px; color:#4f8570; border:1px solid rgba(34,255,153,.2);">EN</span>
-            <span style="flex:1; text-align:center; font-size:10px; padding:4px 0; border-radius:3px; color:#4f8570; border:1px solid rgba(34,255,153,.2);">RU</span>
-          </div>
-          <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:6px;">ЛЕГЕНДА</div>
-          <div style="display:flex; flex-direction:column; gap:5px; font-size:10px;">
-            <div style="display:flex; align-items:center; gap:7px; color:#bff5da;"><span style="width:8px;height:8px;background:#ff5555;border-radius:50%;"></span>Загроза</div>
-            <div style="display:flex; align-items:center; gap:7px; color:#bff5da;"><span style="width:8px;height:8px;background:#22ff99;border-radius:50%;"></span>ППО / зона</div>
-            <div style="display:flex; align-items:center; gap:7px; color:#bff5da;"><span style="width:8px;height:8px;background:#4ec3ff;border-radius:50%;"></span>Флот</div>
-          </div>
-        </div>
-
-        <!-- right detail card -->
-        <div style="position:absolute; top:62px; right:16px; width:264px; background:rgba(8,16,12,.82); border:1px solid rgba(255,85,85,.4); border-radius:8px; padding:14px; backdrop-filter:blur(8px); box-shadow:0 0 30px rgba(255,85,85,.12);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <span style="font-family:'Orbitron',sans-serif; font-size:13px; color:#ff8a8a; letter-spacing:1px;">SHAHED-136</span>
-            <span style="font-size:9px; color:#ff5555; border:1px solid #ff5555; padding:2px 6px; border-radius:3px;">HOSTILE</span>
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 8px; font-size:11px;">
-            <div><div style="color:#4f8570; font-size:9px;">SPEED</div><div style="color:#eafff4; font-size:14px;">185 <span style="font-size:9px;color:#4f8570;">км/год</span></div></div>
-            <div><div style="color:#4f8570; font-size:9px;">ALT</div><div style="color:#eafff4; font-size:14px;">1 200 <span style="font-size:9px;color:#4f8570;">м</span></div></div>
-            <div><div style="color:#4f8570; font-size:9px;">ETA</div><div style="color:#ffb84d; font-size:14px;">04:12</div></div>
-            <div><div style="color:#4f8570; font-size:9px;">ASSIGNED</div><div style="color:#22ff99; font-size:13px;">Patriot</div></div>
-          </div>
-          <div style="margin-top:12px;">
-            <div style="display:flex; justify-content:space-between; font-size:9px; color:#4f8570; margin-bottom:4px;"><span>ЙМОВІРНІСТЬ ПЕРЕХОПЛЕННЯ</span><span style="color:#22ff99;">92%</span></div>
-            <div style="height:6px; background:rgba(34,255,153,.12); border-radius:3px; overflow:hidden;"><div style="width:92%; height:100%; background:linear-gradient(90deg,#0fae74,#22ff99); box-shadow:0 0 8px #22ff99;"></div></div>
-          </div>
-        </div>
-
-        <!-- bottom-left stats -->
-        <div style="position:absolute; bottom:16px; left:16px; display:flex; gap:10px;">
-          <div style="background:rgba(8,16,12,.72); border:1px solid rgba(34,255,153,.2); border-radius:6px; padding:8px 12px;"><div style="font-size:9px;color:#4f8570;">ЗБИТО</div><div style="font-size:18px;color:#22ff99;">14</div></div>
-          <div style="background:rgba(8,16,12,.72); border:1px solid rgba(255,85,85,.25); border-radius:6px; padding:8px 12px;"><div style="font-size:9px;color:#4f8570;">ПРОРВАЛОСЬ</div><div style="font-size:18px;color:#ff8a8a;">02</div></div>
-        </div>
-
-        <!-- bottom command dock -->
-        <div style="position:absolute; bottom:16px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:12px; background:rgba(6,12,9,.9); border:1px solid rgba(34,255,153,.28); border-radius:14px; padding:10px 14px; backdrop-filter:blur(10px); box-shadow:0 10px 40px rgba(0,0,0,.6);">
-          <div style="display:flex; flex-direction:column; gap:6px;">
-            <div style="display:flex; align-items:center; gap:6px; background:rgba(34,255,153,.08); border:1px solid rgba(34,255,153,.3); border-radius:6px; padding:5px 9px; font-size:11px; color:#22ff99;">🛡 Patriot PAC-3 <span style="color:#4f8570;">▾</span></div>
-            <div style="display:flex; align-items:center; gap:6px; background:rgba(255,85,85,.06); border:1px solid rgba(255,85,85,.3); border-radius:6px; padding:5px 9px; font-size:11px; color:#ff8a8a;">◎ Shahed-136 <span style="color:#4f8570;">▾</span></div>
-          </div>
-          <div style="width:1px; height:52px; background:rgba(34,255,153,.15);"></div>
-          <div style="display:flex; gap:8px;">
-            <div style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(34,255,153,.25); display:flex; align-items:center; justify-content:center; color:#7fbfa4; font-size:15px;">⊕</div>
-            <div style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(34,255,153,.25); display:flex; align-items:center; justify-content:center; color:#7fbfa4; font-size:15px;">⊟</div>
-          </div>
-          <div style="width:60px; height:60px; border-radius:50%; background:#22ff99; display:flex; align-items:center; justify-content:center; color:#040706; font-size:22px; box-shadow:0 0 24px rgba(34,255,153,.5);">▶</div>
-          <div style="display:flex; align-items:center; gap:2px; background:rgba(34,255,153,.06); border:1px solid rgba(34,255,153,.25); border-radius:8px; padding:4px;">
-            <span style="padding:5px 8px; font-size:12px; color:#7fbfa4;">II</span>
-            <span style="padding:5px 8px; font-size:12px; color:#7fbfa4;">1x</span>
-            <span style="padding:5px 8px; font-size:12px; color:#040706; background:#22ff99; border-radius:5px;">2x</span>
-            <span style="padding:5px 8px; font-size:12px; color:#7fbfa4;">4x</span>
-          </div>
-          <div style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(34,255,153,.25); display:flex; align-items:center; justify-content:center; color:#7fbfa4; font-size:15px;">☰</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============ OPTION 1B ============ -->
-    <div id="1b" style="display:flex; flex-direction:column; gap:14px;">
-      <div style="display:flex; align-items:baseline; gap:14px;">
-        <span style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; color:#040706; background:#22ff99; padding:4px 10px; border-radius:3px;">1B</span>
-        <span style="font-family:'Orbitron',sans-serif; font-size:17px; color:#eafff4; letter-spacing:1px;">LEFT-RAIL C2</span>
-      </div>
-      <p style="max-width:1180px; font-size:13px; color:#7fbfa4; margin:0; line-height:1.6;">Постійна ліва панель командування: розгортання сил, пресети сценаріїв, налаштування. Верхня стрічка — місія + час + статистика + save/load. Права панель — деталі обраного об'єкта та журнал. Найсерйозніший, «як справжня система», найкраще для роботи на десктопі.</p>
-
-      <div style="position:relative; width:1180px; height:740px; background:#060b09; border:1px solid rgba(34,255,153,.28); border-radius:10px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 0 120px rgba(0,40,20,.4); display:flex;">
-        <!-- LEFT RAIL -->
-        <div style="width:262px; flex-shrink:0; background:rgba(5,11,8,.94); border-right:1px solid rgba(34,255,153,.2); display:flex; flex-direction:column; z-index:5;">
-          <div style="padding:16px 16px 14px; border-bottom:1px solid rgba(34,255,153,.15);">
-            <div style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:15px; color:#eafff4; letter-spacing:2px;">RADAR-UA</div>
-            <div style="font-size:9px; color:#0fae74; letter-spacing:3px; margin-top:2px;">COMMAND & CONTROL</div>
-          </div>
-          <div style="padding:14px 16px; flex:1; overflow:hidden;">
-            <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">▸ РОЗГОРНУТИ СИЛИ</div>
-            <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:16px;">
-              <div style="display:flex; align-items:center; gap:8px; background:rgba(34,255,153,.1); border:1px solid rgba(34,255,153,.35); border-radius:5px; padding:7px 9px; font-size:11px; color:#22ff99;"><span>🛡</span>Patriot PAC-3 <span style="margin-left:auto; color:#4f8570;">160км</span></div>
-              <div style="display:flex; align-items:center; gap:8px; border:1px solid rgba(34,255,153,.15); border-radius:5px; padding:7px 9px; font-size:11px; color:#7fbfa4;"><span>🛡</span>IRIS-T SLM <span style="margin-left:auto; color:#4f8570;">40км</span></div>
-              <div style="display:flex; align-items:center; gap:8px; border:1px solid rgba(34,255,153,.15); border-radius:5px; padding:7px 9px; font-size:11px; color:#7fbfa4;"><span>✈</span>F-16V <span style="margin-left:auto; color:#4f8570;">AIM-120</span></div>
-              <div style="display:flex; align-items:center; gap:8px; border:1px solid rgba(34,255,153,.15); border-radius:5px; padding:7px 9px; font-size:11px; color:#7fbfa4;"><span>⚓</span>Hetman Mazepa <span style="margin-left:auto; color:#4f8570;">NSM</span></div>
-            </div>
-            <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">▸ СЦЕНАРІЇ</div>
-            <div style="display:flex; flex-direction:column; gap:5px;">
-              <div style="text-align:center; border:1px solid rgba(255,85,85,.4); background:rgba(255,85,85,.08); border-radius:5px; padding:8px; font-size:11px; color:#ff8a8a;">☢ Масований удар</div>
-              <div style="text-align:center; border:1px solid rgba(255,184,77,.3); border-radius:5px; padding:8px; font-size:11px; color:#ffb84d;">◎ Рій «Шахедів»</div>
-              <div style="text-align:center; border:1px solid rgba(34,255,153,.2); border-radius:5px; padding:8px; font-size:11px; color:#7fbfa4;">⇗ Балістичний залп</div>
-            </div>
-          </div>
-          <div style="padding:12px 16px; border-top:1px solid rgba(34,255,153,.15); display:flex; align-items:center; justify-content:space-between;">
-            <div style="display:flex; gap:3px;">
-              <span style="font-size:10px; padding:4px 7px; border-radius:3px; background:#22ff99; color:#040706;">UA</span>
-              <span style="font-size:10px; padding:4px 7px; border-radius:3px; color:#4f8570;">EN</span>
-              <span style="font-size:10px; padding:4px 7px; border-radius:3px; color:#4f8570;">RU</span>
-            </div>
-            <div style="display:flex; gap:10px; color:#7fbfa4; font-size:14px;"><span>♪</span><span>⚙</span></div>
-          </div>
-        </div>
-
-        <!-- CENTER MAP -->
-        <div style="position:relative; flex:1;">
-          <svg viewBox="0 0 918 740" style="position:absolute; inset:0; width:100%; height:100%;">
-            <defs><pattern id="gB" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="rgba(34,255,153,.07)" stroke-width="1"/></pattern></defs>
-            <rect width="918" height="740" fill="#050a08"/>
-            <rect width="918" height="740" fill="url(#gB)"/>
-            <path d="M0 640 Q 260 700 500 630 T 918 600 L918 740 L0 740 Z" fill="rgba(15,60,40,.35)"/>
-            <polyline points="120,660 220,590 360,560 500,540 660,540 800,500 918,470" fill="none" stroke="rgba(255,85,85,.5)" stroke-width="2" stroke-dasharray="10 8"/>
-            <circle cx="360" cy="340" r="120" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.35)" stroke-width="1"/>
-            <circle cx="640" cy="290" r="95" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.35)" stroke-width="1"/>
-            <polyline points="880,110 720,210 640,290" fill="none" stroke="rgba(255,85,85,.7)" stroke-width="1.5"/>
-            <polyline points="820,600 620,500 480,420" fill="none" stroke="rgba(255,184,77,.7)" stroke-width="1.5"/>
-            <g fill="#ff5555"><circle cx="640" cy="290" r="4"/></g>
-            <g fill="#ffb84d"><circle cx="480" cy="420" r="4"/></g>
-            <g fill="#22ff99"><circle cx="360" cy="340" r="5"/></g>
-            <g fill="#4ec3ff"><circle cx="240" cy="700" r="4"/></g>
-          </svg>
-          <div style="position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,25,12,.3) 3px 4px);"></div>
-          <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 45% 45%, transparent 45%, rgba(0,0,0,.5) 100%);"></div>
-
-          <!-- top bar -->
-          <div style="position:absolute; top:0; left:0; right:0; height:48px; display:flex; align-items:center; gap:16px; padding:0 16px; background:linear-gradient(180deg, rgba(4,10,7,.9), rgba(4,10,7,.2)); border-bottom:1px solid rgba(34,255,153,.15);">
-            <span style="width:8px; height:8px; border-radius:50%; background:#22ff99; box-shadow:0 0 8px #22ff99; animation:blink 2s infinite;"></span>
-            <span style="font-size:15px; color:#eafff4;">02:14:33<span style="font-size:9px; color:#4f8570;"> Z</span></span>
-            <div style="display:flex; align-items:center; gap:2px; background:rgba(34,255,153,.06); border:1px solid rgba(34,255,153,.25); border-radius:7px; padding:3px;">
-              <span style="padding:4px 8px; font-size:11px; color:#7fbfa4;">II</span>
-              <span style="padding:4px 8px; font-size:11px; color:#7fbfa4;">1x</span>
-              <span style="padding:4px 8px; font-size:11px; color:#040706; background:#22ff99; border-radius:4px;">2x</span>
-              <span style="padding:4px 8px; font-size:11px; color:#7fbfa4;">4x</span>
-            </div>
-            <div style="margin-left:auto; display:flex; gap:14px; font-size:11px;">
-              <span style="color:#ff5555;">THREATS <b style="color:#ff8a8a;">09</b></span>
-              <span style="color:#22ff99;">INTERCEPT <b>87%</b></span>
-              <span style="color:#7fbfa4;">PVO <b style="color:#eafff4;">05</b></span>
-            </div>
-            <div style="display:flex; gap:8px; color:#7fbfa4; font-size:13px; padding-left:6px; border-left:1px solid rgba(34,255,153,.15);"><span>⤓</span><span>⤒</span></div>
-          </div>
-
-          <!-- big play, centered bottom -->
-          <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px;">
-            <div style="width:56px; height:56px; border-radius:50%; background:#22ff99; display:flex; align-items:center; justify-content:center; color:#040706; font-size:20px; box-shadow:0 0 24px rgba(34,255,153,.5);">▶</div>
-          </div>
-        </div>
-
-        <!-- RIGHT PANEL -->
-        <div style="width:290px; flex-shrink:0; background:rgba(5,11,8,.9); border-left:1px solid rgba(34,255,153,.2); display:flex; flex-direction:column;">
-          <div style="padding:14px 16px; border-bottom:1px solid rgba(34,255,153,.15);">
-            <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">▸ ОБРАНИЙ ОБ'ЄКТ</div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <span style="font-family:'Orbitron',sans-serif; font-size:14px; color:#ff8a8a;">SHAHED-136</span>
-              <span style="font-size:9px; color:#ff5555; border:1px solid #ff5555; padding:2px 6px; border-radius:3px;">HOSTILE</span>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:11px;">
-              <div><div style="color:#4f8570; font-size:9px;">SPEED</div><div style="color:#eafff4; font-size:14px;">185</div></div>
-              <div><div style="color:#4f8570; font-size:9px;">ALT</div><div style="color:#eafff4; font-size:14px;">1200м</div></div>
-              <div><div style="color:#4f8570; font-size:9px;">ETA</div><div style="color:#ffb84d; font-size:14px;">04:12</div></div>
-              <div><div style="color:#4f8570; font-size:9px;">P(kill)</div><div style="color:#22ff99; font-size:14px;">92%</div></div>
-            </div>
-          </div>
-          <div style="padding:14px 16px; flex:1;">
-            <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:10px;">▸ ЖУРНАЛ БОЮ</div>
-            <div style="display:flex; flex-direction:column; gap:9px; font-size:10px;">
-              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:14</span><span style="color:#22ff99;">СБИТО</span><span style="color:#bff5da;">Kalibr</span></div>
-              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:13</span><span style="color:#ffb84d;">ПУСК</span><span style="color:#bff5da;">Shahed ×3</span></div>
-              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:11</span><span style="color:#22ff99;">СБИТО</span><span style="color:#bff5da;">Shahed</span></div>
-              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:09</span><span style="color:#ff8a8a;">ПРИЛІТ</span><span style="color:#bff5da;">Iskander</span></div>
-              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:08</span><span style="color:#4ec3ff;">РОЗГОРНУТО</span><span style="color:#bff5da;">Patriot</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============ OPTION 1C ============ -->
-    <div id="1c" style="display:flex; flex-direction:column; gap:14px;">
-      <div style="display:flex; align-items:baseline; gap:14px;">
-        <span style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; color:#040706; background:#22ff99; padding:4px 10px; border-radius:3px;">1C</span>
-        <span style="font-family:'Orbitron',sans-serif; font-size:17px; color:#eafff4; letter-spacing:1px;">MINIMAL PHOSPHOR</span>
-      </div>
-      <p style="max-width:1180px; font-size:13px; color:#7fbfa4; margin:0; line-height:1.6;">Максимально занурена CRT-естетика: скануючий промінь, фосфорне світіння, сканлайни. Уся інформація в чотирьох кутових скляних модулях, що згортаються. Найбільш «радарний» вигляд, найменше хрому — фокус на самій карті.</p>
-
-      <div style="position:relative; width:1180px; height:740px; background:#03060a; border:1px solid rgba(34,255,153,.28); border-radius:10px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 0 160px rgba(0,50,25,.45);">
-        <svg viewBox="0 0 1180 740" style="position:absolute; inset:0; width:100%; height:100%;">
-          <defs>
-            <pattern id="gC" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="rgba(34,255,153,.06)" stroke-width="1"/></pattern>
-            <radialGradient id="glowC"><stop offset="0%" stop-color="rgba(34,255,153,.12)"/><stop offset="100%" stop-color="rgba(34,255,153,0)"/></radialGradient>
-          </defs>
-          <rect width="1180" height="740" fill="#03070a"/>
-          <rect width="1180" height="740" fill="url(#glowC)"/>
-          <rect width="1180" height="740" fill="url(#gC)"/>
-          <circle cx="590" cy="370" r="150" fill="none" stroke="rgba(34,255,153,.15)" stroke-width="1"/>
-          <circle cx="590" cy="370" r="280" fill="none" stroke="rgba(34,255,153,.1)" stroke-width="1"/>
-          <circle cx="590" cy="370" r="410" fill="none" stroke="rgba(34,255,153,.06)" stroke-width="1"/>
-          <line x1="590" y1="0" x2="590" y2="740" stroke="rgba(34,255,153,.08)" stroke-width="1"/>
-          <line x1="0" y1="370" x2="1180" y2="370" stroke="rgba(34,255,153,.08)" stroke-width="1"/>
-          <polyline points="200,660 340,600 520,570 720,560 900,520 1080,480" fill="none" stroke="rgba(255,85,85,.4)" stroke-width="2" stroke-dasharray="10 8"/>
-          <polyline points="1120,140 900,260 760,340" fill="none" stroke="rgba(255,85,85,.65)" stroke-width="1.5"/>
-          <g fill="#ff5555"><circle cx="760" cy="340" r="4"/><circle cx="420" cy="300" r="4"/></g>
-          <g fill="#22ff99"><circle cx="590" cy="370" r="5"/><circle cx="380" cy="450" r="4"/></g>
-        </svg>
-        <!-- rotating sweep -->
-        <div style="position:absolute; left:590px; top:370px; width:820px; height:820px; margin-left:-410px; margin-top:-410px; border-radius:50%; background:conic-gradient(from 0deg, rgba(34,255,153,.22), rgba(34,255,153,0) 60deg); animation:sweep 5s linear infinite; pointer-events:none;"></div>
-        <div style="position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,20,10,.4) 3px 4px); animation:flick 5s infinite;"></div>
-        <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(0,0,0,.6) 100%);"></div>
-
-        <!-- lang top center -->
-        <div style="position:absolute; top:14px; left:50%; transform:translateX(-50%); display:flex; gap:3px; background:rgba(4,10,7,.7); border:1px solid rgba(34,255,153,.2); border-radius:20px; padding:3px;">
-          <span style="font-size:10px; padding:4px 10px; border-radius:14px; background:#22ff99; color:#040706;">UA</span>
-          <span style="font-size:10px; padding:4px 10px; border-radius:14px; color:#4f8570;">EN</span>
-          <span style="font-size:10px; padding:4px 10px; border-radius:14px; color:#4f8570;">RU</span>
-        </div>
-
-        <!-- TL status -->
-        <div style="position:absolute; top:16px; left:16px; background:rgba(4,10,7,.55); border:1px solid rgba(34,255,153,.22); border-radius:8px; padding:10px 14px; backdrop-filter:blur(6px);">
-          <div style="display:flex; align-items:center; gap:8px;"><span style="width:7px; height:7px; border-radius:50%; background:#22ff99; box-shadow:0 0 8px #22ff99; animation:blink 2s infinite;"></span><span style="font-size:16px; color:#eafff4;">02:14:33</span></div>
-          <div style="font-size:10px; color:#ff8a8a; margin-top:6px;">◤ АКТИВНИХ ЗАГРОЗ: <b>09</b></div>
-        </div>
-
-        <!-- TR threat list -->
-        <div style="position:absolute; top:16px; right:16px; width:210px; background:rgba(4,10,7,.55); border:1px solid rgba(255,85,85,.3); border-radius:8px; padding:10px 12px; backdrop-filter:blur(6px);">
-          <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">▸ ЦІЛІ В ПОВІТРІ</div>
-          <div style="display:flex; flex-direction:column; gap:6px; font-size:10px;">
-            <div style="display:flex; justify-content:space-between;"><span style="color:#ff8a8a;">● Kinzhal</span><span style="color:#ffb84d;">ETA 01:20</span></div>
-            <div style="display:flex; justify-content:space-between;"><span style="color:#ff8a8a;">● Shahed ×6</span><span style="color:#7fbfa4;">ETA 04:12</span></div>
-            <div style="display:flex; justify-content:space-between;"><span style="color:#ffb84d;">● Kalibr ×2</span><span style="color:#7fbfa4;">ETA 06:45</span></div>
-          </div>
-        </div>
-
-        <!-- BL controls -->
-        <div style="position:absolute; bottom:16px; left:16px; background:rgba(4,10,7,.6); border:1px solid rgba(34,255,153,.22); border-radius:10px; padding:12px; backdrop-filter:blur(6px); display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; align-items:center; gap:6px; background:rgba(34,255,153,.08); border:1px solid rgba(34,255,153,.3); border-radius:5px; padding:5px 8px; font-size:10px; color:#22ff99;">🛡 Patriot ▾</div>
-          <div style="display:flex; align-items:center; gap:6px; border:1px solid rgba(255,85,85,.3); border-radius:5px; padding:5px 8px; font-size:10px; color:#ff8a8a;">◎ Shahed ▾</div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <div style="width:44px; height:44px; border-radius:50%; background:#22ff99; display:flex; align-items:center; justify-content:center; color:#040706; font-size:17px; box-shadow:0 0 18px rgba(34,255,153,.5);">▶</div>
-            <div style="display:flex; flex-direction:column; gap:3px;">
-              <div style="display:flex; gap:2px;">
-                <span style="font-size:9px; padding:3px 6px; color:#7fbfa4; border:1px solid rgba(34,255,153,.2); border-radius:3px;">1x</span>
-                <span style="font-size:9px; padding:3px 6px; color:#040706; background:#22ff99; border-radius:3px;">2x</span>
-                <span style="font-size:9px; padding:3px 6px; color:#7fbfa4; border:1px solid rgba(34,255,153,.2); border-radius:3px;">4x</span>
-              </div>
-              <span style="font-size:9px; color:#4f8570;">швидкість часу</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- BR stats -->
-        <div style="position:absolute; bottom:16px; right:16px; background:rgba(4,10,7,.6); border:1px solid rgba(34,255,153,.22); border-radius:10px; padding:12px 16px; backdrop-filter:blur(6px); text-align:right;">
-          <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">СТАТИСТИКА БОЮ</div>
-          <div style="display:flex; gap:18px;">
-            <div><div style="font-size:22px; color:#22ff99;">14</div><div style="font-size:9px; color:#4f8570;">ЗБИТО</div></div>
-            <div><div style="font-size:22px; color:#ff8a8a;">02</div><div style="font-size:9px; color:#4f8570;">ПРОРВ.</div></div>
-            <div><div style="font-size:22px; color:#eafff4;">87%</div><div style="font-size:9px; color:#4f8570;">ЕФЕКТ.</div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+<div class="detail-card" id="detailCard">
+  <div class="dc-head">
+    <span id="dcName">—</span>
+    <span class="dc-badge" id="dcBadge">HOSTILE</span>
+    <i class="fas fa-times dc-close" id="dcClose"></i>
   </div>
-</section>
+  <div class="dc-grid" id="dcGrid"></div>
+  <div class="dc-bar">
+    <div class="dc-bar-head"><span data-i18n="status">СТАТУС</span><span id="dcStatus">—</span></div>
+    <div class="dc-bar-track"><div class="dc-bar-fill" id="dcBarFill" style="width:100%"></div></div>
+  </div>
+</div>
+
+<div class="dock">
+  <div class="dock-selects">
+    <div class="tool-card active" id="pvoCard">
+      <span class="tc-label" data-i18n="forces">СИЛИ ОБОРОНИ УКРАЇНИ</span>
+      <select id="pvoSelect">
+        <optgroup id="ogp1" label="Дальнього / середнього радіусу">
+          <option value="pvo_patriot">Patriot PAC-3 (160 км) — ПРО</option>
+          <option value="pvo_samp">SAMP/T Mamba (100 км)</option>
+          <option value="pvo_s300">С-300ПС (75 км)</option>
+          <option value="pvo_iris">IRIS-T SLM (40 км)</option>
+          <option value="pvo_nasams">NASAMS (25 км)</option>
+          <option value="pvo_buk">Бук-М1 (35 км)</option>
+        </optgroup>
+        <optgroup id="ogp2" label="Малого радіусу / анти-дрон">
+          <option value="pvo_gepard">Gepard (4 км) — AHEAD</option>
+          <option value="pvo_skynex">Skynex (4 км) — лазер/ПРО</option>
+          <option value="pvo_vampire">Vampire APKWS (5 км)</option>
+          <option value="ua_mobile_mrg">МРГ (кулемети/ПЗРК) — патруль</option>
+        </optgroup>
+        <optgroup id="ogp3" label="Вертолітна група (перехоплення БПЛА)">
+          <option value="ua_mi8">Ми-8МСБ-В (ПКМ/ПЗРК)</option>
+          <option value="ua_mi24">Ми-24П (ГШ-30-2)</option>
+        </optgroup>
+        <optgroup id="ogp4" label="Авіація (перехоплення)">
+          <option value="ua_f16">F-16V (AIM-120D)</option>
+          <option value="ua_f15">F-15EX Eagle II</option>
+          <option value="ua_mig29">МиГ-29МУ2 (Р-27/73)</option>
+        </optgroup>
+        <optgroup id="ogp5" label="Морський щит">
+          <option value="ua_ship_hetman">Гетьман Іван Мазепа (корвет)</option>
+          <option value="ua_ship_island">Island-class (катер)</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="tool-card" id="targetCard">
+      <span class="tc-label" data-i18n="targets">ЦІЛІ (СИМУЛЯЦІЯ)</span>
+      <select id="targetSelect">
+        <optgroup id="ogt1" label="Гіперзвук / балістика">
+          <option value="missile_kinzhal">Кинжал (Х-47М2)</option>
+          <option value="missile_zircon">Циркон (3М22)</option>
+          <option value="missile_iskander">Іскандер-М</option>
+          <option value="missile_tochka">Точка-У</option>
+        </optgroup>
+        <optgroup id="ogt2" label="Крилаті / надзвук">
+          <option value="missile_x101">Х-101 (стелс)</option>
+          <option value="missile_kalibr">Калібр (3М14)</option>
+          <option value="missile_x22">Х-22 Буря</option>
+          <option value="missile_oniks">Онікс (П-800)</option>
+          <option value="missile_x59">Х-59МК2</option>
+        </optgroup>
+        <optgroup id="ogt3" label="БПЛА (камікадзе / розвідка)">
+          <option value="drone_shahed">Shahed-136 (Герань)</option>
+          <option value="drone_orlan">Орлан-10 (розвідка)</option>
+          <option value="drone_supercam">Supercam S350</option>
+          <option value="drone_zala">ZALA 421-16E</option>
+        </optgroup>
+      </select>
+    </div>
+  </div>
+  <div class="dock-actions">
+    <button class="btn" id="locBtn" title="геопозиція"><i class="fas fa-crosshairs"></i></button>
+    <button class="btn" id="layerBtn" title="карта"><i class="fas fa-layer-group"></i></button>
+    <button class="btn on" id="dsBtn" title="території DeepState"><i class="fas fa-draw-polygon"></i></button>
+    <button class="btn" id="soundBtn" title="звук"><i class="fas fa-volume-up"></i></button>
+    <button class="btn btn-undo" id="undoBtn"><i class="fas fa-undo"></i></button>
+    <button class="btn btn-play" id="playBtn"><i class="fas fa-play"></i></button>
+    <button class="btn" id="timelineBtn" title="таймлайн"><i class="fas fa-timeline"></i></button>
+    <div class="speed-pill" id="speedPill">
+      <span data-speed="1" class="active">1x</span>
+      <span data-speed="2">2x</span>
+      <span data-speed="4">4x</span>
+    </div>
+    <button class="btn btn-attack" id="attackBtn" title="масований удар"><i class="fas fa-radiation"></i></button>
+    <button class="btn" id="presetBtn" title="сценарії"><i class="fas fa-bolt"></i></button>
+    <button class="btn" id="historyBtn"><i class="fas fa-list-ul"></i></button>
+    <button class="btn" id="resetBtn" title="скинути"><i class="fas fa-rotate-left"></i></button>
+  </div>
+</div>
+
+<div class="popover" id="presetMenu">
+  <div class="pop-title" data-i18n="scenarios">СЦЕНАРІЇ АТАК</div>
+  <button class="pop-item red" data-scn="massive">☢ <span data-i18n="scnMassive">Масований комбінований удар</span></button>
+  <button class="pop-item amber" data-scn="swarm">◎ <span data-i18n="scnSwarm">Рій «Шахедів»</span></button>
+  <button class="pop-item" data-scn="ballistic">⇗ <span data-i18n="scnBallistic">Балістичний залп</span></button>
+  <button class="pop-item blue" data-scn="naval">⚓ <span data-i18n="scnNaval">Морський наліт</span></button>
+</div>
+
+<div id="historyModal">
+  <div class="hm-head">
+    <span style="font-family:'SF Pro Display';font-weight:600;font-size:11px;letter-spacing:1px;color:#eafff4;" data-i18n="logTitle">ЖУРНАЛ БОЙОВИХ ДІЙ</span>
+    <span style="font-size:9px;color:var(--muted);" data-i18n="logHint">натисніть на рядок для переходу</span>
+  </div>
+  <div class="hm-content">
+    <table>
+      <thead><tr><th data-i18n="cTime">Час</th><th data-i18n="cObj">Об'єкт</th><th data-i18n="cEvt">Подія</th><th data-i18n="cLoc">Локація</th></tr></thead>
+      <tbody id="historyTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="timelinePanel">
+  <div class="tl-head">
+    <span class="tl-title" data-i18n="tlTitle">ТАЙМЛАЙН БОЮ</span>
+    <span class="tl-time"><span id="tlNow">0:00</span> / <span id="tlEnd">0:00</span></span>
+  </div>
+  <div class="tl-track" id="tlTrack">
+    <div class="tl-tip" id="tlTip"></div>
+    <div class="tl-rail"></div>
+    <div class="tl-fill" id="tlFill"></div>
+    <div class="tl-ticks" id="tlTicks"></div>
+    <div class="tl-head-h" id="tlHead"></div>
+    <div class="tl-axis" id="tlAxis"></div>
+  </div>
+  <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:4px;" data-i18n="tlHint">перетягніть повзунок для перегляду · клік по події — перехід</div>
+</div>
+
+<div class="onboard" id="onboard">
+  <div class="ob-box">
+    <div class="ob-title" data-i18n="obTitle">ШВИДКИЙ СТАРТ · RADAR-UA</div>
+    <ol class="ob-steps">
+      <li data-i18n="ob1">Оберіть силу оборони або ціль у нижній панелі.</li>
+      <li data-i18n="ob2">Клікніть на карті: ППО — точка розгортання, ціль/МРГ — маршрут (2+ точки), ✓ підтвердити.</li>
+      <li data-i18n="ob3">Натисніть ▶ і керуйте швидкістю часу (1x/2x/4x). Клік по об'єкту показує деталі.</li>
+    </ol>
+    <button class="ob-btn" id="obBtn" data-i18n="obStart">ПОЧАТИ</button>
+  </div>
+</div>
 </x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    if (this._booted) return;
+    this._booted = true;
+    const boot = () => {
+      const el = document.getElementById('map');
+      if (!window.L || !el || el.clientHeight < 40 || el.clientWidth < 40) { setTimeout(boot, 60); return; }
+      this.run();
+    };
+    boot();
+  }
+
+  run() {
+  const $ = id => document.getElementById(id);
+
+  /* ---------- i18n ---------- */
+  const LANG = {
+    ua: {
+      sector:'СЕКТОР ПІВДЕНЬ', title:'RADAR-UA · ПЛАНУВАННЯ',
+      forces:'СИЛИ ОБОРОНИ УКРАЇНИ', targets:'ЦІЛІ (СИМУЛЯЦІЯ)',
+      down:'ЗБИТО', leak:'ПРОРВ.', eff:'ЕФЕКТ.', status:'СТАТУС',
+      scenarios:'СЦЕНАРІЇ АТАК', scnMassive:'Масований комбінований удар', scnSwarm:'Рій «Шахедів»', scnBallistic:'Балістичний залп', scnNaval:'Морський наліт',
+      obTitle:'ШВИДКИЙ СТАРТ · RADAR-UA', obStart:'ПОЧАТИ',
+      ob1:'Оберіть силу оборони або ціль у нижній панелі.',
+      ob2:'Клікніть на карті: ППО — точка розгортання, ціль/МРГ — маршрут (2+ точки), ✓ підтвердити.',
+      ob3:'Натисніть ▶ і керуйте швидкістю часу (1x/2x/4x). Клік по об\u0027єкту показує деталі.',
+      logTitle:'ЖУРНАЛ БОЙОВИХ ДІЙ', logHint:'натисніть на рядок для переходу',
+      cTime:'Час', cObj:'Об\u0027єкт', cEvt:'Подія', cLoc:'Локація',
+      st_active:'АКТИВНИЙ', st_patrol:'ПАТРУЛЮВАННЯ',
+      b_deploy:'Розгорнуто', b_launch:'Пуск', b_intercept:'Збито', b_hit:'Приліт',
+      n_deploy:'РОЗГОРНУТО', n_launch:'ПУСК', n_ship:'СПУЩЕНО', n_takeoff:'ЗЛІТ', n_intercept:'ЗБИТО', n_hit:'ПРИЛІТ',
+      n_patrol:'МРГ ВИЙШЛА НА ПАТРУЛЬ', n_simstart:'СИМУЛЯЦІЮ ЗАПУЩЕНО', n_pause:'ПАУЗА',
+      n_range:'ПЕРЕВИЩЕНО ДАЛЬНІСТЬ', n_water:'ПОМИЛКА: ЛИШЕ НА ВОДІ', n_land:'ПОМИЛКА: ЛИШЕ НА СУШІ',
+      n_mrg:'МРГ: ВКАЖІТЬ МАРШРУТ (2+ ТОЧКИ)', n_massive:'МАСОВАНИЙ УДАР: ЗАФІКСОВАНО НОСІЇ', n_geo:'ВАША ПОЗИЦІЯ', n_geooff:'ГЕОПОЗИЦІЯ НЕДОСТУПНА',
+      hint_pvo:'Клікніть на карті, щоб розгорнути ППО', hint_target:'Клікніть, щоб задати маршрут цілі (2+ точки)',
+      tlTitle:'ТАЙМЛАЙН БОЮ', tlHint:'перетягніть повзунок для перегляду · клік по події — перехід'
+    },
+    en: {
+      sector:'SECTOR SOUTH', title:'RADAR-UA · PLANNING',
+      forces:'UKRAINIAN DEFENSE FORCES', targets:'TARGETS (SIMULATION)',
+      down:'DOWNED', leak:'LEAKED', eff:'EFFECT.', status:'STATUS',
+      scenarios:'ATTACK SCENARIOS', scnMassive:'Massed combined strike', scnSwarm:'Shahed swarm', scnBallistic:'Ballistic volley', scnNaval:'Naval raid',
+      obTitle:'QUICK START · RADAR-UA', obStart:'START',
+      ob1:'Pick a defense force or a target in the bottom panel.',
+      ob2:'Click the map: SAM = deploy point, target/patrol = route (2+ points), ✓ to confirm.',
+      ob3:'Hit ▶ and control time speed (1x/2x/4x). Click any object for details.',
+      logTitle:'COMBAT LOG', logHint:'tap a row to fly there',
+      cTime:'Time', cObj:'Object', cEvt:'Event', cLoc:'Location',
+      st_active:'ACTIVE', st_patrol:'PATROLLING',
+      b_deploy:'Deployed', b_launch:'Launch', b_intercept:'Down', b_hit:'Impact',
+      n_deploy:'DEPLOYED', n_launch:'LAUNCH', n_ship:'DEPLOYED', n_takeoff:'TAKEOFF', n_intercept:'DOWNED', n_hit:'IMPACT',
+      n_patrol:'PATROL GROUP ON ROUTE', n_simstart:'SIMULATION STARTED', n_pause:'PAUSED',
+      n_range:'RANGE EXCEEDED', n_water:'ERROR: WATER ONLY', n_land:'ERROR: LAND ONLY',
+      n_mrg:'PATROL: SET A ROUTE (2+ POINTS)', n_massive:'MASSED STRIKE: CARRIERS DETECTED', n_geo:'YOUR POSITION', n_geooff:'GEOLOCATION UNAVAILABLE',
+      hint_pvo:'Click the map to deploy air defense', hint_target:'Click to set the target route (2+ points)',
+      tlTitle:'BATTLE TIMELINE', tlHint:'drag the handle to review · click an event to jump'
+    },
+    ru: {
+      sector:'СЕКТОР ЮГ', title:'RADAR-UA · ПЛАНИРОВАНИЕ',
+      forces:'СИЛЫ ОБОРОНЫ УКРАИНЫ', targets:'ЦЕЛИ (СИМУЛЯЦИЯ)',
+      down:'СБИТО', leak:'ПРОРВ.', eff:'ЭФФЕКТ.', status:'СТАТУС',
+      scenarios:'СЦЕНАРИИ АТАК', scnMassive:'Массированный комбинированный удар', scnSwarm:'Рой «Шахедов»', scnBallistic:'Баллистический залп', scnNaval:'Морской налёт',
+      obTitle:'БЫСТРЫЙ СТАРТ · RADAR-UA', obStart:'НАЧАТЬ',
+      ob1:'Выберите силу обороны или цель в нижней панели.',
+      ob2:'Кликните по карте: ПВО — точка, цель/патруль — маршрут (2+ точки), ✓ подтвердить.',
+      ob3:'Нажмите ▶ и управляйте скоростью времени (1x/2x/4x). Клик по объекту — детали.',
+      logTitle:'ЖУРНАЛ БОЕВЫХ ДЕЙСТВИЙ', logHint:'нажмите на строку для перехода',
+      cTime:'Время', cObj:'Объект', cEvt:'Событие', cLoc:'Локация',
+      st_active:'АКТИВЕН', st_patrol:'ПАТРУЛИРОВАНИЕ',
+      b_deploy:'Развёрнут', b_launch:'Пуск', b_intercept:'Сбито', b_hit:'Прилёт',
+      n_deploy:'РАЗВЁРНУТО', n_launch:'ПУСК', n_ship:'СПУЩЕНО', n_takeoff:'ВЗЛЁТ', n_intercept:'СБИТО', n_hit:'ПРИЛЁТ',
+      n_patrol:'МРГ ВЫШЛА НА ПАТРУЛЬ', n_simstart:'СИМУЛЯЦИЯ ЗАПУЩЕНА', n_pause:'ПАУЗА',
+      n_range:'ПРЕВЫШЕНА ДАЛЬНОСТЬ', n_water:'ОШИБКА: ТОЛЬКО НА ВОДЕ', n_land:'ОШИБКА: ТОЛЬКО НА СУШЕ',
+      n_mrg:'МРГ: УКАЖИТЕ МАРШРУТ (2+ ТОЧКИ)', n_massive:'МАССИРОВАННЫЙ УДАР: ЗАФИКСИРОВАНЫ НОСИТЕЛИ', n_geo:'ВАША ПОЗИЦИЯ', n_geooff:'ГЕОПОЗИЦИЯ НЕДОСТУПНА',
+      hint_pvo:'Кликните по карте, чтобы развернуть ПВО', hint_target:'Кликните, чтобы задать маршрут цели (2+ точки)',
+      tlTitle:'ТАЙМЛАЙН БОЯ', tlHint:'перетащите ползунок для просмотра · клик по событию — переход'
+    }
+  };
+  const GROUPS = {
+    ua:{ogp1:'Дальнього / середнього радіусу',ogp2:'Малого радіусу / анти-дрон',ogp3:'Вертолітна група (перехоплення БПЛА)',ogp4:'Авіація (перехоплення)',ogp5:'Морський щит',ogt1:'Гіперзвук / балістика',ogt2:'Крилаті / надзвук',ogt3:'БПЛА (камікадзе / розвідка)'},
+    en:{ogp1:'Long / medium range',ogp2:'Short range / anti-drone',ogp3:'Helicopter group (UAV intercept)',ogp4:'Aviation (intercept)',ogp5:'Naval shield',ogt1:'Hypersonic / ballistic',ogt2:'Cruise / supersonic',ogt3:'UAV (kamikaze / recon)'},
+    ru:{ogp1:'Дальнего / среднего радиуса',ogp2:'Малого радиуса / анти-дрон',ogp3:'Вертолётная группа (перехват БПЛА)',ogp4:'Авиация (перехват)',ogp5:'Морской щит',ogt1:'Гиперзвук / баллистика',ogt2:'Крылатые / сверхзвук',ogt3:'БПЛА (камикадзе / разведка)'}
+  };
+  let lang = localStorage.getItem('radarLang') || 'ua';
+  const t = k => (LANG[lang] && LANG[lang][k]) || (LANG.ua[k]) || k;
+  function applyLang(l) {
+    lang = l; localStorage.setItem('radarLang', l);
+    document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.getAttribute('data-i18n'); if (LANG[l][k] != null) el.textContent = LANG[l][k]; });
+    Object.entries(GROUPS[l]).forEach(([id,label]) => { const g = $(id); if (g) g.label = label; });
+    document.querySelectorAll('#langSwitch span').forEach(s => s.classList.toggle('active', s.dataset.lang === l));
+    if (state.selected && state.selected.active) refreshDetail();
+  }
+
+  /* ---------- sound ---------- */
+  let soundOn = localStorage.getItem('radarSound') !== '0';
+  const Snd = {
+    ctx:null,
+    init(){ if(!this.ctx) this.ctx=new (window.AudioContext||window.webkitAudioContext)(); if(this.ctx.state==='suspended') this.ctx.resume(); },
+    osc(f,ty,d,v){ if(!soundOn||!this.ctx) return; const o=this.ctx.createOscillator(),g=this.ctx.createGain(); o.type=ty; o.frequency.setValueAtTime(f,this.ctx.currentTime); g.gain.setValueAtTime(v,this.ctx.currentTime); g.gain.setTargetAtTime(0.0001,this.ctx.currentTime,d/3); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+d); },
+    launch(){ this.init(); this.osc(300,'sawtooth',0.4,0.05); },
+    intercept(){ this.init(); this.osc(60,'sine',0.8,0.3); },
+    hit(){ this.init(); this.osc(40,'triangle',1.0,0.4); },
+    ping(){ this.init(); this.osc(1000,'sine',0.05,0.02); },
+    warning(){ this.init(); this.osc(120,'square',0.5,0.1); },
+    alert(){ this.init(); this.osc(800,'sawtooth',0.1,0.05); setTimeout(()=>this.osc(600,'sawtooth',0.1,0.05),100); }
+  };
+  document.body.addEventListener('click', () => { Snd.init(); ensureRenderer(); }, { once:false });
+
+  /* ---------- map ---------- */
+  const map = L.map('map', { zoomControl:false, attributionControl:false }).setView([48.0,31.0],6);
+  let _rend=null;
+  function ensureRenderer(){ if(!_rend){ _rend=L.svg(); _rend.addTo(map); map.options.renderer=_rend; } return _rend; }
+  const layers = {
+    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'),
+    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
+    labels: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', { pane:'shadowPane', opacity:0.8 })
+  };
+  layers.dark.addTo(map); layers.labels.addTo(map);
+  let currentLayer = 'dark';
+  function toggleMapLayer(){ Snd.ping(); if(currentLayer==='dark'){ map.removeLayer(layers.dark); layers.satellite.addTo(map); currentLayer='satellite'; } else { map.removeLayer(layers.satellite); layers.dark.addTo(map); currentLayer='dark'; } }
+  function locateUser(){ Snd.ping(); map.locate({ setView:true, maxZoom:10 }); }
+  map.on('locationfound', e => { Snd.alert(); L.circle(e.latlng,{ radius:500, color:'#22ff99', weight:2 }).addTo(map); notifyOnMap(e.latlng, t('n_geo'), '#22ff99'); });
+  map.on('locationerror', () => { Snd.warning(); notifyOnMap(map.getCenter(), t('n_geooff'), '#ff5555'); });
+
+  /* ---------- DeepState territory + flight arcs (deck.gl with Leaflet fallback) ---------- */
+  let dsLayer=null, dsVisible=true, occFC=null;
+  let useDeck=false, deckLayer=null, deckFailed=false;
+  function styleFor(f){ const c=f.properties.fill;
+    if(c==='#a52714') return { color:'#ff4d4d', weight:2.2, opacity:0.9, fillColor:'#a52714', fillOpacity:0.17 };
+    if(c==='#880e4f') return { color:'#d64a84', weight:1.3, opacity:0.7, fillColor:'#7a0f45', fillOpacity:0.22 };
+    return { color:'#b3b3b3', weight:1, opacity:0.5, dashArray:'4,4', fillColor:'#8a8a8a', fillOpacity:0.10 };
+  }
+  const dsOrder={ '#bcaaa4':0, '#880e4f':1, '#a52714':2 };
+  const frontFallback=[[46.4,32.2],[46.6,32.6],[47.2,33.4],[47.5,34.4],[47.4,35.5],[47.5,36.5],[47.8,37.6],[48.1,38.0],[48.6,38.2],[49.2,38.0],[50.1,38.4],[50.4,37.8]];
+  function dFill(f){ const c=f.properties.fill; if(c==='#a52714') return [165,39,20,60]; if(c==='#880e4f') return [122,15,69,90]; return [150,150,150,32]; }
+  function dLine(f){ const c=f.properties.fill; if(c==='#a52714') return [255,77,77,235]; if(c==='#880e4f') return [214,74,132,175]; return [179,179,179,110]; }
+  function dLineW(f){ return f.properties.fill==='#a52714'?2.2:1; }
+  function makeSegs(pts){ const toLL=p=>[p[1],p[0]]; const n=pts.length; const a=Math.max(1,Math.floor(n*0.15)), b=Math.min(n-1,Math.floor(n*0.78)); return [ {path:pts.slice(0,a+1).map(toLL),color:[34,255,153,235],width:3}, {path:pts.slice(a,b+1).map(toLL),color:[255,184,77,220],width:2.4}, {path:pts.slice(b).map(toLL),color:[255,85,85,235],width:3} ]; }
+  function buildDeck(){ if(!useDeck||!deckLayer||!window.deck) return; const D=window.deck; const layers=[];
+    if(dsVisible&&occFC) layers.push(new D.GeoJsonLayer({ id:'occ', data:occFC, stroked:true, filled:true, getFillColor:dFill, getLineColor:dLine, getLineWidth:dLineW, lineWidthUnits:'pixels', lineWidthMinPixels:1, parameters:{ depthTest:false } }));
+    const arcData=[]; state.targets.forEach(t=>{ if(t.active&&t.arcSegs) t.arcSegs.forEach(s=>arcData.push(s)); });
+    layers.push(new D.PathLayer({ id:'arcs', data:arcData, getPath:d=>d.path, getColor:d=>d.color, getWidth:d=>d.width, widthUnits:'pixels', widthMinPixels:1.5, capRounded:true, jointRounded:true, parameters:{ depthTest:false } }));
+    deckLayer.setProps({ layers });
+  }
+  function initDeck(){ const D=window.deck; const LL=window.DeckGlLeaflet&&window.DeckGlLeaflet.LeafletLayer; if(!D||!LL) return false;
+    try{ deckLayer=new LL({ views:[new D.MapView({ repeat:true })], layers:[], onError:()=>{ if(!deckFailed){ deckFailed=true; deckToLeaflet(); } } }); map.addLayer(deckLayer); useDeck=true; return true; }catch(_){ return false; }
+  }
+  function deckToLeaflet(){ useDeck=false; try{ if(deckLayer) map.removeLayer(deckLayer); }catch(_){} deckLayer=null; drawTerritoryLeaflet(); state.targets.forEach(t=>{ if(t.active&&!t.arcLines) drawArcLeaflet(t); }); }
+  function drawTerritoryLeaflet(){ if(dsLayer){ try{ map.removeLayer(dsLayer); }catch(_){} dsLayer=null; } const rnd=ensureRenderer();
+    if(occFC&&occFC.features.length) dsLayer=L.geoJSON(occFC,{ style:styleFor, interactive:false, renderer:rnd }).addTo(map);
+    else dsLayer=L.polyline(frontFallback,{ color:'#ff3b3b', weight:3, dashArray:'10, 10', opacity:0.6, interactive:false, renderer:rnd }).addTo(map);
+    if(!dsVisible&&dsLayer.setStyle) dsLayer.setStyle({ opacity:0, fillOpacity:0 });
+  }
+  function renderTerritory(){ if(useDeck) buildDeck(); else drawTerritoryLeaflet(); }
+  async function loadDeepState(){
+    try{
+      const r=await fetch('https://deepstatemap.live/api/history/last'); const j=await r.json();
+      const feats=(j.map&&j.map.features)||[];
+      const inUA=f=>{ let c=f.geometry.coordinates; while(Array.isArray(c[0])) c=c[0]; return c[0]>21&&c[0]<42&&c[1]>43.5&&c[1]<53; };
+      const keep=feats.filter(f=>f.geometry&&f.geometry.type==='Polygon'&&['#a52714','#880e4f','#bcaaa4'].includes(f.properties.fill)&&inUA(f));
+      keep.sort((a,b)=>(dsOrder[a.properties.fill]||0)-(dsOrder[b.properties.fill]||0));
+      occFC={ type:'FeatureCollection', features:keep };
+      const sub=document.querySelector('.ht-sub');
+      if(sub&&j.datetime){ sub.textContent='DeepState · '+String(j.datetime).replace(/\s*o\s*/i,' '); sub.removeAttribute('data-i18n'); }
+    }catch(e){ const sub=document.querySelector('.ht-sub'); if(sub){ sub.textContent='DeepState offline'; sub.removeAttribute('data-i18n'); } }
+    const draw=()=>renderTerritory();
+    if(map._loaded) setTimeout(draw,450); else map.whenReady(()=>setTimeout(draw,450));
+  }
+  function toggleDS(){ Snd.ping(); dsVisible=!dsVisible; $('dsBtn').classList.toggle('on',dsVisible);
+    if(useDeck){ buildDeck(); return; }
+    if(!dsLayer) return; if(!dsVisible) dsLayer.setStyle({ opacity:0, fillOpacity:0 }); else if(dsLayer.resetStyle) dsLayer.setStyle(styleFor); else dsLayer.setStyle({ opacity:0.6 }); }
+  initDeck();
+  loadDeepState();
+
+  /* ---------- flight trajectory arcs: launch / acceleration / descent ---------- */
+  function bowedArc(a,b,apogee){ const n=44, bf=Math.max(0.02,Math.min(0.30,apogee/120000)); const dLat=b[0]-a[0], dLng=b[1]-a[1]; const len=Math.hypot(dLat,dLng)||1e-6; const pLat=-dLng/len, pLng=dLat/len, off=len*bf; const pts=[]; for(let i=0;i<=n;i++){ const u=i/n, s=Math.sin(Math.PI*u); pts.push([a[0]+dLat*u+pLat*s*off, a[1]+dLng*u+pLng*s*off]); } return pts; }
+  function drawArcLeaflet(t){ const rnd=ensureRenderer(); const pts=t.path, n=pts.length; const a=Math.max(1,Math.floor(n*0.15)), b=Math.min(n-1,Math.floor(n*0.78));
+    t.arcLines=[
+      L.polyline(pts.slice(0,a+1),{ color:'#22ff99', weight:3, opacity:0.85, interactive:false, renderer:rnd }).addTo(map),
+      L.polyline(pts.slice(a,b+1),{ color:'#ffb84d', weight:2.4, opacity:0.8, interactive:false, renderer:rnd }).addTo(map),
+      L.polyline(pts.slice(b),{ color:'#ff5555', weight:3, opacity:0.85, interactive:false, renderer:rnd }).addTo(map)
+    ];
+  }
+  function drawTraj(t){ if(useDeck){ t.arcSegs=makeSegs(t.path); buildDeck(); } else drawArcLeaflet(t); }
+
+  const CONFIG = {
+    drone_shahed:{name:'SHAHED-136',speed:185,maxRange:1500,color:'#22ff99',altMin:50,altMax:2000,icon:'fa-location-arrow',iconAdj:45,cheap:true},
+    drone_orlan:{name:'ОРЛАН-10',speed:150,maxRange:600,color:'#22ff99',altMin:500,altMax:5000,icon:'fa-location-arrow',iconAdj:45,cheap:true},
+    drone_supercam:{name:'SUPERCAM',speed:120,maxRange:200,color:'#22ff99',altMin:1000,altMax:4000,icon:'fa-location-arrow',iconAdj:45,cheap:true},
+    drone_zala:{name:'ZALA',speed:110,maxRange:150,color:'#22ff99',altMin:800,altMax:3500,icon:'fa-location-arrow',iconAdj:45,cheap:true},
+    missile_x101:{name:'X-101',speed:850,maxRange:3500,color:'#ffbb33',altMin:100,altMax:8000,icon:'fa-location-arrow',iconAdj:45},
+    missile_kalibr:{name:'КАЛІБР',speed:900,maxRange:2000,color:'#33bbff',altMin:50,altMax:500,icon:'fa-location-arrow',iconAdj:45},
+    missile_x22:{name:'X-22 БУРЯ',speed:4000,maxRange:600,color:'#ff5555',altMin:12000,altMax:22000,icon:'fa-location-arrow',iconAdj:45},
+    missile_zircon:{name:'ЦИРКОН',speed:11000,maxRange:1000,color:'#ff00ff',altMin:30000,altMax:40000,icon:'fa-location-arrow',iconAdj:45},
+    missile_iskander:{name:'ІСКАНДЕР-M',speed:7500,maxRange:500,color:'#ff5555',altMin:20000,altMax:70000,icon:'fa-location-arrow',iconAdj:45},
+    missile_kinzhal:{name:'КИНЖАЛ',speed:12000,maxRange:2000,color:'#ff0000',altMin:30000,altMax:80000,icon:'fa-location-arrow',iconAdj:45},
+    missile_oniks:{name:'ОНІКС',speed:2800,maxRange:600,color:'#ff5555',altMin:50,altMax:14000,icon:'fa-location-arrow',iconAdj:45},
+    missile_x59:{name:'X-59МК2',speed:1050,maxRange:285,color:'#ffbb33',altMin:100,altMax:5000,icon:'fa-location-arrow',iconAdj:45},
+    missile_tochka:{name:'ТОЧКА-У',speed:3900,maxRange:120,color:'#ff5555',altMin:10000,altMax:50000,icon:'fa-location-arrow',iconAdj:45},
+    pvo_iris:{r:40,s:3700,name:'IRIS-T',mName:'SLM',type:'sam'},
+    pvo_nasams:{r:25,s:4100,name:'NASAMS',mName:'AIM-120',type:'sam'},
+    pvo_patriot:{r:160,s:6000,name:'Patriot',mName:'PAC-3',type:'sam',ignoreCheap:true},
+    pvo_samp:{r:100,s:4500,name:'SAMP/T',mName:'Aster-30',type:'sam'},
+    pvo_s300:{r:75,s:4000,name:'С-300ПС',mName:'5В55Р',type:'sam'},
+    pvo_buk:{r:35,s:3500,name:'Бук-М1',mName:'9М38',type:'sam'},
+    pvo_skynex:{r:4,s:3200,name:'Skynex',mName:'AHEAD 35mm',type:'sam'},
+    pvo_gepard:{r:4.5,s:3000,name:'Gepard',mName:'35mm APDS',type:'sam'},
+    pvo_vampire:{r:5,s:2800,name:'Vampire',mName:'APKWS Laser',type:'sam'},
+    ua_mobile_mrg:{name:'МРГ ПВО',speed:75,r:3.5,s:1200,mName:'Browning/Stinger',type:'mrg'},
+    ua_f16:{name:'F-16V',speed:1200,mSpeed:4800,ammo:6,range:120,mName:'AIM-120D',type:'fighter',iconAdj:-45},
+    ua_f15:{name:'F-15EX',speed:1400,mSpeed:5000,ammo:12,range:160,mName:'AIM-120D',type:'fighter',iconAdj:-45},
+    ua_mig29:{name:'МиГ-29МУ2',speed:1100,mSpeed:4200,ammo:4,range:80,mName:'Р-27ЭР',type:'fighter',iconAdj:-45},
+    ua_mi8:{name:'Ми-8МСБ-В',speed:250,mSpeed:1000,ammo:2,range:4,mName:'ПКМ/Stinger',type:'fighter',icon:'fa-helicopter',antiDroneOnly:true,iconAdj:0},
+    ua_mi24:{name:'Ми-24П',speed:310,mSpeed:1100,ammo:4,range:5,mName:'ГШ-30-2',type:'fighter',icon:'fa-helicopter',antiDroneOnly:true,iconAdj:0},
+    ua_ship_island:{name:'Island class',speed:55,mSpeed:900,ammo:2,range:100,mName:'Harpoon/Neptune',type:'ua_ship',icon:'fa-ship'},
+    ua_ship_hetman:{name:'Hetman Ivan Mazepa',speed:45,mSpeed:1200,ammo:8,range:180,mName:'NSM',type:'ua_ship',icon:'fa-ship'}
+  };
+
+  let state = {
+    currentMode:'pvo', isSimulating:false,
+    targets:[], pvo:[], missiles:[], uaPlanes:[],
+    pendingPath:[], tempMarkers:[], activeFutureLine:null, rangeCircle:null,
+    simSeconds:0, lastFrame:0, history:[], timeCompression:1, baseTime:new Date(),
+    isAttackActive:false, carriers:[], selected:null, stats:{ down:0, leak:0 }, rec:[], _lastRec:-1
+  };
+  let reviewT=null;
+  const ghostLayer=L.layerGroup();
+
+  function isWater(lat,lon){ const bs=lat<46.5&&lon>29&&lon<42; const az=lat>45&&lat<47.5&&lon>34.5&&lon<39.5; const dn=lon>32&&lon<33&&lat<47; return bs||az||dn; }
+
+  /* ---------- history ---------- */
+  function toggleHistory(){ Snd.ping(); const m=$('historyModal'); const on=m.classList.toggle('show'); $('historyBtn').classList.toggle('on',on); if(on){ closePreset(); updateHistoryTable(); } }
+  function addToHistory(name,ev,pos){ state.history.push({ time:getSimTimeString(), tSec:state.simSeconds, name, type:ev, pos }); Snd.ping(); if($('historyModal').classList.contains('show')) updateHistoryTable(); if($('timelinePanel').classList.contains('show')) updateTimeline(); updateNav(); }
+  function updateHistoryTable(){
+    const body=$('historyTableBody'); body.innerHTML='';
+    state.history.slice().reverse().forEach(e=>{
+      const row=document.createElement('tr');
+      row.onclick=()=>{ map.flyTo(e.pos,9); Snd.ping(); };
+      const statusText = e.type==='deploy'?t('b_deploy'):e.type==='launch'?t('b_launch'):e.type==='intercept'?t('b_intercept'):t('b_hit');
+      row.innerHTML=`<td style="color:var(--muted);font-variant-numeric:tabular-nums;">${e.time}</td><td style="font-weight:600;color:#eafff4;">${e.name}</td><td><span class="badge badge-${e.type}">${statusText}</span></td><td style="color:#8fc4ad;font-size:9px;">${e.pos[0].toFixed(2)}, ${e.pos[1].toFixed(2)}</td>`;
+      body.appendChild(row);
+    });
+  }
+
+  function getSimTimeString(){ const now=state.isSimulating?new Date(state.baseTime.getTime()+state.simSeconds*1000):new Date(); const h=now.getHours().toString().padStart(2,'0'),m=now.getMinutes().toString().padStart(2,'0'),s=now.getSeconds().toString().padStart(2,'0'); return `${h}:${m}:${s}`; }
+  function calculateHeading(p1,p2){ if(!p1||!p2) return 0; const la1=p1[0]*Math.PI/180,la2=p2[0]*Math.PI/180,lo1=p1[1]*Math.PI/180,lo2=p2[1]*Math.PI/180; const y=Math.sin(lo2-lo1)*Math.cos(la2); const x=Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(lo2-lo1); return (Math.atan2(y,x)*180/Math.PI+360)%360; }
+  function notifyOnMap(pos,text,color){ const pt=map.latLngToContainerPoint(pos); const el=document.createElement('div'); el.className='map-notification'; el.style.left=pt.x+'px'; el.style.top=pt.y+'px'; el.style.color=color; el.style.borderColor=color; el.textContent=text; document.body.appendChild(el); setTimeout(()=>el.remove(),3000); }
+
+  function setMode(m){ Snd.ping(); state.currentMode=m; $('pvoCard').classList.toggle('active',m==='pvo'); $('targetCard').classList.toggle('active',m==='target'); resetCurrentSelection(); showHint(m==='pvo'?t('hint_pvo'):t('hint_target')); updateNav(); }
+
+  function updateCounters(){
+    const ta=state.targets.filter(x=>x.active).length;
+    $('targetCount').textContent=ta;
+    $('pvoCount').textContent=state.pvo.filter(x=>x.type==='sam').length;
+    $('mobileCount').textContent=state.pvo.filter(x=>x.type==='mrg').length;
+    $('shipCount').textContent=state.pvo.filter(x=>x.type==='ua_ship').length;
+    $('uaPlaneCount').textContent=state.uaPlanes.filter(x=>x.active).length;
+    if(ta===0&&state.isAttackActive){ state.isAttackActive=false; $('attackBtn').disabled=false; state.carriers.forEach(c=>{ c.marker.remove(); c.tb.remove(); }); state.carriers=[]; }
+  }
+  function updateStats(){
+    $('statDown').textContent=state.stats.down;
+    $('statLeak').textContent=state.stats.leak;
+    const tot=state.stats.down+state.stats.leak;
+    const pct=tot?Math.round(state.stats.down/tot*100):100;
+    $('statEff').textContent=pct+'%';
+  }
+
+  function resetCurrentSelection(){ state.tempMarkers.forEach(m=>map.removeLayer(m)); state.tempMarkers=[]; state.pendingPath=[]; if(state.activeFutureLine){ state.activeFutureLine.remove(); state.activeFutureLine=null; } if(state.rangeCircle){ state.rangeCircle.remove(); state.rangeCircle=null; } updateNav(); }
+
+  /* ---------- object detail ---------- */
+  function selectObject(o){ state.selected=o; refreshDetail(); }
+  function fmtEta(sec){ if(!isFinite(sec)||sec<0) return '—'; const m=Math.floor(sec/60),s=Math.floor(sec%60); return `${m}:${s.toString().padStart(2,'0')}`; }
+  function refreshDetail(){
+    const o=state.selected; const card=$('detailCard');
+    if(!o||!o.active){ card.classList.remove('show'); return; }
+    card.classList.add('show');
+    const hostile=o.side==='RU';
+    card.classList.toggle('hostile',hostile);
+    $('dcName').textContent=o.name;
+    const badge=$('dcBadge'); badge.textContent=hostile?'HOSTILE':'FRIEND'; badge.classList.toggle('friend',!hostile);
+    let cells='';
+    const cell=(k,v)=>`<div class="dc-cell"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    cells+=cell('SPEED',Math.round(o.curSpeed||o.speed||0)+'<span style="font-size:9px;color:var(--muted)"> км/год</span>');
+    if(hostile){
+      cells+=cell('ALT',Math.round(o.altitude||0)+'<span style="font-size:9px;color:var(--muted)"> м</span>');
+      const rem=(o.totalDist||0)-(o.progressKm||0); const eta=o.curSpeed>0?rem/o.curSpeed*3600:Infinity;
+      cells+=cell('ETA',fmtEta(eta));
+      cells+=cell('DIST',Math.round(rem)+'<span style="font-size:9px;color:var(--muted)"> км</span>');
+    } else {
+      if(o.ammo!=null) cells+=cell('AMMO',o.ammo); if(o.range!=null) cells+=cell('RANGE',o.range+'<span style="font-size:9px;color:var(--muted)"> км</span>');
+      if(o.radius!=null) cells+=cell('ZONE',o.radius+'<span style="font-size:9px;color:var(--muted)"> км</span>');
+      if(o.mName) cells+=cell('ARM',`<span style="font-size:11px">${o.mName}</span>`);
+    }
+    $('dcGrid').innerHTML=cells;
+    $('dcStatus').textContent=o.type==='mrg'||o.type==='ua_ship'||o.type==='fighter'?t('st_patrol'):t('st_active');
+    if(hostile){ const p=Math.max(0,Math.min(100,100-((o.progressKm||0)/(o.totalDist||1)*100))); $('dcBarFill').style.width=p+'%'; }
+    else $('dcBarFill').style.width='100%';
+  }
+
+  /* ---------- create UA systems ---------- */
+  function createPVO(pos){
+    const key=$('pvoSelect').value, cfg=CONFIG[key];
+    if(cfg.type==='ua_ship'){ if(!isWater(pos[0],pos[1])){ notifyOnMap(pos,t('n_water'),'#ff5555'); Snd.warning(); return; } createUAShip(pos,cfg); return; }
+    else if(cfg.type!=='fighter'){ if(isWater(pos[0],pos[1])){ notifyOnMap(pos,t('n_land'),'#ff5555'); Snd.warning(); return; } }
+    if(cfg.type==='mrg'){ if(state.pendingPath.length<2){ notifyOnMap(pos,t('n_mrg'),'#e1ff00'); Snd.ping(); return; } createMRG(cfg); return; }
+    if(cfg.type==='fighter'){ createUAFighter(pos,cfg); return; }
+    Snd.alert();
+    const sz=getRadarSizeInPixels(cfg.r,pos[0]);
+    const rMarker=L.marker(pos,{ icon:L.divIcon({ className:'radar-container', html:`<div class="radar-sweep" style="width:${sz}px;height:${sz}px;"></div>`, iconSize:[0,0] }), interactive:false }).addTo(map);
+    const dot=L.circleMarker(pos,{ radius:6, color:'#fff', fillColor:'#22ff99', fillOpacity:1 }).addTo(map);
+    const item={ id:Math.random(), pos, currentPos:pos, radius:cfg.r, mSpeed:cfg.s, name:cfg.name, mName:cfg.mName, type:'sam', ignoreCheap:cfg.ignoreCheap, layers:[rMarker,dot], side:'UA', active:true };
+    dot.on('click',()=>{ selectObject(item); Snd.ping(); });
+    state.pvo.push(item); addToHistory(cfg.name,'deploy',pos);
+    notifyOnMap(pos,`${t('n_deploy')}: ${cfg.name}`,'#22ff99'); updateCounters(); updateNav();
+  }
+  function createMRG(cfg){
+    const path=[...state.pendingPath];
+    const m={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:[...path[0]], path, speed:cfg.speed, curSpeed:0, radius:cfg.r, mSpeed:cfg.mSpeed, active:true, side:'UA', type:'mrg', progressKm:0, totalDist:0,
+      marker:L.marker(path[0],{ icon:L.divIcon({ html:`<div class="static-icon"><i class="fas fa-truck-pickup" style="color:#e1ff00;font-size:14px;"></i></div>`, className:'event-marker' }) }).addTo(map),
+      toolbar:Object.assign(document.createElement('div'),{ className:'obj-toolbar' }),
+      line:L.polyline(path,{ color:'#e1ff00', weight:2, opacity:0.5, dashArray:'5, 5' }).addTo(map) };
+    for(let i=0;i<path.length-1;i++) m.totalDist+=map.distance(path[i],path[i+1])/1000;
+    m.marker.on('click',()=>{ selectObject(m); Snd.ping(); });
+    document.body.appendChild(m.toolbar); state.pvo.push(m); addToHistory(cfg.name,'deploy',path[0]); resetCurrentSelection(); Snd.alert();
+    notifyOnMap(path[0],t('n_patrol'),'#e1ff00'); updateCounters(); updateNav();
+  }
+  function createUAShip(pos,cfg){
+    const s={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:pos, patrolTarget:pos, speed:cfg.speed, curSpeed:0, mSpeed:cfg.mSpeed, ammo:cfg.ammo, range:cfg.range, active:true, side:'UA', type:'ua_ship', history:[pos],
+      marker:L.marker(pos,{ icon:L.divIcon({ html:`<div class="static-icon"><i class="fas ${cfg.icon}" style="color:#ffd24d;font-size:16px;"></i></div>`, className:'event-marker' }) }).addTo(map),
+      toolbar:Object.assign(document.createElement('div'),{ className:'obj-toolbar' }),
+      line:L.polyline([pos],{ color:'#ffd24d', weight:2, opacity:0.4, dashArray:'5, 5' }).addTo(map) };
+    s.marker.on('click',()=>{ selectObject(s); Snd.ping(); });
+    document.body.appendChild(s.toolbar); state.pvo.push(s); addToHistory(cfg.name,'deploy',pos); Snd.alert();
+    notifyOnMap(pos,`${t('n_ship')}: ${cfg.name}`,'#ffd24d'); updateCounters(); updateNav();
+  }
+  function createUAFighter(pos,cfg){
+    const p={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:pos, patrolTarget:pos, speed:cfg.speed, curSpeed:0, mSpeed:cfg.mSpeed, ammo:cfg.ammo, range:cfg.range, active:true, side:'UA', type:'fighter', altitude:2000, history:[pos], antiDroneOnly:cfg.antiDroneOnly||false, iconAdj:cfg.iconAdj,
+      marker:L.marker(pos,{ icon:L.divIcon({ html:`<div class="rotated-icon"><i class="fas ${cfg.icon||'fa-fighter-jet'}" style="color:#ffd24d;font-size:18px;"></i></div>`, className:'event-marker' }) }).addTo(map),
+      toolbar:Object.assign(document.createElement('div'),{ className:'obj-toolbar' }),
+      line:L.polyline([pos],{ color:'#ffd24d', weight:2, opacity:0.6 }).addTo(map) };
+    p.marker.on('click',()=>{ selectObject(p); Snd.ping(); });
+    document.body.appendChild(p.toolbar); state.uaPlanes.push(p); addToHistory(cfg.name,'deploy',pos); Snd.alert();
+    notifyOnMap(pos,`${t('n_takeoff')}: ${cfg.name}`,'#ffd24d'); updateCounters(); updateNav();
+  }
+
+  function createTarget(cfgOverride=null,pathOverride=null){
+    const type=cfgOverride||$('targetSelect').value, cfg=CONFIG[type];
+    const raw=pathOverride||[...state.pendingPath]; if(raw.length<2) return;
+    const apogee=Math.floor(Math.random()*(cfg.altMax-cfg.altMin)+cfg.altMin);
+    const arcPts=bowedArc(raw[0], raw[raw.length-1], apogee);
+    const target={ id:Math.random(), name:cfg.name, path:arcPts, speed:cfg.speed, curSpeed:0, currentPos:[...arcPts[0]], progressKm:0, totalDist:0, active:true, engagedBy:new Set(), side:'RU', iconAdj:cfg.iconAdj, altitude:0, targetAlt:apogee, apogee, history:[[...arcPts[0]]], cheap:cfg.cheap||false,
+      toolbar:Object.assign(document.createElement('div'),{ className:'obj-toolbar' }),
+      marker:L.marker(arcPts[0],{ icon:L.divIcon({ html:`<div class="rotated-icon"><i class="fas ${cfg.icon||'fa-location-arrow'}" style="color:${cfg.color};font-size:14px;"></i></div>`, className:'event-marker' }) }).addTo(map) };
+    target.marker.on('click',()=>{ selectObject(target); Snd.ping(); });
+    document.body.appendChild(target.toolbar);
+    for(let i=0;i<target.path.length-1;i++) target.totalDist+=map.distance(target.path[i],target.path[i+1])/1000;
+    drawTraj(target,cfg);
+    state.targets.push(target); addToHistory(cfg.name,'launch',raw[0]); Snd.launch();
+    if(!pathOverride) resetCurrentSelection(); updateCounters(); updateNav();
+  }
+
+  /* ---------- scenarios ---------- */
+  const UA_CITIES=[[50.45,30.52],[49.83,24.02],[46.48,30.72],[48.46,35.04],[49.99,36.23],[49.75,27.22],[49.23,28.46],[46.97,31.99],[50.74,25.32],[48.92,24.71],[48.37,31.16],[51.50,31.29]];
+  const ZONES={ blackSea:[44.5,33.5], caspian:[47.5,43.5], belgorod:[50.6,36.6], crimea:[45.1,34.0], kursk:[51.7,36.1], belarus:[52.1,26.5], donetsk:[48.0,37.8], kherson_occ:[46.6,33.3] };
+  const randCity=()=>UA_CITIES[Math.floor(Math.random()*UA_CITIES.length)];
+  function ensureSim(){ if(!state.isSimulating){ state.isSimulating=true; state.lastFrame=performance.now(); requestAnimationFrame(simLoop); updateNav(); } }
+  function showCarrier(pos,name,icon){
+    const marker=L.marker(pos,{ icon:L.divIcon({ html:`<div class="static-icon"><i class="fas ${icon}" style="color:#ff5555;font-size:24px;filter:drop-shadow(0 0 5px red);"></i></div>`, className:'event-marker' }) }).addTo(map);
+    const tb=Object.assign(document.createElement('div'),{ className:'obj-toolbar', innerHTML:`<b style="color:#ff5555">${name}</b>` });
+    document.body.appendChild(tb); const pt=map.latLngToContainerPoint(pos); tb.style.left=pt.x+'px'; tb.style.top=pt.y+'px';
+    state.carriers.push({ marker, tb, pos });
+  }
+  function triggerMassiveAttack(){
+    if(state.isAttackActive) return; Snd.alert(); state.isAttackActive=true; $('attackBtn').disabled=true;
+    notifyOnMap(map.getCenter(),t('n_massive'),'#ff5555');
+    showCarrier(ZONES.caspian,'ТУ-95МС','fa-fighter-jet'); showCarrier(ZONES.blackSea,'ФЛОТ/ПЛ','fa-ship'); showCarrier(ZONES.crimea,'ШАХЕД-ХАБ','fa-warehouse'); showCarrier(ZONES.belgorod,'ІСКАНДЕР','fa-truck-monster');
+    for(let i=0;i<8;i++) setTimeout(()=>{ const s=Math.random()>0.5?ZONES.crimea:ZONES.belgorod; createTarget('drone_shahed',[s,[47+Math.random(),33+Math.random()],randCity()]); }, i*800);
+    setTimeout(()=>{ for(let i=0;i<4;i++) createTarget('missile_kalibr',[ZONES.blackSea,randCity()]); },6000);
+    setTimeout(()=>{ createTarget('missile_iskander',[ZONES.belgorod,randCity()]); createTarget('missile_x101',[ZONES.caspian,[50.0,38.0],randCity()]); createTarget('missile_kinzhal',[ZONES.belarus,randCity()]); },12000);
+    ensureSim();
+  }
+  function scnSwarm(){ Snd.alert(); for(let i=0;i<12;i++) setTimeout(()=>{ const s=Math.random()>0.5?ZONES.crimea:ZONES.belgorod; createTarget('drone_shahed',[s,[47+Math.random()*1.5,33+Math.random()*2],randCity()]); }, i*500); ensureSim(); }
+  function scnBallistic(){ Snd.alert(); createTarget('missile_iskander',[ZONES.belgorod,randCity()]); setTimeout(()=>createTarget('missile_iskander',[ZONES.crimea,randCity()]),1500); setTimeout(()=>createTarget('missile_kinzhal',[ZONES.belarus,randCity()]),3000); setTimeout(()=>{ createTarget('missile_x101',[ZONES.caspian,[50,38],randCity()]); createTarget('missile_x101',[ZONES.caspian,[49,37],randCity()]); },5000); ensureSim(); }
+  function scnNaval(){ Snd.alert(); for(let i=0;i<4;i++) setTimeout(()=>createTarget('missile_kalibr',[ZONES.blackSea,randCity()]),i*900); setTimeout(()=>{ createTarget('missile_oniks',[ZONES.blackSea,[46.9,32]]); createTarget('missile_oniks',[ZONES.crimea,[46.5,30.7]]); },3500); ensureSim(); }
+  function runScenario(id){ closePreset(); if(id==='massive') triggerMassiveAttack(); else if(id==='swarm') scnSwarm(); else if(id==='ballistic') scnBallistic(); else if(id==='naval') scnNaval(); }
+
+  /* ---------- sim loop ---------- */
+  function simLoop(time){
+    if(!state.isSimulating){ syncAllToolbars(); updateClock(); return; }
+    const dt=(time-state.lastFrame)/1000; state.lastFrame=time; const stepHours=(dt*state.timeCompression)/3600;
+    state.uaPlanes.forEach(p=>{
+      if(!p.active) return; const prev=[...p.currentPos];
+      if(map.distance(p.currentPos,p.patrolTarget)<1000) p.patrolTarget=[47+(Math.random()-0.5)*4,30+Math.random()*5];
+      const dist=map.distance(p.currentPos,p.patrolTarget); p.curSpeed=p.speed; const move=(p.curSpeed*stepHours*1000)/dist;
+      p.currentPos=[p.currentPos[0]+(p.patrolTarget[0]-p.currentPos[0])*move,p.currentPos[1]+(p.patrolTarget[1]-p.currentPos[1])*move];
+      p.marker.setLatLng(p.currentPos); const ang=calculateHeading(prev,p.currentPos); const ic=p.marker.getElement()?.querySelector('.rotated-icon'); if(ic) ic.style.transform=`rotate(${ang+(p.iconAdj||-45)}deg)`;
+      p.history.push([...p.currentPos]); if(p.history.length>40) p.history.shift(); p.line.setLatLngs(p.history);
+      if(p.ammo>0) state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(p.id)){ if(p.antiDroneOnly&&!tg.cheap) return; if(map.distance(p.currentPos,tg.currentPos)/1000<p.range){ tg.engagedBy.add(p.id); p.ammo--; launchMissile(p,tg); } } });
+    });
+    state.targets.forEach(tg=>{
+      if(!tg.active) return; const prev=[...tg.currentPos]; const remDist=tg.totalDist-tg.progressKm;
+      if(tg.progressKm<5){ tg.curSpeed=Math.min(tg.speed,tg.curSpeed+8000*stepHours*10); tg.altitude=Math.min(tg.targetAlt,tg.altitude+20000*stepHours); }
+      else if(remDist<15){ tg.curSpeed=tg.speed*1.1; tg.altitude=Math.max(0,tg.altitude-(tg.targetAlt/(15/(tg.curSpeed*stepHours)))); }
+      else { tg.curSpeed=tg.speed; tg.altitude=tg.targetAlt; }
+      tg.progressKm+=tg.curSpeed*stepHours; tg.currentPos=interpolate(tg.path,tg.progressKm); tg.marker.setLatLng(tg.currentPos);
+      const ang=calculateHeading(prev,tg.currentPos); const ic=tg.marker.getElement()?.querySelector('.rotated-icon'); if(ic) ic.style.transform=`rotate(${ang+(tg.iconAdj||0)}deg)`;
+      tg.history.push([...tg.currentPos]);
+      if(tg.progressKm>=tg.totalDist){ tg.altitude=0; markEvent(tg.currentPos,'hit'); addToHistory(tg.name,'hit',tg.currentPos); notifyOnMap(tg.currentPos,`${t('n_hit')}: ${tg.name}`,'#ff5555'); removeObj(tg,true); }
+    });
+    state.pvo.forEach(sys=>{
+      if(sys.type==='ua_ship'){
+        if(map.distance(sys.currentPos,sys.patrolTarget)<5000) sys.patrolTarget=[45+(Math.random()-0.5)*1,32+Math.random()*5];
+        const dist=map.distance(sys.currentPos,sys.patrolTarget); sys.curSpeed=sys.speed; const move=(sys.curSpeed*stepHours*1000)/dist;
+        sys.currentPos=[sys.currentPos[0]+(sys.patrolTarget[0]-sys.currentPos[0])*move,sys.currentPos[1]+(sys.patrolTarget[1]-sys.currentPos[1])*move];
+        sys.marker.setLatLng(sys.currentPos); sys.history.push([...sys.currentPos]); if(sys.history.length>50) sys.history.shift(); sys.line.setLatLngs(sys.history);
+        if(sys.ammo>0) state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(sys.id)){ if(map.distance(sys.currentPos,tg.currentPos)/1000<sys.range){ tg.engagedBy.add(sys.id); sys.ammo--; launchMissile(sys,tg); } } });
+      } else if(sys.type==='mrg'){
+        sys.curSpeed=sys.speed; sys.progressKm+=sys.curSpeed*stepHours; if(sys.progressKm>=sys.totalDist) sys.progressKm=0; sys.currentPos=interpolate(sys.path,sys.progressKm); sys.marker.setLatLng(sys.currentPos);
+        state.targets.forEach(tg=>{ if(tg.active&&tg.cheap&&!tg.engagedBy.has(sys.id)){ if(map.distance(sys.currentPos,tg.currentPos)/1000<sys.radius){ tg.engagedBy.add(sys.id); launchMissile(sys,tg); } } });
+      } else if(sys.type==='sam'){
+        state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(sys.id)){ if(sys.ignoreCheap&&tg.cheap) return; if(map.distance(sys.pos,tg.currentPos)/1000<sys.radius){ tg.engagedBy.add(sys.id); launchMissile(sys,tg); } } });
+      }
+    });
+    state.missiles=state.missiles.filter(m=>{
+      if(!m.target.active){ m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; }
+      const prev=[...m.pos]; const d=map.distance(m.pos,m.target.currentPos);
+      if(d<500){ markEvent(m.target.currentPos,'intercept'); addToHistory(m.target.name,'intercept',m.target.currentPos); notifyOnMap(m.target.currentPos,`${t('n_intercept')}: ${m.target.name}`,'#22ff99'); removeObj(m.target,true); m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; }
+      m.curSpeed=Math.min(m.speed*1.5,(m.curSpeed||m.speed)+2000*stepHours*10); const move=(m.curSpeed*stepHours*1000)/d;
+      m.pos=[m.pos[0]+(m.target.currentPos[0]-m.pos[0])*move,m.pos[1]+(m.target.currentPos[1]-m.pos[1])*move]; m.marker.setLatLng(m.pos);
+      const ang=calculateHeading(prev,m.pos); const ic=m.marker.getElement()?.querySelector('.rotated-icon'); if(ic) ic.style.transform=`rotate(${ang+45}deg)`; m.history.push([...m.pos]); m.line.setLatLngs(m.history); return true;
+    });
+    state.simSeconds+=dt*state.timeCompression;
+    if(state.simSeconds-state._lastRec>=0.5){ state._lastRec=state.simSeconds; state.rec.push({ t:state.simSeconds, tgts:state.targets.filter(x=>x.active).map(x=>({ lat:x.currentPos[0], lng:x.currentPos[1], cheap:x.cheap })) }); if(state.rec.length>3000) state.rec.shift(); }
+    updateClock(); syncAllToolbars(); updateTimeline(); requestAnimationFrame(simLoop);
+  }
+
+  function launchMissile(launcher,target){
+    Snd.launch();
+    const startPos=(launcher.type==='fighter'||launcher.type==='ua_ship'||launcher.type==='mrg')?launcher.currentPos:launcher.pos;
+    const tb=Object.assign(document.createElement('div'),{ className:'obj-toolbar', innerHTML:launcher.mName||'SAM' }); tb.style.fontSize='8px'; document.body.appendChild(tb);
+    const m={ target, pos:[...startPos], history:[[...startPos]], speed:launcher.mSpeed||5000, curSpeed:(launcher.mSpeed||5000)*0.5, toolbar:tb,
+      marker:L.marker(startPos,{ icon:L.divIcon({ html:`<div class="rotated-icon"><i class="fas fa-location-arrow" style="color:#ffbb33;font-size:12px;"></i></div>`, className:'event-marker' }) }).addTo(map),
+      line:L.polyline([startPos],{ color:'#ffbb33', weight:1, opacity:0.8 }).addTo(map) };
+    state.missiles.push(m);
+  }
+
+  function removeObj(obj,keepPath=false){
+    obj.active=false; if(obj.marker) map.removeLayer(obj.marker); if(obj.toolbar) obj.toolbar.remove();
+    if(!keepPath){ if(obj.line) map.removeLayer(obj.line); if(obj.linePassed) map.removeLayer(obj.linePassed); if(obj.lineFuture) map.removeLayer(obj.lineFuture); }
+    if(obj.arcLines){ obj.arcLines.forEach(l=>map.removeLayer(l)); obj.arcLines=null; }
+    if(obj.arcSegs){ obj.arcSegs=null; if(useDeck) buildDeck(); }
+    if(state.selected===obj){ state.selected=null; $('detailCard').classList.remove('show'); }
+    updateCounters();
+  }
+
+  function undoLastAction(){
+    Snd.ping();
+    if(state.pendingPath.length>0){ state.pendingPath.pop(); const m=state.tempMarkers.pop(); if(m) map.removeLayer(m); if(state.activeFutureLine){ if(state.pendingPath.length>0) state.activeFutureLine.setLatLngs(state.pendingPath); else { state.activeFutureLine.remove(); state.activeFutureLine=null; } } if(state.pendingPath.length===0&&state.rangeCircle){ state.rangeCircle.remove(); state.rangeCircle=null; } }
+    else if(state.history.length>0){ const last=state.history.pop(); const idx=state.pvo.findIndex(i=>i.name===last.name); if(idx!==-1){ const item=state.pvo[idx]; if(item.type==='sam') item.layers.forEach(l=>map.removeLayer(l)); else removeObj(item); state.pvo.splice(idx,1); } }
+    updateCounters(); updateNav();
+  }
+
+  function syncAllToolbars(){
+    state.targets.forEach(tg=>tg.active&&updateToolbar(tg,`<b>${tg.name}</b><br>SPD ${Math.round(tg.curSpeed)}<br>ALT ${Math.round(tg.altitude)}м`));
+    state.uaPlanes.forEach(p=>p.active&&updateToolbar(p,`<b style="color:#ffd24d">${p.name}</b><br>SPD ${Math.round(p.curSpeed)}<br>AMMO ${p.ammo}`));
+    state.pvo.forEach(sys=>{ if(sys.type==='ua_ship') updateToolbar(sys,`<b style="color:#ffd24d">${sys.name}</b><br>SPD ${Math.round(sys.curSpeed)}`); else if(sys.type==='mrg') updateToolbar(sys,`<b style="color:#e1ff00">${sys.name}</b><br>SPD ${Math.round(sys.curSpeed)}`); });
+    state.missiles.forEach(m=>{ if(!m.target.active) return; const pt=map.latLngToContainerPoint(m.pos); m.toolbar.style.left=pt.x+'px'; m.toolbar.style.top=pt.y+'px'; m.toolbar.innerHTML=`${Math.round(m.curSpeed)}`; });
+    state.carriers.forEach(c=>{ const pt=map.latLngToContainerPoint(c.pos); c.tb.style.left=pt.x+'px'; c.tb.style.top=pt.y+'px'; });
+    if(state.selected) refreshDetail();
+  }
+  function updateToolbar(obj,text){ const p=obj.currentPos||obj.pos; if(!p||!obj.toolbar) return; const pt=map.latLngToContainerPoint(p); obj.toolbar.style.left=pt.x+'px'; obj.toolbar.style.top=pt.y+'px'; obj.toolbar.innerHTML=text; }
+
+  function markEvent(pos,type){
+    const icon=L.divIcon({ className:'event-marker', html: type==='intercept'?'<i class="fas fa-skull" style="color:#fff;font-size:18px;"></i>':'<i class="fas fa-certificate" style="color:#ffbb33;font-size:20px;"></i>' });
+    L.marker(pos,{ icon, interactive:false }).addTo(map);
+    const p=map.latLngToContainerPoint(pos); const d=document.createElement('div'); d.className='explosion'; d.style.left=p.x+'px'; d.style.top=p.y+'px'; document.body.appendChild(d); setTimeout(()=>d.remove(),500);
+    if(type==='hit'){ Snd.hit(); state.stats.leak++; } else { Snd.intercept(); state.stats.down++; }
+    updateStats();
+  }
+  function interpolate(path,dist){ let acc=0; for(let i=0;i<path.length-1;i++){ const d=map.distance(path[i],path[i+1])/1000; if(acc+d>dist){ const r=(dist-acc)/d; return [path[i][0]+(path[i+1][0]-path[i][0])*r,path[i][1]+(path[i+1][1]-path[i][1])*r]; } acc+=d; } return path[path.length-1]; }
+  function getRadarSizeInPixels(radiusKm,lat){ const zoom=map.getZoom(); const mpp=156543.03392*Math.cos(lat*Math.PI/180)/Math.pow(2,zoom); return ((radiusKm*1000)/mpp)*2; }
+
+  /* ---------- map click ---------- */
+  map.on('click', e => {
+    Snd.init(); ensureRenderer(); Snd.ping(); const pos=[e.latlng.lat,e.latlng.lng];
+    if(state.currentMode==='pvo'){
+      const type=$('pvoSelect').value;
+      if(CONFIG[type].type==='mrg'){ state.pendingPath.push(pos); state.tempMarkers.push(L.circleMarker(pos,{ radius:4, color:'#e1ff00' }).addTo(map)); if(state.activeFutureLine) state.activeFutureLine.remove(); state.activeFutureLine=L.polyline(state.pendingPath,{ color:'#e1ff00', weight:1, dashArray:'5, 8', opacity:0.5 }).addTo(map); }
+      else createPVO(pos);
+    } else {
+      const type=$('targetSelect').value, cfg=CONFIG[type];
+      if(state.pendingPath.length===0){ state.pendingPath.push(pos); state.tempMarkers.push(L.circleMarker(pos,{ radius:4, color:'#fff' }).addTo(map)); state.rangeCircle=L.circle(pos,{ radius:cfg.maxRange*1000, color:cfg.color, weight:1, fillOpacity:0.05, dashArray:'10, 10', interactive:false }).addTo(map); }
+      else { const startPos=state.pendingPath[0]; const dist=map.distance(startPos,pos)/1000; if(dist>cfg.maxRange){ notifyOnMap(pos,`${t('n_range')} (${Math.round(dist)} > ${cfg.maxRange} км)`,'#ff5555'); Snd.warning(); return; } state.pendingPath.push(pos); state.tempMarkers.push(L.circleMarker(pos,{ radius:4, color:'#fff' }).addTo(map)); if(state.activeFutureLine) state.activeFutureLine.remove(); state.activeFutureLine=L.polyline(state.pendingPath,{ color:'#fff', weight:1, dashArray:'5, 8', opacity:0.5 }).addTo(map); }
+    }
+    updateNav();
+  });
+
+  /* ---------- play / speed ---------- */
+  function doPlay(){
+    Snd.init();
+    if(reviewT!=null) exitReview();
+    if(state.pendingPath.length>0){ Snd.ping(); if(state.currentMode==='pvo'){ if(state.pendingPath.length>=2||CONFIG[$('pvoSelect').value].type!=='mrg') createPVO(state.pendingPath[0]); } else { if(state.pendingPath.length>=2) createTarget(); } }
+    else { state.isSimulating=!state.isSimulating; state.lastFrame=performance.now(); if(state.isSimulating){ Snd.alert(); requestAnimationFrame(simLoop); notifyOnMap(map.getCenter(),t('n_simstart'),'#22ff99'); } else { Snd.ping(); syncAllToolbars(); notifyOnMap(map.getCenter(),t('n_pause'),'#ffd24d'); } }
+    updateNav();
+  }
+  function setSpeed(v){
+    Snd.ping();
+    if(v==='pause'){ state.isSimulating=false; syncAllToolbars(); }
+    else { state.timeCompression=+v; if(!state.isSimulating){ state.isSimulating=true; state.lastFrame=performance.now(); requestAnimationFrame(simLoop); notifyOnMap(map.getCenter(),t('n_simstart'),'#22ff99'); } }
+    updateNav();
+  }
+  function updateSpeedUI(){
+    document.querySelectorAll('#speedPill span').forEach(s=>{ const d=s.dataset.speed; s.classList.toggle('active', state.isSimulating&&state.timeCompression===+d); });
+  }
+
+  /* ---------- timeline + scrub review ---------- */
+  function fmtT(sec){ sec=Math.max(0,sec); const m=Math.floor(sec/60), s=Math.floor(sec%60); return m+':'+String(s).padStart(2,'0'); }
+  function toggleTimeline(){ Snd.ping(); const p=$('timelinePanel'); const on=p.classList.toggle('show'); $('timelineBtn').classList.toggle('on',on); if(on){ $('historyModal').classList.remove('show'); $('historyBtn').classList.remove('on'); closePreset(); updateTimeline(); } }
+  function updateTimeline(){ const p=$('timelinePanel'); if(!p||!p.classList.contains('show')) return;
+    const maxT=Math.max(state.simSeconds,1); const cur=reviewT==null?state.simSeconds:reviewT; const pc=Math.min(100,cur/maxT*100);
+    $('tlFill').style.width=pc+'%'; $('tlHead').style.left=pc+'%';
+    $('tlNow').textContent=fmtT(cur)+(reviewT!=null?' \u25c2':''); $('tlEnd').textContent=fmtT(maxT);
+    const track=$('tlTicks'); track.innerHTML='';
+    state.history.forEach(h=>{ if(h.tSec==null) return; const el=document.createElement('div'); el.className='tl-tick '+h.type; el.style.left=(Math.min(h.tSec,maxT)/maxT*100)+'%';
+      const lbl=h.type==='launch'?t('b_launch'):h.type==='intercept'?t('b_intercept'):h.type==='hit'?t('b_hit'):t('b_deploy');
+      el.addEventListener('mouseenter',()=>{ const tip=$('tlTip'); tip.style.display='block'; tip.style.left=el.style.left; tip.innerHTML=h.time+' \u00b7 <b>'+h.name+'</b> \u00b7 '+lbl; });
+      el.addEventListener('mouseleave',()=>{ $('tlTip').style.display='none'; });
+      el.addEventListener('click',ev=>{ ev.stopPropagation(); map.flyTo(h.pos,9); Snd.ping(); });
+      track.appendChild(el);
+    });
+    const axis=$('tlAxis'); axis.innerHTML=''; for(let i=0;i<=4;i++){ const l=document.createElement('div'); l.className='tl-lbl'; l.style.left=(i*25)+'%'; l.textContent=fmtT(maxT*i/4); axis.appendChild(l); }
+  }
+  function showGhosts(tt){ ghostLayer.addTo(map); ghostLayer.clearLayers(); if(!state.rec.length) return; let snap=state.rec[0]; for(const s of state.rec){ if(s.t<=tt) snap=s; else break; }
+    state.targets.forEach(x=>{ if(x.marker&&x.marker.setOpacity) x.marker.setOpacity(0); if(x.toolbar) x.toolbar.style.display='none'; });
+    snap.tgts.forEach(g=>{ L.circleMarker([g.lat,g.lng],{ radius:5, color:g.cheap?'#22ff99':'#ff5555', weight:2, opacity:0.95, fillColor:g.cheap?'#22ff99':'#ff5555', fillOpacity:0.5, interactive:false, renderer:ensureRenderer() }).addTo(ghostLayer); });
+  }
+  function enterReview(tt){ reviewT=tt; if(state.isSimulating){ state.isSimulating=false; updateNav(); } showGhosts(tt); updateTimeline(); }
+  function exitReview(){ if(reviewT==null) return; reviewT=null; ghostLayer.clearLayers(); state.targets.forEach(x=>{ if(x.marker&&x.marker.setOpacity) x.marker.setOpacity(1); if(x.toolbar) x.toolbar.style.display=''; }); updateTimeline(); }
+  function tlScrub(clientX){ const tr=$('tlTrack'); const r=tr.getBoundingClientRect(); let pct=(clientX-r.left)/r.width; pct=Math.max(0,Math.min(1,pct)); enterReview(pct*Math.max(state.simSeconds,1)); }
+
+  map.on('move',syncAllToolbars); map.on('zoomend',syncAllToolbars);
+  map.on('zoom',()=>{ state.pvo.forEach(p=>{ if(p.type==='sam'){ const size=getRadarSizeInPixels(p.radius,p.pos[0]); const el=p.layers[0].getElement(); if(el){ const sw=el.querySelector('.radar-sweep'); if(sw){ sw.style.width=size+'px'; sw.style.height=size+'px'; } } } }); });
+
+  function updateClock(){ $('simTime').textContent=getSimTimeString(); }
+  function updateNav(){
+    const btn=$('playBtn'), undo=$('undoBtn'), attack=$('attackBtn');
+    undo.classList.toggle('visible',state.pendingPath.length>0||state.history.length>0);
+    attack.style.display=state.isSimulating?'flex':'none';
+    if(state.pendingPath.length>0){ btn.innerHTML='<i class="fas fa-check"></i>'; btn.className='btn btn-play confirm'; }
+    else { btn.innerHTML=state.isSimulating?'<i class="fas fa-pause"></i>':'<i class="fas fa-play"></i>'; btn.className='btn btn-play'+(state.isSimulating?' simulating':''); }
+    updateSpeedUI();
+  }
+
+  /* ---------- hint ---------- */
+  let hintTimer=null;
+  function showHint(txt){ const h=$('hint'); h.textContent=txt; h.classList.add('show'); clearTimeout(hintTimer); hintTimer=setTimeout(()=>h.classList.remove('show'),2600); }
+
+  /* ---------- preset menu ---------- */
+  function closePreset(){ $('presetMenu').classList.remove('show'); $('presetBtn').classList.remove('on'); }
+  function togglePreset(){ Snd.ping(); const on=$('presetMenu').classList.toggle('show'); $('presetBtn').classList.toggle('on',on); if(on){ $('historyModal').classList.remove('show'); $('historyBtn').classList.remove('on'); } }
+
+  /* ---------- reset ---------- */
+  function resetAll(){ Snd.ping(); location.reload(); }
+
+  /* ---------- wire UI ---------- */
+  function openList(sel,e){ if(e&&e.target===sel) return; try{ if(sel.showPicker) sel.showPicker(); else { sel.focus(); sel.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); } }catch(_){ sel.focus(); } }
+  $('pvoCard').addEventListener('click',e=>{ setMode('pvo'); openList($('pvoSelect'),e); });
+  $('targetCard').addEventListener('click',e=>{ setMode('target'); openList($('targetSelect'),e); });
+  $('pvoSelect').addEventListener('change',()=>Snd.ping());
+  $('targetSelect').addEventListener('change',()=>Snd.ping());
+  $('locBtn').addEventListener('click',locateUser);
+  $('layerBtn').addEventListener('click',toggleMapLayer);
+  $('dsBtn').addEventListener('click',toggleDS);
+  $('soundBtn').addEventListener('click',()=>{ soundOn=!soundOn; localStorage.setItem('radarSound',soundOn?'1':'0'); $('soundBtn').classList.toggle('on',soundOn); $('soundBtn').innerHTML=soundOn?'<i class="fas fa-volume-up"></i>':'<i class="fas fa-volume-mute"></i>'; if(soundOn) Snd.ping(); });
+  $('undoBtn').addEventListener('click',undoLastAction);
+  $('playBtn').addEventListener('click',doPlay);
+  $('attackBtn').addEventListener('click',triggerMassiveAttack);
+  $('presetBtn').addEventListener('click',togglePreset);
+  $('historyBtn').addEventListener('click',toggleHistory);
+  $('timelineBtn').addEventListener('click',toggleTimeline);
+  (function(){ const tr=$('tlTrack'); if(!tr) return; let drag=false;
+    const cx=e=>e.touches?e.touches[0].clientX:e.clientX;
+    const down=e=>{ drag=true; tlScrub(cx(e)); e.preventDefault(); };
+    const move=e=>{ if(drag) tlScrub(cx(e)); };
+    const up=()=>{ drag=false; };
+    tr.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+    tr.addEventListener('touchstart',down,{passive:false}); window.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
+  })();
+  $('resetBtn').addEventListener('click',resetAll);
+  $('dcClose').addEventListener('click',()=>{ state.selected=null; $('detailCard').classList.remove('show'); Snd.ping(); });
+  document.querySelectorAll('#speedPill span').forEach(s=>s.addEventListener('click',()=>setSpeed(s.dataset.speed)));
+  document.querySelectorAll('#presetMenu [data-scn]').forEach(b=>b.addEventListener('click',()=>runScenario(b.dataset.scn)));
+  document.querySelectorAll('#langSwitch span').forEach(s=>s.addEventListener('click',()=>{ Snd.ping(); applyLang(s.dataset.lang); }));
+  $('soundBtn').classList.toggle('on',soundOn);
+
+  /* ---------- onboarding ---------- */
+  const ob=$('onboard');
+  if(localStorage.getItem('radarOnboardV1')==='1') ob.classList.add('hide');
+  $('obBtn').addEventListener('click',()=>{ Snd.init(); Snd.ping(); ob.classList.add('hide'); localStorage.setItem('radarOnboardV1','1'); showHint(t('hint_pvo')); });
+
+  /* ---------- init ---------- */
+  applyLang(lang);
+  updateClock(); setInterval(()=>{ if(!state.isSimulating) updateClock(); },1000);
+  updateNav(); updateStats();
+  map.whenReady(()=>map.invalidateSize());
+  setTimeout(()=>map.invalidateSize(),300);
+  }
+}
+</script>
 </body>
 </html>
