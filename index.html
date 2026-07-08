@@ -1,927 +1,341 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>radar-ua - Naval & Mobile Defense</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
-    <style>
-        :root { --primary: #00ff88; --bg: #0a0c10; --panel-bg: rgba(15, 20, 30, 0.4); --ua-gold: #ffd700; --ru-red: #ff4444; --sea-blue: #0088ff; --mobile-pvo: #e1ff00; }
-        body, html { height: 100%; width: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; margin: 0; color: white; }
-        #map { position: absolute; top: 0; left: 0; height: 100%; width: 100%; z-index: 1; }
-        
-        .radar-container { display: flex; align-items: center; justify-content: center; pointer-events: none; }
-        .radar-sweep {
-            position: absolute; border-radius: 50%;
-            background: conic-gradient(from 0deg at 50% 50%, rgba(0, 255, 136, 0.15) 0deg, transparent 90deg);
-            animation: rotateRadarReverse 4s linear infinite;
-            pointer-events: none; will-change: transform;
-        }
-
-        @keyframes rotateRadarReverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
-
-        .obj-toolbar { 
-            position: absolute; background: var(--panel-bg); color: #fff; padding: 4px 8px; 
-            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 4px; 
-            font-family: 'Roboto Mono', monospace; font-size: 10px; pointer-events: none; 
-            z-index: 10000; transform: translate(15px, -15px); white-space: nowrap; 
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-        
-        .explosion {
-            position: absolute; width: 60px; height: 60px;
-            background: radial-gradient(circle, #fff 10%, #ff4444 30%, transparent 70%);
-            border-radius: 50%; z-index: 10001; animation: explode 0.5s ease-out forwards;
-            pointer-events: none; transform: translate(-50%, -50%);
-        }
-        @keyframes explode { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(3); opacity: 0; } }
-
-        .map-notification {
-            position: absolute; padding: 6px 12px; border-radius: 4px; font-size: 10px; font-weight: bold;
-            text-transform: uppercase; white-space: nowrap; z-index: 10005; pointer-events: none;
-            animation: floatUp 3s ease-out forwards; border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-        }
-        @keyframes floatUp {
-            0% { transform: translate(-50%, 0); opacity: 0; }
-            10% { transform: translate(-50%, -20px); opacity: 1; }
-            80% { opacity: 1; }
-            100% { transform: translate(-50%, -60px); opacity: 0; }
-        }
-
-        .status-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 9999; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); padding: 12px; display: flex; justify-content: center; gap: 20px; pointer-events: none; flex-wrap: wrap; }
-        .status-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold; }
-        
-        .ui-layer { position: absolute; top: 70px; width: 100%; z-index: 9998; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-        .ui-layer > * { pointer-events: auto; }
-        .tool-card { background: rgba(15, 20, 30, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; flex: 1; cursor: pointer; backdrop-filter: blur(10px); }
-        .tool-card.active { border-color: var(--primary); }
-        #targetCard.active { border-color: #fff; }
-        
-        .bottom-nav { 
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            display: flex; align-items: flex-end; justify-content: center; gap: 15px; 
-            z-index: 11001; width: auto; min-width: 320px;
-        }
-        .btn { 
-            width: 55px; height: 55px; border-radius: 50%; border: none; color: white; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            font-size: 20px; background: #444; transition: all 0.2s; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); flex-shrink: 0;
-        }
-        .btn:active { transform: scale(0.9); }
-        .btn:hover { background: #555; }
-        
-        #playBtn { background: #fff; color: #333; }
-        #playBtn.simulating { background: #333; color: var(--primary); border: 2px solid var(--primary); }
-        #playBtn.btn-confirm { background: var(--primary) !important; color: #000 !important; transform: scale(1.15); box-shadow: 0 0 20px rgba(0, 255, 136, 0.4); }
-        #playBtn.btn-confirm:hover { filter: brightness(1.1); }
-        
-        .btn-undo { background: #6c757d; opacity: 0.3; pointer-events: none; }
-        .btn-undo.visible { opacity: 1; pointer-events: auto; }
-        
-        .btn-history { background: #444; color: white; }
-        .btn-history.active { background: #fff; color: #333; border: none; }
-
-        select { background: #1a222d; color: white; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; outline: none; }
-        optgroup { background: #0a0c10; color: #888; font-style: normal; font-weight: bold; }
-        option { color: white; background: #1a222d; }
-        
-        .rotated-icon { 
-            display: flex; align-items: center; justify-content: center; 
-            width: 30px; height: 30px; transform-origin: center center; will-change: transform;
-        }
-        .rotated-icon i { display: block; }
-
-        #historyModal {
-            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 580px; max-height: 45vh;
-            background: rgba(15, 20, 30, 0.7); backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
-            z-index: 11000; padding: 15px; display: none; flex-direction: column;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        #historyModal.active { display: flex; }
-        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
-        .history-content { overflow-y: auto; flex: 1; scrollbar-width: thin; }
-        .history-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .history-table th { text-align: left; color: #888; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); text-transform: uppercase; letter-spacing: 1px; }
-        .history-table tr { cursor: pointer; transition: background 0.2s; }
-        .history-table tr:hover { background: rgba(255,255,255,0.05); }
-        .history-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        
-        .badge { padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; text-transform: uppercase; }
-        .badge-intercept { background: rgba(0, 255, 136, 0.2); color: var(--primary); border: 1px solid var(--primary); }
-        .badge-launch { background: rgba(255, 215, 0, 0.2); color: var(--ua-gold); border: 1px solid var(--ua-gold); }
-        .badge-hit { background: rgba(255, 68, 68, 0.2); color: var(--ru-red); border: 1px solid var(--ru-red); }
-        .badge-deploy { background: rgba(0, 136, 255, 0.2); color: var(--sea-blue); border: 1px solid var(--sea-blue); }
-
-        .layers-stack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .play-stack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .btn-location { background: #2c3e50; color: #fff; }
-        .btn-attack { 
-            background: #8b0000; color: #fff; border: 2px solid #ff4444 !important; 
-            display: none; /* Скрыта по умолчанию */
-            animation: pulse-red 2s infinite;
-        }
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); } }
-        
-        .btn-attack:disabled { background: #222; border-color: #444 !important; opacity: 0.5; cursor: not-allowed; animation: none; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
 </head>
-<body onclick="Snd.init()">
-<div id="map"></div>
-<div class="status-header">
-    <div class="status-item"><i class="far fa-clock"></i> <span id="simTime">00:00:00</span></div>
-    <div class="status-item"><i class="fas fa-bullseye"></i> <span id="targetCount">0</span></div>
-    <div class="status-item"><i class="fas fa-shield-alt"></i> <span id="pvoCount">0</span></div>
-    <div class="status-item"><i class="fas fa-truck-pickup" style="color:var(--mobile-pvo)"></i> <span id="mobileCount">0</span></div>
-    <div class="status-item"><i class="fas fa-ship" style="color:var(--ru-red)"></i> <span id="shipCount">0</span></div>
-    <div class="status-item"><i class="fas fa-fighter-jet" style="color:var(--ua-gold)"></i> <span id="uaPlaneCount">0</span></div>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #040706; color: #bff5da; font-family: 'Share Tech Mono', monospace; }
+  a { color: #22ff99; text-decoration: none; border-bottom: 1px dotted rgba(34,255,153,.5); }
+  a:hover { color: #7dffc4; border-bottom-color: #7dffc4; }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  @keyframes flick { 0%,100% { opacity: .5; } 92% { opacity: .5; } 94% { opacity: .35; } 96% { opacity: .55; } }
+</style>
+</helmet>
+
+<div style="padding:40px 48px 8px; max-width:1400px;">
+  <div style="font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:4px; color:#0fae74;">RADAR-UA · КОМАНДНИЙ ЦЕНТР</div>
+  <h1 style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:30px; margin:10px 0 14px; color:#eafff4; letter-spacing:1px;">Напрямок UI/UX — 3 концепти</h1>
+  <p style="max-width:760px; line-height:1.7; font-size:14px; color:#7fbfa4; margin:0 0 10px;">Ретро-фосфорна CRT-естетика, серйозний C2-настрій. Кожен концепт показує, <b style="color:#bff5da;">де і як з'являються нові функції</b>: контроль швидкості часу, панель деталей об'єкта, пресети атак, статистика бою, збереження, налаштування, перемикач мов і онбординг. Карта тут стилізована — у робочій версії буде живий рушій.</p>
+  <p style="font-size:13px; color:#4f8570; margin:0;">Оберіть напрямок у чаті за номером: <a href="#1a">1a</a> · <a href="#1b">1b</a> · <a href="#1c">1c</a>. Далі вбудую реальний движок і синхронні desktop/mobile фрейми.</p>
 </div>
 
-<div class="ui-layer">
-    <div style="display: flex; gap: 20px; width: 95%; max-width: 600px;">
-        <div class="tool-card active" id="pvoCard" onclick="setMode('pvo')">
-            <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Силы обороны Украины</span>
-            <select id="pvoSelect" onchange="Snd.ping()">
-                <optgroup label="Дальнего / Среднего действия">
-                    <option value="pvo_patriot">Patriot PAC-3 (160 км) - ПРО</option>
-                    <option value="pvo_samp">SAMP/T Mamba (100 км)</option>
-                    <option value="pvo_s300">С-300ПС (75 км)</option>
-                    <option value="pvo_iris">IRIS-T SLM (40 км)</option>
-                    <option value="pvo_nasams">NASAMS (25 км)</option>
-                    <option value="pvo_buk">Бук-М1 (35 км)</option>
-                </optgroup>
-                <optgroup label="Малого действия / Анти-Дрон">
-                    <option value="pvo_gepard">Gepard (4 км) - Снаряды AHEAD</option>
-                    <option value="pvo_skynex">Skynex (4 км) - Лазер/ПРО</option>
-                    <option value="pvo_vampire">Vampire APKWS (5 км) - Против БПЛА</option>
-                    <option value="ua_mobile_mrg">МРГ (Пулеметы/ПЗРК) - Патруль</option>
-                </optgroup>
-                <optgroup label="Вертолетная группа (Перехват БПЛА)">
-                    <option value="ua_mi8">Ми-8МСБ-В (ПКМ/ПЗРК)</option>
-                    <option value="ua_mi24">Ми-24П (ГШ-30-2)</option>
-                </optgroup>
-                <optgroup label="Авиация (Перехват)">
-                    <option value="ua_f16">F-16V (AIM-120D)</option>
-                    <option value="ua_f15">F-15EX Eagle II</option>
-                    <option value="ua_mig29">МиГ-29МУ2 (Р-27/73)</option>
-                </optgroup>
-                <optgroup label="Морской щит">
-                    <option value="ua_ship_hetman">Гетман Иван Мазепа (Корвет)</option>
-                    <option value="ua_ship_island">Island-class (Катер)</option>
-                </optgroup>
-            </select>
+<section style="padding:24px 48px 80px;">
+  <div style="display:flex; flex-wrap:wrap; gap:48px; align-items:flex-start;">
+
+    <!-- ============ OPTION 1A ============ -->
+    <div id="1a" style="display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:baseline; gap:14px;">
+        <span style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; color:#040706; background:#22ff99; padding:4px 10px; border-radius:3px;">1A</span>
+        <span style="font-family:'Orbitron',sans-serif; font-size:17px; color:#eafff4; letter-spacing:1px;">TACTICAL DOCK</span>
+      </div>
+      <p style="max-width:1180px; font-size:13px; color:#7fbfa4; margin:0; line-height:1.6;">Карта на весь екран. Тонка верхня стрічка стану + плаваюча нижня командна док-панель з усіма діями та контролем часу. Праворуч — картка деталей цілі, ліворуч — легенда/мова. Еволюція поточного UI, максимум карти.</p>
+
+      <div style="position:relative; width:1180px; height:740px; background:#060b09; border:1px solid rgba(34,255,153,.28); border-radius:10px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 0 120px rgba(0,40,20,.4);">
+        <svg viewBox="0 0 1180 740" style="position:absolute; inset:0; width:100%; height:100%;">
+          <defs>
+            <pattern id="gA" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="rgba(34,255,153,.07)" stroke-width="1"/></pattern>
+          </defs>
+          <rect width="1180" height="740" fill="#050a08"/>
+          <rect width="1180" height="740" fill="url(#gA)"/>
+          <path d="M0 640 Q 340 700 640 630 T 1180 600 L1180 740 L0 740 Z" fill="rgba(15,60,40,.35)"/>
+          <polyline points="240,660 320,600 460,560 580,530 720,540 860,500 980,480 1080,430" fill="none" stroke="rgba(255,85,85,.5)" stroke-width="2" stroke-dasharray="10 8"/>
+          <circle cx="460" cy="360" r="130" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.35)" stroke-width="1"/>
+          <circle cx="760" cy="300" r="95" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.35)" stroke-width="1"/>
+          <circle cx="260" cy="270" r="80" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.3)" stroke-width="1"/>
+          <polyline points="1130,110 950,210 760,300" fill="none" stroke="rgba(255,85,85,.7)" stroke-width="1.5"/>
+          <polyline points="1050,610 880,520 720,450" fill="none" stroke="rgba(255,184,77,.7)" stroke-width="1.5"/>
+          <polyline points="620,60 550,180 470,290" fill="none" stroke="rgba(255,85,85,.7)" stroke-width="1.5"/>
+          <g fill="#ff5555"><circle cx="760" cy="300" r="4"/><circle cx="470" cy="290" r="4"/></g>
+          <g fill="#ffb84d"><circle cx="720" cy="450" r="4"/></g>
+          <g fill="#22ff99"><circle cx="460" cy="360" r="5"/><circle cx="760" cy="300" r="0"/><circle cx="260" cy="270" r="5"/></g>
+          <g fill="#4ec3ff"><circle cx="340" cy="700" r="4"/><circle cx="210" cy="690" r="4"/></g>
+        </svg>
+        <div style="position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,25,12,.32) 3px 4px); animation:flick 6s infinite;"></div>
+        <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,.55) 100%);"></div>
+
+        <!-- top status strip -->
+        <div style="position:absolute; top:0; left:0; right:0; height:46px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:linear-gradient(180deg, rgba(4,10,7,.92), rgba(4,10,7,.35)); border-bottom:1px solid rgba(34,255,153,.15);">
+          <div style="display:flex; align-items:center; gap:10px;"><span style="width:8px; height:8px; border-radius:50%; background:#22ff99; box-shadow:0 0 8px #22ff99; animation:blink 2s infinite;"></span><span style="font-size:15px; color:#eafff4; letter-spacing:1px;">02:14:33</span><span style="font-size:10px; color:#4f8570;">Z · SECTOR SOUTH</span></div>
+          <div style="font-family:'Orbitron',sans-serif; font-size:12px; letter-spacing:4px; color:#0fae74;">RADAR-UA · PLANNING</div>
+          <div style="display:flex; gap:16px; font-size:11px;">
+            <span style="color:#ff5555;">◤ THREATS <b style="color:#ff8a8a;">09</b></span>
+            <span style="color:#22ff99;">◤ INTERCEPT <b>87%</b></span>
+            <span style="color:#7fbfa4;">◤ PVO <b style="color:#eafff4;">05</b></span>
+          </div>
         </div>
-        <div class="tool-card" id="targetCard" onclick="setMode('target')">
-            <span style="font-size:12px; display:block; margin-bottom:8px; color:#888;">Цели (Симуляция)</span>
-            <select id="targetSelect" onchange="Snd.ping()">
-                <optgroup label="Гиперзвук / Баллистика">
-                    <option value="missile_kinzhal">Кинжал (Х-47М2)</option>
-                    <option value="missile_zircon">Циркон (3М22)</option>
-                    <option value="missile_iskander">Искандер-М</option>
-                    <option value="missile_tochka">Точка-У</option>
-                </optgroup>
-                <optgroup label="Крылатые / Сверхзвук">
-                    <option value="missile_x101">Х-101 (Стелс)</option>
-                    <option value="missile_kalibr">Калибр (3М14)</option>
-                    <option value="missile_x22">Х-22 Буря (Противокорабельная)</option>
-                    <option value="missile_oniks">Оникс (П-800)</option>
-                    <option value="missile_x59">Х-59МК2 (Тактическая)</option>
-                </optgroup>
-                <optgroup label="БПЛА (Камикадзе / Разведка)">
-                    <option value="drone_shahed">Shahed-136 (Герань)</option>
-                    <option value="drone_orlan">Орлан-10 (Разведка)</option>
-                    <option value="drone_supercam">Supercam S350</option>
-                    <option value="drone_zala">ZALA 421-16E</option>
-                </optgroup>
-            </select>
+
+        <!-- left legend + lang -->
+        <div style="position:absolute; top:62px; left:16px; width:150px; background:rgba(8,16,12,.72); border:1px solid rgba(34,255,153,.2); border-radius:6px; padding:10px 12px; backdrop-filter:blur(6px);">
+          <div style="display:flex; gap:4px; margin-bottom:10px;">
+            <span style="flex:1; text-align:center; font-size:10px; padding:4px 0; border-radius:3px; background:#22ff99; color:#040706;">UA</span>
+            <span style="flex:1; text-align:center; font-size:10px; padding:4px 0; border-radius:3px; color:#4f8570; border:1px solid rgba(34,255,153,.2);">EN</span>
+            <span style="flex:1; text-align:center; font-size:10px; padding:4px 0; border-radius:3px; color:#4f8570; border:1px solid rgba(34,255,153,.2);">RU</span>
+          </div>
+          <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:6px;">ЛЕГЕНДА</div>
+          <div style="display:flex; flex-direction:column; gap:5px; font-size:10px;">
+            <div style="display:flex; align-items:center; gap:7px; color:#bff5da;"><span style="width:8px;height:8px;background:#ff5555;border-radius:50%;"></span>Загроза</div>
+            <div style="display:flex; align-items:center; gap:7px; color:#bff5da;"><span style="width:8px;height:8px;background:#22ff99;border-radius:50%;"></span>ППО / зона</div>
+            <div style="display:flex; align-items:center; gap:7px; color:#bff5da;"><span style="width:8px;height:8px;background:#4ec3ff;border-radius:50%;"></span>Флот</div>
+          </div>
         </div>
+
+        <!-- right detail card -->
+        <div style="position:absolute; top:62px; right:16px; width:264px; background:rgba(8,16,12,.82); border:1px solid rgba(255,85,85,.4); border-radius:8px; padding:14px; backdrop-filter:blur(8px); box-shadow:0 0 30px rgba(255,85,85,.12);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="font-family:'Orbitron',sans-serif; font-size:13px; color:#ff8a8a; letter-spacing:1px;">SHAHED-136</span>
+            <span style="font-size:9px; color:#ff5555; border:1px solid #ff5555; padding:2px 6px; border-radius:3px;">HOSTILE</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 8px; font-size:11px;">
+            <div><div style="color:#4f8570; font-size:9px;">SPEED</div><div style="color:#eafff4; font-size:14px;">185 <span style="font-size:9px;color:#4f8570;">км/год</span></div></div>
+            <div><div style="color:#4f8570; font-size:9px;">ALT</div><div style="color:#eafff4; font-size:14px;">1 200 <span style="font-size:9px;color:#4f8570;">м</span></div></div>
+            <div><div style="color:#4f8570; font-size:9px;">ETA</div><div style="color:#ffb84d; font-size:14px;">04:12</div></div>
+            <div><div style="color:#4f8570; font-size:9px;">ASSIGNED</div><div style="color:#22ff99; font-size:13px;">Patriot</div></div>
+          </div>
+          <div style="margin-top:12px;">
+            <div style="display:flex; justify-content:space-between; font-size:9px; color:#4f8570; margin-bottom:4px;"><span>ЙМОВІРНІСТЬ ПЕРЕХОПЛЕННЯ</span><span style="color:#22ff99;">92%</span></div>
+            <div style="height:6px; background:rgba(34,255,153,.12); border-radius:3px; overflow:hidden;"><div style="width:92%; height:100%; background:linear-gradient(90deg,#0fae74,#22ff99); box-shadow:0 0 8px #22ff99;"></div></div>
+          </div>
+        </div>
+
+        <!-- bottom-left stats -->
+        <div style="position:absolute; bottom:16px; left:16px; display:flex; gap:10px;">
+          <div style="background:rgba(8,16,12,.72); border:1px solid rgba(34,255,153,.2); border-radius:6px; padding:8px 12px;"><div style="font-size:9px;color:#4f8570;">ЗБИТО</div><div style="font-size:18px;color:#22ff99;">14</div></div>
+          <div style="background:rgba(8,16,12,.72); border:1px solid rgba(255,85,85,.25); border-radius:6px; padding:8px 12px;"><div style="font-size:9px;color:#4f8570;">ПРОРВАЛОСЬ</div><div style="font-size:18px;color:#ff8a8a;">02</div></div>
+        </div>
+
+        <!-- bottom command dock -->
+        <div style="position:absolute; bottom:16px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:12px; background:rgba(6,12,9,.9); border:1px solid rgba(34,255,153,.28); border-radius:14px; padding:10px 14px; backdrop-filter:blur(10px); box-shadow:0 10px 40px rgba(0,0,0,.6);">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex; align-items:center; gap:6px; background:rgba(34,255,153,.08); border:1px solid rgba(34,255,153,.3); border-radius:6px; padding:5px 9px; font-size:11px; color:#22ff99;">🛡 Patriot PAC-3 <span style="color:#4f8570;">▾</span></div>
+            <div style="display:flex; align-items:center; gap:6px; background:rgba(255,85,85,.06); border:1px solid rgba(255,85,85,.3); border-radius:6px; padding:5px 9px; font-size:11px; color:#ff8a8a;">◎ Shahed-136 <span style="color:#4f8570;">▾</span></div>
+          </div>
+          <div style="width:1px; height:52px; background:rgba(34,255,153,.15);"></div>
+          <div style="display:flex; gap:8px;">
+            <div style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(34,255,153,.25); display:flex; align-items:center; justify-content:center; color:#7fbfa4; font-size:15px;">⊕</div>
+            <div style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(34,255,153,.25); display:flex; align-items:center; justify-content:center; color:#7fbfa4; font-size:15px;">⊟</div>
+          </div>
+          <div style="width:60px; height:60px; border-radius:50%; background:#22ff99; display:flex; align-items:center; justify-content:center; color:#040706; font-size:22px; box-shadow:0 0 24px rgba(34,255,153,.5);">▶</div>
+          <div style="display:flex; align-items:center; gap:2px; background:rgba(34,255,153,.06); border:1px solid rgba(34,255,153,.25); border-radius:8px; padding:4px;">
+            <span style="padding:5px 8px; font-size:12px; color:#7fbfa4;">II</span>
+            <span style="padding:5px 8px; font-size:12px; color:#7fbfa4;">1x</span>
+            <span style="padding:5px 8px; font-size:12px; color:#040706; background:#22ff99; border-radius:5px;">2x</span>
+            <span style="padding:5px 8px; font-size:12px; color:#7fbfa4;">4x</span>
+          </div>
+          <div style="width:40px; height:40px; border-radius:50%; border:1px solid rgba(34,255,153,.25); display:flex; align-items:center; justify-content:center; color:#7fbfa4; font-size:15px;">☰</div>
+        </div>
+      </div>
     </div>
-</div>
 
-<div id="historyModal">
-    <div class="history-header">
-        <span style="font-weight:bold; letter-spacing:1px; font-size: 11px; color: #fff;">ЖУРНАЛ БОЕВЫХ ДЕЙСТВИЙ</span>
-        <span style="font-size: 9px; color: #888;">Нажмите на строку для перехода</span>
+    <!-- ============ OPTION 1B ============ -->
+    <div id="1b" style="display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:baseline; gap:14px;">
+        <span style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; color:#040706; background:#22ff99; padding:4px 10px; border-radius:3px;">1B</span>
+        <span style="font-family:'Orbitron',sans-serif; font-size:17px; color:#eafff4; letter-spacing:1px;">LEFT-RAIL C2</span>
+      </div>
+      <p style="max-width:1180px; font-size:13px; color:#7fbfa4; margin:0; line-height:1.6;">Постійна ліва панель командування: розгортання сил, пресети сценаріїв, налаштування. Верхня стрічка — місія + час + статистика + save/load. Права панель — деталі обраного об'єкта та журнал. Найсерйозніший, «як справжня система», найкраще для роботи на десктопі.</p>
+
+      <div style="position:relative; width:1180px; height:740px; background:#060b09; border:1px solid rgba(34,255,153,.28); border-radius:10px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 0 120px rgba(0,40,20,.4); display:flex;">
+        <!-- LEFT RAIL -->
+        <div style="width:262px; flex-shrink:0; background:rgba(5,11,8,.94); border-right:1px solid rgba(34,255,153,.2); display:flex; flex-direction:column; z-index:5;">
+          <div style="padding:16px 16px 14px; border-bottom:1px solid rgba(34,255,153,.15);">
+            <div style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:15px; color:#eafff4; letter-spacing:2px;">RADAR-UA</div>
+            <div style="font-size:9px; color:#0fae74; letter-spacing:3px; margin-top:2px;">COMMAND & CONTROL</div>
+          </div>
+          <div style="padding:14px 16px; flex:1; overflow:hidden;">
+            <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">▸ РОЗГОРНУТИ СИЛИ</div>
+            <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:16px;">
+              <div style="display:flex; align-items:center; gap:8px; background:rgba(34,255,153,.1); border:1px solid rgba(34,255,153,.35); border-radius:5px; padding:7px 9px; font-size:11px; color:#22ff99;"><span>🛡</span>Patriot PAC-3 <span style="margin-left:auto; color:#4f8570;">160км</span></div>
+              <div style="display:flex; align-items:center; gap:8px; border:1px solid rgba(34,255,153,.15); border-radius:5px; padding:7px 9px; font-size:11px; color:#7fbfa4;"><span>🛡</span>IRIS-T SLM <span style="margin-left:auto; color:#4f8570;">40км</span></div>
+              <div style="display:flex; align-items:center; gap:8px; border:1px solid rgba(34,255,153,.15); border-radius:5px; padding:7px 9px; font-size:11px; color:#7fbfa4;"><span>✈</span>F-16V <span style="margin-left:auto; color:#4f8570;">AIM-120</span></div>
+              <div style="display:flex; align-items:center; gap:8px; border:1px solid rgba(34,255,153,.15); border-radius:5px; padding:7px 9px; font-size:11px; color:#7fbfa4;"><span>⚓</span>Hetman Mazepa <span style="margin-left:auto; color:#4f8570;">NSM</span></div>
+            </div>
+            <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">▸ СЦЕНАРІЇ</div>
+            <div style="display:flex; flex-direction:column; gap:5px;">
+              <div style="text-align:center; border:1px solid rgba(255,85,85,.4); background:rgba(255,85,85,.08); border-radius:5px; padding:8px; font-size:11px; color:#ff8a8a;">☢ Масований удар</div>
+              <div style="text-align:center; border:1px solid rgba(255,184,77,.3); border-radius:5px; padding:8px; font-size:11px; color:#ffb84d;">◎ Рій «Шахедів»</div>
+              <div style="text-align:center; border:1px solid rgba(34,255,153,.2); border-radius:5px; padding:8px; font-size:11px; color:#7fbfa4;">⇗ Балістичний залп</div>
+            </div>
+          </div>
+          <div style="padding:12px 16px; border-top:1px solid rgba(34,255,153,.15); display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; gap:3px;">
+              <span style="font-size:10px; padding:4px 7px; border-radius:3px; background:#22ff99; color:#040706;">UA</span>
+              <span style="font-size:10px; padding:4px 7px; border-radius:3px; color:#4f8570;">EN</span>
+              <span style="font-size:10px; padding:4px 7px; border-radius:3px; color:#4f8570;">RU</span>
+            </div>
+            <div style="display:flex; gap:10px; color:#7fbfa4; font-size:14px;"><span>♪</span><span>⚙</span></div>
+          </div>
+        </div>
+
+        <!-- CENTER MAP -->
+        <div style="position:relative; flex:1;">
+          <svg viewBox="0 0 918 740" style="position:absolute; inset:0; width:100%; height:100%;">
+            <defs><pattern id="gB" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="rgba(34,255,153,.07)" stroke-width="1"/></pattern></defs>
+            <rect width="918" height="740" fill="#050a08"/>
+            <rect width="918" height="740" fill="url(#gB)"/>
+            <path d="M0 640 Q 260 700 500 630 T 918 600 L918 740 L0 740 Z" fill="rgba(15,60,40,.35)"/>
+            <polyline points="120,660 220,590 360,560 500,540 660,540 800,500 918,470" fill="none" stroke="rgba(255,85,85,.5)" stroke-width="2" stroke-dasharray="10 8"/>
+            <circle cx="360" cy="340" r="120" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.35)" stroke-width="1"/>
+            <circle cx="640" cy="290" r="95" fill="rgba(34,255,153,.05)" stroke="rgba(34,255,153,.35)" stroke-width="1"/>
+            <polyline points="880,110 720,210 640,290" fill="none" stroke="rgba(255,85,85,.7)" stroke-width="1.5"/>
+            <polyline points="820,600 620,500 480,420" fill="none" stroke="rgba(255,184,77,.7)" stroke-width="1.5"/>
+            <g fill="#ff5555"><circle cx="640" cy="290" r="4"/></g>
+            <g fill="#ffb84d"><circle cx="480" cy="420" r="4"/></g>
+            <g fill="#22ff99"><circle cx="360" cy="340" r="5"/></g>
+            <g fill="#4ec3ff"><circle cx="240" cy="700" r="4"/></g>
+          </svg>
+          <div style="position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,25,12,.3) 3px 4px);"></div>
+          <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 45% 45%, transparent 45%, rgba(0,0,0,.5) 100%);"></div>
+
+          <!-- top bar -->
+          <div style="position:absolute; top:0; left:0; right:0; height:48px; display:flex; align-items:center; gap:16px; padding:0 16px; background:linear-gradient(180deg, rgba(4,10,7,.9), rgba(4,10,7,.2)); border-bottom:1px solid rgba(34,255,153,.15);">
+            <span style="width:8px; height:8px; border-radius:50%; background:#22ff99; box-shadow:0 0 8px #22ff99; animation:blink 2s infinite;"></span>
+            <span style="font-size:15px; color:#eafff4;">02:14:33<span style="font-size:9px; color:#4f8570;"> Z</span></span>
+            <div style="display:flex; align-items:center; gap:2px; background:rgba(34,255,153,.06); border:1px solid rgba(34,255,153,.25); border-radius:7px; padding:3px;">
+              <span style="padding:4px 8px; font-size:11px; color:#7fbfa4;">II</span>
+              <span style="padding:4px 8px; font-size:11px; color:#7fbfa4;">1x</span>
+              <span style="padding:4px 8px; font-size:11px; color:#040706; background:#22ff99; border-radius:4px;">2x</span>
+              <span style="padding:4px 8px; font-size:11px; color:#7fbfa4;">4x</span>
+            </div>
+            <div style="margin-left:auto; display:flex; gap:14px; font-size:11px;">
+              <span style="color:#ff5555;">THREATS <b style="color:#ff8a8a;">09</b></span>
+              <span style="color:#22ff99;">INTERCEPT <b>87%</b></span>
+              <span style="color:#7fbfa4;">PVO <b style="color:#eafff4;">05</b></span>
+            </div>
+            <div style="display:flex; gap:8px; color:#7fbfa4; font-size:13px; padding-left:6px; border-left:1px solid rgba(34,255,153,.15);"><span>⤓</span><span>⤒</span></div>
+          </div>
+
+          <!-- big play, centered bottom -->
+          <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px;">
+            <div style="width:56px; height:56px; border-radius:50%; background:#22ff99; display:flex; align-items:center; justify-content:center; color:#040706; font-size:20px; box-shadow:0 0 24px rgba(34,255,153,.5);">▶</div>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div style="width:290px; flex-shrink:0; background:rgba(5,11,8,.9); border-left:1px solid rgba(34,255,153,.2); display:flex; flex-direction:column;">
+          <div style="padding:14px 16px; border-bottom:1px solid rgba(34,255,153,.15);">
+            <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">▸ ОБРАНИЙ ОБ'ЄКТ</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <span style="font-family:'Orbitron',sans-serif; font-size:14px; color:#ff8a8a;">SHAHED-136</span>
+              <span style="font-size:9px; color:#ff5555; border:1px solid #ff5555; padding:2px 6px; border-radius:3px;">HOSTILE</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:11px;">
+              <div><div style="color:#4f8570; font-size:9px;">SPEED</div><div style="color:#eafff4; font-size:14px;">185</div></div>
+              <div><div style="color:#4f8570; font-size:9px;">ALT</div><div style="color:#eafff4; font-size:14px;">1200м</div></div>
+              <div><div style="color:#4f8570; font-size:9px;">ETA</div><div style="color:#ffb84d; font-size:14px;">04:12</div></div>
+              <div><div style="color:#4f8570; font-size:9px;">P(kill)</div><div style="color:#22ff99; font-size:14px;">92%</div></div>
+            </div>
+          </div>
+          <div style="padding:14px 16px; flex:1;">
+            <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:10px;">▸ ЖУРНАЛ БОЮ</div>
+            <div style="display:flex; flex-direction:column; gap:9px; font-size:10px;">
+              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:14</span><span style="color:#22ff99;">СБИТО</span><span style="color:#bff5da;">Kalibr</span></div>
+              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:13</span><span style="color:#ffb84d;">ПУСК</span><span style="color:#bff5da;">Shahed ×3</span></div>
+              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:11</span><span style="color:#22ff99;">СБИТО</span><span style="color:#bff5da;">Shahed</span></div>
+              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:09</span><span style="color:#ff8a8a;">ПРИЛІТ</span><span style="color:#bff5da;">Iskander</span></div>
+              <div style="display:flex; gap:8px;"><span style="color:#4f8570;">02:08</span><span style="color:#4ec3ff;">РОЗГОРНУТО</span><span style="color:#bff5da;">Patriot</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="history-content">
-        <table class="history-table">
-            <thead>
-                <tr><th>Время</th><th>Объект</th><th>Событие</th><th>Локация</th></tr>
-            </thead>
-            <tbody id="historyTableBody"></tbody>
-        </table>
+
+    <!-- ============ OPTION 1C ============ -->
+    <div id="1c" style="display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:baseline; gap:14px;">
+        <span style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; color:#040706; background:#22ff99; padding:4px 10px; border-radius:3px;">1C</span>
+        <span style="font-family:'Orbitron',sans-serif; font-size:17px; color:#eafff4; letter-spacing:1px;">MINIMAL PHOSPHOR</span>
+      </div>
+      <p style="max-width:1180px; font-size:13px; color:#7fbfa4; margin:0; line-height:1.6;">Максимально занурена CRT-естетика: скануючий промінь, фосфорне світіння, сканлайни. Уся інформація в чотирьох кутових скляних модулях, що згортаються. Найбільш «радарний» вигляд, найменше хрому — фокус на самій карті.</p>
+
+      <div style="position:relative; width:1180px; height:740px; background:#03060a; border:1px solid rgba(34,255,153,.28); border-radius:10px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 0 160px rgba(0,50,25,.45);">
+        <svg viewBox="0 0 1180 740" style="position:absolute; inset:0; width:100%; height:100%;">
+          <defs>
+            <pattern id="gC" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="rgba(34,255,153,.06)" stroke-width="1"/></pattern>
+            <radialGradient id="glowC"><stop offset="0%" stop-color="rgba(34,255,153,.12)"/><stop offset="100%" stop-color="rgba(34,255,153,0)"/></radialGradient>
+          </defs>
+          <rect width="1180" height="740" fill="#03070a"/>
+          <rect width="1180" height="740" fill="url(#glowC)"/>
+          <rect width="1180" height="740" fill="url(#gC)"/>
+          <circle cx="590" cy="370" r="150" fill="none" stroke="rgba(34,255,153,.15)" stroke-width="1"/>
+          <circle cx="590" cy="370" r="280" fill="none" stroke="rgba(34,255,153,.1)" stroke-width="1"/>
+          <circle cx="590" cy="370" r="410" fill="none" stroke="rgba(34,255,153,.06)" stroke-width="1"/>
+          <line x1="590" y1="0" x2="590" y2="740" stroke="rgba(34,255,153,.08)" stroke-width="1"/>
+          <line x1="0" y1="370" x2="1180" y2="370" stroke="rgba(34,255,153,.08)" stroke-width="1"/>
+          <polyline points="200,660 340,600 520,570 720,560 900,520 1080,480" fill="none" stroke="rgba(255,85,85,.4)" stroke-width="2" stroke-dasharray="10 8"/>
+          <polyline points="1120,140 900,260 760,340" fill="none" stroke="rgba(255,85,85,.65)" stroke-width="1.5"/>
+          <g fill="#ff5555"><circle cx="760" cy="340" r="4"/><circle cx="420" cy="300" r="4"/></g>
+          <g fill="#22ff99"><circle cx="590" cy="370" r="5"/><circle cx="380" cy="450" r="4"/></g>
+        </svg>
+        <!-- rotating sweep -->
+        <div style="position:absolute; left:590px; top:370px; width:820px; height:820px; margin-left:-410px; margin-top:-410px; border-radius:50%; background:conic-gradient(from 0deg, rgba(34,255,153,.22), rgba(34,255,153,0) 60deg); animation:sweep 5s linear infinite; pointer-events:none;"></div>
+        <div style="position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,20,10,.4) 3px 4px); animation:flick 5s infinite;"></div>
+        <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(0,0,0,.6) 100%);"></div>
+
+        <!-- lang top center -->
+        <div style="position:absolute; top:14px; left:50%; transform:translateX(-50%); display:flex; gap:3px; background:rgba(4,10,7,.7); border:1px solid rgba(34,255,153,.2); border-radius:20px; padding:3px;">
+          <span style="font-size:10px; padding:4px 10px; border-radius:14px; background:#22ff99; color:#040706;">UA</span>
+          <span style="font-size:10px; padding:4px 10px; border-radius:14px; color:#4f8570;">EN</span>
+          <span style="font-size:10px; padding:4px 10px; border-radius:14px; color:#4f8570;">RU</span>
+        </div>
+
+        <!-- TL status -->
+        <div style="position:absolute; top:16px; left:16px; background:rgba(4,10,7,.55); border:1px solid rgba(34,255,153,.22); border-radius:8px; padding:10px 14px; backdrop-filter:blur(6px);">
+          <div style="display:flex; align-items:center; gap:8px;"><span style="width:7px; height:7px; border-radius:50%; background:#22ff99; box-shadow:0 0 8px #22ff99; animation:blink 2s infinite;"></span><span style="font-size:16px; color:#eafff4;">02:14:33</span></div>
+          <div style="font-size:10px; color:#ff8a8a; margin-top:6px;">◤ АКТИВНИХ ЗАГРОЗ: <b>09</b></div>
+        </div>
+
+        <!-- TR threat list -->
+        <div style="position:absolute; top:16px; right:16px; width:210px; background:rgba(4,10,7,.55); border:1px solid rgba(255,85,85,.3); border-radius:8px; padding:10px 12px; backdrop-filter:blur(6px);">
+          <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">▸ ЦІЛІ В ПОВІТРІ</div>
+          <div style="display:flex; flex-direction:column; gap:6px; font-size:10px;">
+            <div style="display:flex; justify-content:space-between;"><span style="color:#ff8a8a;">● Kinzhal</span><span style="color:#ffb84d;">ETA 01:20</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:#ff8a8a;">● Shahed ×6</span><span style="color:#7fbfa4;">ETA 04:12</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:#ffb84d;">● Kalibr ×2</span><span style="color:#7fbfa4;">ETA 06:45</span></div>
+          </div>
+        </div>
+
+        <!-- BL controls -->
+        <div style="position:absolute; bottom:16px; left:16px; background:rgba(4,10,7,.6); border:1px solid rgba(34,255,153,.22); border-radius:10px; padding:12px; backdrop-filter:blur(6px); display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(34,255,153,.08); border:1px solid rgba(34,255,153,.3); border-radius:5px; padding:5px 8px; font-size:10px; color:#22ff99;">🛡 Patriot ▾</div>
+          <div style="display:flex; align-items:center; gap:6px; border:1px solid rgba(255,85,85,.3); border-radius:5px; padding:5px 8px; font-size:10px; color:#ff8a8a;">◎ Shahed ▾</div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <div style="width:44px; height:44px; border-radius:50%; background:#22ff99; display:flex; align-items:center; justify-content:center; color:#040706; font-size:17px; box-shadow:0 0 18px rgba(34,255,153,.5);">▶</div>
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="display:flex; gap:2px;">
+                <span style="font-size:9px; padding:3px 6px; color:#7fbfa4; border:1px solid rgba(34,255,153,.2); border-radius:3px;">1x</span>
+                <span style="font-size:9px; padding:3px 6px; color:#040706; background:#22ff99; border-radius:3px;">2x</span>
+                <span style="font-size:9px; padding:3px 6px; color:#7fbfa4; border:1px solid rgba(34,255,153,.2); border-radius:3px;">4x</span>
+              </div>
+              <span style="font-size:9px; color:#4f8570;">швидкість часу</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- BR stats -->
+        <div style="position:absolute; bottom:16px; right:16px; background:rgba(4,10,7,.6); border:1px solid rgba(34,255,153,.22); border-radius:10px; padding:12px 16px; backdrop-filter:blur(6px); text-align:right;">
+          <div style="font-size:9px; color:#4f8570; letter-spacing:2px; margin-bottom:8px;">СТАТИСТИКА БОЮ</div>
+          <div style="display:flex; gap:18px;">
+            <div><div style="font-size:22px; color:#22ff99;">14</div><div style="font-size:9px; color:#4f8570;">ЗБИТО</div></div>
+            <div><div style="font-size:22px; color:#ff8a8a;">02</div><div style="font-size:9px; color:#4f8570;">ПРОРВ.</div></div>
+            <div><div style="font-size:22px; color:#eafff4;">87%</div><div style="font-size:9px; color:#4f8570;">ЕФЕКТ.</div></div>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
 
-<div class="bottom-nav">
-    <div class="layers-stack">
-        <button class="btn btn-location" id="locBtn" title="Ваша позиция" onclick="locateUser()"><i class="fas fa-crosshairs"></i></button>
-        <button class="btn btn-layer" id="layerBtn" title="Смена карты" onclick="toggleMapLayer()"><i class="fas fa-layer-group"></i></button>
-    </div>
-    <button class="btn" onclick="Snd.ping(); setTimeout(()=>location.reload(), 100)"><i class="fas fa-sync-alt"></i></button>
-    <button class="btn btn-undo" id="undoBtn" onclick="undoLastAction()"><i class="fas fa-undo"></i></button>
-    <div class="play-stack">
-        <button class="btn btn-attack" id="attackBtn" title="МАССИРОВАННЫЙ УДАР" onclick="triggerMassiveAttack()"><i class="fas fa-radiation"></i></button>
-        <button class="btn" id="playBtn"><i class="fas fa-play"></i></button>
-    </div>
-    <button class="btn btn-history" id="historyBtn" onclick="toggleHistory()"><i class="fas fa-list-ul"></i></button>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    const Snd = {
-        ctx: null,
-        init() { 
-            if(!this.ctx) { 
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
-            } 
-            if(this.ctx.state === 'suspended') this.ctx.resume(); 
-        },
-        osc(f, t, d, v) {
-            if(!this.ctx) return;
-            const o = this.ctx.createOscillator(), g = this.ctx.createGain();
-            o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
-            g.gain.setValueAtTime(v, this.ctx.currentTime);
-            g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, d/3);
-            o.connect(g); g.connect(this.ctx.destination);
-            o.start(); o.stop(this.ctx.currentTime + d);
-        },
-        launch() { this.init(); this.osc(300, 'sawtooth', 0.4, 0.05); },
-        intercept() { this.init(); this.osc(60, 'sine', 0.8, 0.3); },
-        hit() { this.init(); this.osc(40, 'triangle', 1.0, 0.4); },
-        ping() { this.init(); this.osc(1000, 'sine', 0.05, 0.02); },
-        warning() { this.init(); this.osc(120, 'square', 0.5, 0.1); },
-        alert() { 
-            this.init(); 
-            this.osc(800, 'sawtooth', 0.1, 0.05); 
-            setTimeout(()=>this.osc(600, 'sawtooth', 0.1, 0.05), 100); 
-        }
-    };
-
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.0, 31.0], 6);
-    const layers = {
-        dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'),
-        satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
-        labels: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', { pane: 'shadowPane', opacity: 0.8 })
-    };
-    layers.dark.addTo(map);
-    layers.labels.addTo(map); 
-    let currentLayer = 'dark';
-
-    function toggleMapLayer() {
-        Snd.ping();
-        if (currentLayer === 'dark') { map.removeLayer(layers.dark); layers.satellite.addTo(map); currentLayer = 'satellite'; }
-        else { map.removeLayer(layers.satellite); layers.dark.addTo(map); currentLayer = 'dark'; }
-    }
-
-    function locateUser() {
-        Snd.ping();
-        map.locate({setView: true, maxZoom: 10});
-    }
-
-    map.on('locationfound', (e) => {
-        Snd.alert();
-        L.circle(e.latlng, {radius: 500, color: 'var(--primary)', weight: 2}).addTo(map);
-        notifyOnMap(e.latlng, "ВАША ПОЗИЦИЯ", "var(--primary)");
-    });
-
-    map.on('locationerror', () => {
-        Snd.warning();
-        notifyOnMap(map.getCenter(), "ГЕОПОЗИЦИЯ НЕДОСТУПНА", "var(--ru-red)");
-    });
-
-    const frontlineCoords = [
-        [46.4, 32.2], [46.6, 32.6], [47.2, 33.4], [47.5, 34.4], 
-        [47.4, 35.5], [47.5, 36.5], [47.8, 37.6], [48.1, 38.0],
-        [48.6, 38.2], [49.2, 38.0], [50.1, 38.4], [50.4, 37.8]
-    ];
-    L.polyline(frontlineCoords, { color: '#ff0000', weight: 3, dashArray: '10, 10', opacity: 0.7, interactive: false }).addTo(map);
-
-    const CONFIG = {
-        drone_shahed: { name: 'SHAHED-136', speed: 185, maxRange: 1500, color: '#00ff88', altMin: 50, altMax: 2000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
-        drone_orlan: { name: 'ОРЛАН-10', speed: 150, maxRange: 600, color: '#00ff88', altMin: 500, altMax: 5000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
-        drone_supercam: { name: 'SUPERCAM', speed: 120, maxRange: 200, color: '#00ff88', altMin: 1000, altMax: 4000, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
-        drone_zala: { name: 'ZALA', speed: 110, maxRange: 150, color: '#00ff88', altMin: 800, altMax: 3500, icon: 'fa-location-arrow', iconAdj: 45, cheap: true },
-        
-        missile_x101: { name: 'X-101', speed: 850, maxRange: 3500, color: '#ffbb33', altMin: 100, altMax: 8000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_kalibr: { name: 'КАЛИБР', speed: 900, maxRange: 2000, color: '#33bbff', altMin: 50, altMax: 500, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_x22: { name: 'X-22 БУРЯ', speed: 4000, maxRange: 600, color: '#ff4444', altMin: 12000, altMax: 22000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_zircon: { name: 'ЦИРКОН', speed: 11000, maxRange: 1000, color: '#ff00ff', altMin: 30000, altMax: 40000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_iskander: { name: 'ИСКАНДЕР-M', speed: 7500, maxRange: 500, color: '#ff4444', altMin: 20000, altMax: 70000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_kinzhal: { name: 'КИНЖАЛ', speed: 12000, maxRange: 2000, color: '#ff0000', altMin: 30000, altMax: 80000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_oniks: { name: 'ОНИКС', speed: 2800, maxRange: 600, color: '#ff4444', altMin: 50, altMax: 14000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_x59: { name: 'X-59МК2', speed: 1050, maxRange: 285, color: '#ffbb33', altMin: 100, altMax: 5000, icon: 'fa-location-arrow', iconAdj: 45 },
-        missile_tochka: { name: 'ТОЧКА-У', speed: 3900, maxRange: 120, color: '#ff4444', altMin: 10000, altMax: 50000, icon: 'fa-location-arrow', iconAdj: 45 },
-        
-        pvo_iris: { r: 40, s: 3700, name: 'IRIS-T', mName: 'SLM', type: 'sam' },
-        pvo_nasams: { r: 25, s: 4100, name: 'NASAMS', mName: 'AIM-120', type: 'sam' },
-        pvo_patriot: { r: 160, s: 6000, name: 'Patriot', mName: 'PAC-3', type: 'sam', ignoreCheap: true },
-        pvo_samp: { r: 100, s: 4500, name: 'SAMP/T', mName: 'Aster-30', type: 'sam' },
-        pvo_s300: { r: 75, s: 4000, name: 'С-300ПС', mName: '5В55Р', type: 'sam' },
-        pvo_buk: { r: 35, s: 3500, name: 'Бук-М1', mName: '9М38', type: 'sam' },
-        pvo_skynex: { r: 4, s: 3200, name: 'Skynex', mName: 'AHEAD 35mm', type: 'sam' },
-        pvo_gepard: { r: 4.5, s: 3000, name: 'Gepard', mName: '35mm APDS', type: 'sam' },
-        pvo_vampire: { r: 5, s: 2800, name: 'Vampire', mName: 'APKWS Laser', type: 'sam' },
-        
-        ua_mobile_mrg: { name: 'МРГ ПВО', speed: 75, r: 3.5, s: 1200, mName: 'Browning/Stinger', type: 'mrg' },
-
-        ua_f16: { name: 'F-16V', speed: 1200, mSpeed: 4800, ammo: 6, range: 120, mName: 'AIM-120D', type: 'fighter', iconAdj: -45 },
-        ua_f15: { name: 'F-15EX', speed: 1400, mSpeed: 5000, ammo: 12, range: 160, mName: 'AIM-120D', type: 'fighter', iconAdj: -45 },
-        ua_mig29: { name: 'МиГ-29МУ2', speed: 1100, mSpeed: 4200, ammo: 4, range: 80, mName: 'Р-27ЭР', type: 'fighter', iconAdj: -45 },
-
-        ua_mi8: { name: 'Ми-8МСБ-В', speed: 250, mSpeed: 1000, ammo: 2, range: 4, mName: 'ПКМ/Stinger', type: 'fighter', icon: 'fa-helicopter', antiDroneOnly: true, iconAdj: 0 },
-        ua_mi24: { name: 'Ми-24П', speed: 310, mSpeed: 1100, ammo: 4, range: 5, mName: 'ГШ-30-2', type: 'fighter', icon: 'fa-helicopter', antiDroneOnly: true, iconAdj: 0 },
-
-        ua_ship_island: { name: 'Island class', speed: 55, mSpeed: 900, ammo: 2, range: 100, mName: 'Harpoon/Neptune', type: 'ua_ship', icon: 'fa-ship' },
-        ua_ship_hetman: { name: 'Hetman Ivan Mazepa', speed: 45, mSpeed: 1200, ammo: 8, range: 180, mName: 'NSM', type: 'ua_ship', icon: 'fa-ship' }
-    };
-
-    let state = { 
-        currentMode: 'pvo', isSimulating: false, 
-        targets: [], pvo: [], missiles: [], planes: [], uaPlanes: [], ships: [],
-        pendingPath: [], tempMarkers: [], activeFutureLine: null, rangeCircle: null,
-        simSeconds: 0, lastFrame: 0, lastRuSpawn: 0, lastShipSpawn: 0,
-        history: [], limits: { planes: 6, ships: 4 },
-        timeCompression: 1, 
-        baseTime: new Date(),
-        isAttackActive: false,
-        carriers: [] 
-    };
-
-    function isWater(lat, lon) {
-        const inBlackSea = lat < 46.5 && lon > 29 && lon < 42;
-        const inAzovSea = lat > 45 && lat < 47.5 && lon > 34.5 && lon < 39.5;
-        const inDnieper = lon > 32 && lon < 33 && lat < 47; 
-        return inBlackSea || inAzovSea || inDnieper;
-    }
-
-    function toggleHistory() {
-        Snd.ping();
-        const modal = document.getElementById('historyModal');
-        const btn = document.getElementById('historyBtn');
-        const isActive = modal.classList.toggle('active');
-        btn.classList.toggle('active', isActive);
-        if(isActive) updateHistoryTable();
-    }
-
-    function addToHistory(name, eventType, pos) {
-        state.history.push({ time: getSimTimeString(), name: name, type: eventType, pos: pos });
-        Snd.ping();
-        if(document.getElementById('historyModal').classList.contains('active')) updateHistoryTable();
-        updateNav();
-    }
-
-    function updateHistoryTable() {
-        const body = document.getElementById('historyTableBody');
-        body.innerHTML = '';
-        state.history.slice().reverse().forEach(entry => {
-            const row = document.createElement('tr');
-            row.onclick = () => { map.flyTo(entry.pos, 9); Snd.ping(); };
-            let badgeClass = 'badge-' + entry.type;
-            let statusText = entry.type === 'deploy' ? 'Развернут' : 
-                             entry.type === 'launch' ? 'Пуск' : 
-                             entry.type === 'intercept' ? 'Сбито' : 'Попадание';
-
-            row.innerHTML = `
-                <td style="color:#888; font-family:monospace;">${entry.time}</td>
-                <td style="font-weight:bold;">${entry.name}</td>
-                <td><span class="badge ${badgeClass}">${statusText}</span></td>
-                <td style="color:#aaa; font-size:9px;">${entry.pos[0].toFixed(2)}, ${entry.pos[1].toFixed(2)}</td>
-            `;
-            body.appendChild(row);
-        });
-    }
-
-    function getSimTimeString() {
-        const now = state.isSimulating ? new Date(state.baseTime.getTime() + state.simSeconds * 1000) : new Date();
-        const h = now.getHours().toString().padStart(2, '0');
-        const m = now.getMinutes().toString().padStart(2, '0');
-        const s = now.getSeconds().toString().padStart(2, '0');
-        return `${h}:${m}:${s}`;
-    }
-
-    function calculateHeading(p1, p2) {
-        if(!p1 || !p2) return 0;
-        const lat1 = p1[0] * Math.PI / 180, lat2 = p2[0] * Math.PI / 180;
-        const lon1 = p1[1] * Math.PI / 180, lon2 = p2[1] * Math.PI / 180;
-        const y = Math.sin(lon2 - lon1) * Math.cos(lat2);
-        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
-        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-    }
-
-    function notifyOnMap(pos, text, color) {
-        const point = map.latLngToContainerPoint(pos);
-        const el = document.createElement('div');
-        el.className = 'map-notification';
-        el.style.left = point.x + 'px'; el.style.top = point.y + 'px';
-        el.style.color = color; el.style.borderColor = color;
-        el.innerHTML = text; document.body.appendChild(el);
-        setTimeout(() => el.remove(), 3000);
-    }
-
-    function setMode(m) {
-        Snd.ping();
-        state.currentMode = m;
-        document.getElementById('pvoCard').classList.toggle('active', m === 'pvo');
-        document.getElementById('targetCard').classList.toggle('active', m === 'target');
-        resetCurrentSelection();
-        updateNav();
-    }
-
-    function updateCounters() { 
-        const targetActive = state.targets.filter(x => x.active).length;
-        document.getElementById('targetCount').innerText = targetActive; 
-        document.getElementById('pvoCount').innerText = state.pvo.filter(x=>x.type==='sam').length; 
-        document.getElementById('mobileCount').innerText = state.pvo.filter(x=>x.type==='mrg').length;
-        document.getElementById('shipCount').innerText = state.ships.filter(x => x.active).length;
-        document.getElementById('uaPlaneCount').innerText = (state.uaPlanes.filter(x => x.active).length + state.pvo.filter(x => x.type === 'ua_ship').length);
-        
-        if (targetActive === 0 && state.isAttackActive) {
-            state.isAttackActive = false;
-            document.getElementById('attackBtn').disabled = false;
-            state.carriers.forEach(c => { c.marker.remove(); c.tb.remove(); });
-            state.carriers = [];
-        }
-    }
-
-    function resetCurrentSelection() {
-        state.tempMarkers.forEach(m => map.removeLayer(m)); 
-        state.tempMarkers = []; 
-        state.pendingPath = []; 
-        if(state.activeFutureLine) { state.activeFutureLine.remove(); state.activeFutureLine = null; }
-        if(state.rangeCircle) { state.rangeCircle.remove(); state.rangeCircle = null; }
-        updateNav();
-    }
-
-    function createPVO(pos) {
-        const typeKey = document.getElementById('pvoSelect').value;
-        const cfg = CONFIG[typeKey];
-        
-        if (cfg.type === 'ua_ship') {
-            if (!isWater(pos[0], pos[1])) { 
-                notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА ВОДЕ", "var(--ru-red)"); 
-                Snd.warning(); return; 
-            }
-            createUAShip(pos, cfg); return;
-        } else if (cfg.type !== 'fighter') {
-            if (isWater(pos[0], pos[1])) { 
-                notifyOnMap(pos, "ОШИБКА: ТОЛЬКО НА СУШЕ", "var(--ru-red)"); 
-                Snd.warning(); return; 
-            }
-        }
-
-        if (cfg.type === 'mrg') {
-            if (state.pendingPath.length < 2) { 
-                notifyOnMap(pos, "МРГ: УКАЖИТЕ МАРШРУТ (2+ ТОЧКИ)", "var(--mobile-pvo)"); 
-                Snd.ping(); return; 
-            }
-            createMRG(cfg); return;
-        }
-        if (cfg.type === 'fighter') { createUAFighter(pos, cfg); return; }
-        
-        Snd.alert();
-        const initialSize = getRadarSizeInPixels(cfg.r, pos[0]);
-        const rMarker = L.marker(pos, { 
-            icon: L.divIcon({ className: 'radar-container', html: `<div class="radar-sweep" style="width:${initialSize}px; height:${initialSize}px;"></div>`, iconSize: [0, 0] }),
-            interactive: false 
-        }).addTo(map);
-        const dot = L.circleMarker(pos, { radius: 6, color: '#fff', fillColor: '#00ff88', fillOpacity: 1 }).addTo(map);
-        const item = { id: Math.random(), pos, radius: cfg.r, mSpeed: cfg.s, name: cfg.name, mName: cfg.mName, type: 'sam', ignoreCheap: cfg.ignoreCheap, layers: [rMarker, dot], side: 'UA' };
-        state.pvo.push(item); addToHistory(cfg.name, 'deploy', pos);
-        notifyOnMap(pos, `РАЗВЕРНУТО: ${cfg.name}`, 'var(--primary)');
-        updateCounters(); updateNav();
-    }
-
-    function createMRG(cfg) {
-        const path = [...state.pendingPath];
-        const m = {
-            id: Math.random(), name: cfg.name, mName: cfg.mName, currentPos: [...path[0]], path: path,
-            speed: cfg.speed, curSpeed: 0, radius: cfg.r, mSpeed: cfg.mSpeed, active: true, side: 'UA', type: 'mrg', 
-            progressKm: 0, totalDist: 0, history: [[...path[0]]],
-            marker: L.marker(path[0], { icon: L.divIcon({ html: `<div class="static-icon"><i class="fas fa-truck-pickup" style="color:var(--mobile-pvo); font-size:14px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
-            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
-            line: L.polyline(path, {color: 'var(--mobile-pvo)', weight: 2, opacity: 0.5, dashArray: '5, 5'}).addTo(map)
-        };
-        for(let i=0; i<path.length-1; i++) m.totalDist += map.distance(path[i], path[i+1])/1000;
-        document.body.appendChild(m.toolbar);
-        state.pvo.push(m); addToHistory(cfg.name, 'deploy', path[0]);
-        resetCurrentSelection();
-        Snd.alert();
-        notifyOnMap(path[0], `МРГ ВЫШЛА НА ПАТРУЛЬ`, 'var(--mobile-pvo)');
-        updateCounters(); updateNav();
-    }
-
-    function createUAShip(pos, cfg) {
-        const s = {
-            id: Math.random(), name: cfg.name, mName: cfg.mName, currentPos: pos, patrolTarget: pos,
-            speed: cfg.speed, curSpeed: 0, mSpeed: cfg.mSpeed, ammo: cfg.ammo, range: cfg.range,
-            active: true, side: 'UA', type: 'ua_ship', history: [pos],
-            marker: L.marker(pos, { icon: L.divIcon({ html: `<div class="static-icon"><i class="fas ${cfg.icon}" style="color:var(--ua-gold); font-size:16px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
-            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
-            line: L.polyline([pos], {color: 'var(--ua-gold)', weight: 2, opacity: 0.4, dashArray: '5, 5'}).addTo(map)
-        };
-        document.body.appendChild(s.toolbar);
-        state.pvo.push(s); addToHistory(cfg.name, 'deploy', pos);
-        Snd.alert();
-        notifyOnMap(pos, `СПУЩЕНО: ${cfg.name}`, 'var(--ua-gold)');
-        updateCounters(); updateNav();
-    }
-
-    function createUAFighter(pos, cfg) {
-        const p = {
-            id: Math.random(), name: cfg.name, mName: cfg.mName, currentPos: pos, patrolTarget: pos,
-            speed: cfg.speed, curSpeed: 0, mSpeed: cfg.mSpeed, ammo: cfg.ammo, range: cfg.range,
-            active: true, side: 'UA', type: 'fighter', altitude: 2000, history: [pos], antiDroneOnly: cfg.antiDroneOnly || false,
-            marker: L.marker(pos, { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas ${cfg.icon || 'fa-fighter-jet'}" style="color:var(--ua-gold); font-size:18px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
-            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
-            line: L.polyline([pos], {color: 'var(--ua-gold)', weight: 2, opacity: 0.6}).addTo(map)
-        };
-        document.body.appendChild(p.toolbar);
-        state.uaPlanes.push(p); addToHistory(cfg.name, 'deploy', pos);
-        Snd.alert();
-        notifyOnMap(pos, `ВЗЛЕТ: ${cfg.name}`, 'var(--ua-gold)');
-        updateCounters(); updateNav();
-    }
-
-    function createTarget(cfgOverride = null, pathOverride = null) {
-        const type = cfgOverride || document.getElementById('targetSelect').value;
-        const cfg = CONFIG[type];
-        const path = pathOverride || [...state.pendingPath];
-        if (path.length < 2) return;
-
-        const t = {
-            id: Math.random(), name: cfg.name, path: path, speed: cfg.speed, curSpeed: 0, currentPos: [...path[0]],
-            progressKm: 0, totalDist: 0, active: true, engagedBy: new Set(), side: 'RU', iconAdj: cfg.iconAdj,
-            altitude: 0, targetAlt: Math.floor(Math.random() * (cfg.altMax - cfg.altMin) + cfg.altMin), 
-            history: [[...path[0]]], cheap: cfg.cheap || false,
-            toolbar: Object.assign(document.createElement('div'), {className: 'obj-toolbar'}),
-            marker: L.marker(path[0], { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas ${cfg.icon || 'fa-location-arrow'}" style="color:${cfg.color}; font-size:14px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
-            linePassed: L.polyline([path[0]], {color: cfg.color, weight: 2}).addTo(map),
-            lineFuture: L.polyline(path, {color: cfg.color, weight: 1, dashArray: '5, 10', opacity: 0.5}).addTo(map)
-        };
-        document.body.appendChild(t.toolbar);
-        for(let i=0; i<t.path.length-1; i++) t.totalDist += map.distance(t.path[i], t.path[i+1])/1000;
-        state.targets.push(t);
-        addToHistory(cfg.name, 'launch', path[0]);
-        Snd.launch();
-        if(!pathOverride) resetCurrentSelection();
-        updateCounters(); updateNav();
-    }
-
-    function showCarrier(pos, name, icon) {
-        const marker = L.marker(pos, { 
-            icon: L.divIcon({ 
-                html: `<div class="static-icon"><i class="fas ${icon}" style="color:var(--ru-red); font-size:24px; filter: drop-shadow(0 0 5px red);"></i></div>`, 
-                className: 'event-marker' 
-            }) 
-        }).addTo(map);
-        
-        const tb = Object.assign(document.createElement('div'), {
-            className: 'obj-toolbar', 
-            innerHTML: `<b style="color:var(--ru-red)">${name}</b><br>В БОЕВОЙ ГОТОВНОСТИ`
-        });
-        document.body.appendChild(tb);
-        
-        const pt = map.latLngToContainerPoint(pos);
-        tb.style.left = pt.x + 'px'; tb.style.top = pt.y + 'px';
-        
-        state.carriers.push({ marker, tb, pos });
-    }
-
-    function triggerMassiveAttack() {
-        if (state.isAttackActive) return;
-        Snd.alert();
-        state.isAttackActive = true;
-        document.getElementById('attackBtn').disabled = true;
-        
-        const targetsUA = [
-            [50.45, 30.52], [49.83, 24.02], [46.48, 30.72], [48.46, 35.04],
-            [49.99, 36.23], [49.75, 27.22], [49.23, 28.46], [46.97, 31.99],
-            [50.74, 25.32], [48.92, 24.71], [48.37, 31.16], [51.50, 31.29]
-        ];
-        
-        const launchZones = {
-            blackSea: [44.5, 33.5], caspian: [47.5, 43.5], belgorod: [50.6, 36.6],
-            crimea: [45.1, 34.0], kursk: [51.7, 36.1], belarus: [52.1, 26.5],
-            donetsk: [48.0, 37.8], kherson_occ: [46.6, 33.3]
-        };
-
-        const getRandomUA = () => targetsUA[Math.floor(Math.random() * targetsUA.length)];
-
-        notifyOnMap(map.getCenter(), "МАССИРОВАННЫЙ УДАР: ЗАФИКСИРОВАНЫ НОСИТЕЛИ", "var(--ru-red)");
-
-        showCarrier(launchZones.caspian, "ТУ-95МС", "fa-fighter-jet");
-        showCarrier(launchZones.blackSea, "ФРЕГАТ/ПОДЛОДКИ", "fa-ship");
-        showCarrier(launchZones.crimea, "ШАХЕД-ХАБ (ЧАУДА)", "fa-warehouse");
-        showCarrier(launchZones.belgorod, "ОТРК ИСКАНДЕР", "fa-truck-monster");
-
-        // 1. Дроны (Волна 1)
-        for(let i=0; i<8; i++) {
-            setTimeout(() => {
-                const start = Math.random() > 0.5 ? launchZones.crimea : launchZones.belgorod;
-                createTarget('drone_shahed', [start, [47 + Math.random(), 33 + Math.random()], getRandomUA()]);
-            }, i * 800);
-        }
-
-        // 2. Калибры
-        setTimeout(() => {
-            for(let i=0; i<4; i++) {
-                createTarget('missile_kalibr', [launchZones.blackSea, getRandomUA()]);
-            }
-        }, 6000);
-
-        // 3. Баллистика и КР
-        setTimeout(() => {
-            createTarget('missile_iskander', [launchZones.belgorod, getRandomUA()]);
-            createTarget('missile_x101', [launchZones.caspian, [50.0, 38.0], getRandomUA()]);
-            createTarget('missile_kinzhal', [launchZones.belarus, getRandomUA()]);
-        }, 12000);
-
-        if (!state.isSimulating) {
-            state.isSimulating = true;
-            state.lastFrame = performance.now();
-            requestAnimationFrame(simLoop);
-            updateNav();
-        }
-    }
-
-    function simLoop(time) {
-        if (!state.isSimulating) { syncAllToolbars(); updateClock(); return; }
-        const dt = (time - state.lastFrame) / 1000; state.lastFrame = time;
-        const stepHours = (dt * state.timeCompression) / 3600;
-
-        state.uaPlanes.forEach(p => {
-            if(!p.active) return;
-            const prev = [...p.currentPos];
-            if (map.distance(p.currentPos, p.patrolTarget) < 1000) p.patrolTarget = [47 + (Math.random()-0.5)*4, 30 + Math.random()*5];
-            const dist = map.distance(p.currentPos, p.patrolTarget);
-            p.curSpeed = p.speed; 
-            const move = (p.curSpeed * stepHours * 1000) / dist;
-            p.currentPos = [p.currentPos[0] + (p.patrolTarget[0] - p.currentPos[0]) * move, p.currentPos[1] + (p.patrolTarget[1] - p.currentPos[1]) * move];
-            p.marker.setLatLng(p.currentPos);
-            const angle = calculateHeading(prev, p.currentPos);
-            const icon = p.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle + (p.iconAdj || -45)}deg)`; 
-            p.history.push([...p.currentPos]); if(p.history.length > 40) p.history.shift();
-            p.line.setLatLngs(p.history);
-            if (p.ammo > 0) {
-                state.targets.forEach(t => {
-                    if (t.active && t.side === 'RU' && !t.engagedBy.has(p.id)) {
-                        if (p.antiDroneOnly && !t.cheap) return;
-                        if (map.distance(p.currentPos, t.currentPos)/1000 < p.range) { t.engagedBy.add(p.id); p.ammo--; launchMissile(p, t); }
-                    }
-                });
-            }
-        });
-
-        state.targets.forEach(t => {
-            if (!t.active) return;
-            const prev = [...t.currentPos];
-            const remDist = t.totalDist - t.progressKm;
-            if (t.progressKm < 5) { t.curSpeed = Math.min(t.speed, t.curSpeed + 8000 * stepHours * 10); t.altitude = Math.min(t.targetAlt, t.altitude + 20000 * stepHours); }
-            else if (remDist < 15) { t.curSpeed = t.speed * 1.1; t.altitude = Math.max(0, t.altitude - (t.targetAlt / (15 / (t.curSpeed * stepHours)))); }
-            else { t.curSpeed = t.speed; t.altitude = t.targetAlt; }
-            t.progressKm += t.curSpeed * stepHours;
-            t.currentPos = interpolate(t.path, t.progressKm);
-            t.marker.setLatLng(t.currentPos);
-            const angle = calculateHeading(prev, t.currentPos);
-            const icon = t.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle + (t.iconAdj || 0)}deg)`;
-            t.history.push([...t.currentPos]); t.linePassed.setLatLngs(t.history);
-            if (t.progressKm >= t.totalDist) { t.altitude = 0; markEvent(t.currentPos, 'hit'); addToHistory(t.name, 'hit', t.currentPos); notifyOnMap(t.currentPos, `ПРИЛЕТ: ${t.name}`, 'var(--ru-red)'); removeObj(t, true); }
-        });
-
-        state.pvo.forEach(sys => {
-            if (sys.type === 'ua_ship') {
-                if (map.distance(sys.currentPos, sys.patrolTarget) < 5000) sys.patrolTarget = [45 + (Math.random()-0.5)*1, 32 + Math.random()*5];
-                const dist = map.distance(sys.currentPos, sys.patrolTarget);
-                sys.curSpeed = sys.speed;
-                const move = (sys.curSpeed * stepHours * 1000) / dist;
-                sys.currentPos = [sys.currentPos[0] + (sys.patrolTarget[0] - sys.currentPos[0]) * move, sys.currentPos[1] + (sys.patrolTarget[1] - sys.currentPos[1]) * move];
-                sys.marker.setLatLng(sys.currentPos);
-                sys.history.push([...sys.currentPos]); if(sys.history.length > 50) sys.history.shift();
-                sys.line.setLatLngs(sys.history);
-                if (sys.ammo > 0) {
-                    state.targets.forEach(t => {
-                        if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
-                            if (map.distance(sys.currentPos, t.currentPos)/1000 < sys.range) { t.engagedBy.add(sys.id); sys.ammo--; launchMissile(sys, t); }
-                        }
-                    });
-                }
-            } else if (sys.type === 'mrg') {
-                sys.curSpeed = sys.speed; sys.progressKm += sys.curSpeed * stepHours;
-                if (sys.progressKm >= sys.totalDist) sys.progressKm = 0; 
-                sys.currentPos = interpolate(sys.path, sys.progressKm);
-                sys.marker.setLatLng(sys.currentPos);
-                state.targets.forEach(t => {
-                    if (t.active && t.cheap && !t.engagedBy.has(sys.id)) {
-                        if (map.distance(sys.currentPos, t.currentPos)/1000 < sys.radius) { t.engagedBy.add(sys.id); launchMissile(sys, t); }
-                    }
-                });
-            } else if (sys.type === 'sam') {
-                state.targets.forEach(t => {
-                    if (t.active && t.side === 'RU' && !t.engagedBy.has(sys.id)) {
-                        if (sys.ignoreCheap && t.cheap) return; 
-                        if (map.distance(sys.pos, t.currentPos)/1000 < sys.radius) { t.engagedBy.add(sys.id); launchMissile(sys, t); }
-                    }
-                });
-            }
-        });
-
-        state.missiles = state.missiles.filter(m => {
-            if (!m.target.active) { m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; }
-            const prev = [...m.pos];
-            const d = map.distance(m.pos, m.target.currentPos);
-            if (d < 500) { 
-                markEvent(m.target.currentPos, 'intercept'); addToHistory(m.target.name || m.target.cfg?.name, 'intercept', m.target.currentPos); notifyOnMap(m.target.currentPos, `СБИТО: ${m.target.name || m.target.cfg?.name}`, 'var(--primary)'); 
-                removeObj(m.target, true); m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; 
-            }
-            m.curSpeed = Math.min(m.speed * 1.5, (m.curSpeed || m.speed) + 2000 * stepHours * 10);
-            const move = (m.curSpeed * stepHours * 1000) / d;
-            m.pos = [m.pos[0] + (m.target.currentPos[0]-m.pos[0])*move, m.pos[1] + (m.target.currentPos[1]-m.pos[1])*move];
-            m.marker.setLatLng(m.pos);
-            const angle = calculateHeading(prev, m.pos);
-            const icon = m.marker.getElement()?.querySelector('.rotated-icon');
-            if(icon) icon.style.transform = `rotate(${angle + 45}deg)`; 
-            m.history.push([...m.pos]); m.line.setLatLngs(m.history);
-            return true;
-        });
-
-        state.simSeconds += dt * state.timeCompression; updateClock(); syncAllToolbars();
-        requestAnimationFrame(simLoop);
-    }
-
-    function launchMissile(launcher, target) {
-        Snd.launch();
-        const startPos = (launcher.type === 'fighter' || launcher.type === 'ua_ship' || launcher.type === 'mrg') ? launcher.currentPos : launcher.pos;
-        const tb = Object.assign(document.createElement('div'), {className: 'obj-toolbar', innerHTML: launcher.mName || 'SAM'});
-        tb.style.fontSize = '8px'; document.body.appendChild(tb);
-        const m = {
-            target: target, pos: [...startPos], history: [[...startPos]],
-            speed: launcher.mSpeed || 5000, curSpeed: (launcher.mSpeed || 5000) * 0.5, toolbar: tb,
-            marker: L.marker(startPos, { icon: L.divIcon({ html: `<div class="rotated-icon"><i class="fas fa-location-arrow" style="color:#ffbb33; font-size:12px;"></i></div>`, className: 'event-marker' }) }).addTo(map),
-            line: L.polyline([startPos], {color: '#ffbb33', weight: 1, opacity: 0.8}).addTo(map)
-        };
-        state.missiles.push(m);
-    }
-
-    function removeObj(obj, keepPath = false) {
-        obj.active = false; if(obj.marker) map.removeLayer(obj.marker); if(obj.toolbar) obj.toolbar.remove();
-        if(!keepPath) { if(obj.line) map.removeLayer(obj.line); if(obj.linePassed) map.removeLayer(obj.linePassed); if(obj.lineFuture) map.removeLayer(obj.lineFuture); }
-        updateCounters();
-    }
-
-    function undoLastAction() {
-        Snd.ping();
-        if (state.pendingPath.length > 0) {
-            state.pendingPath.pop(); const m = state.tempMarkers.pop(); if(m) map.removeLayer(m);
-            if(state.activeFutureLine) { if (state.pendingPath.length > 0) state.activeFutureLine.setLatLngs(state.pendingPath); else { state.activeFutureLine.remove(); state.activeFutureLine = null; } }
-            if(state.pendingPath.length === 0 && state.rangeCircle) { state.rangeCircle.remove(); state.rangeCircle = null; }
-        } else if (state.history.length > 0) {
-            const last = state.history.pop();
-            const pvoIdx = state.pvo.findIndex(i => i.name === last.name);
-            if (pvoIdx !== -1) {
-                const item = state.pvo[pvoIdx];
-                if (item.type === 'sam') item.layers.forEach(l => map.removeLayer(l)); else removeObj(item);
-                state.pvo.splice(pvoIdx, 1);
-            }
-        }
-        updateCounters(); updateNav();
-    }
-
-    function syncAllToolbars() {
-        state.targets.forEach(t => t.active && updateToolbar(t, `<b>${t.name}</b><br>SPD: ${Math.round(t.curSpeed)} км/ч<br>ALT: ${Math.round(t.altitude)}м`));
-        state.uaPlanes.forEach(p => p.active && updateToolbar(p, `<b style="color:var(--ua-gold)">${p.name}</b><br>SPD: ${Math.round(p.curSpeed)} км/ч<br>AMMO: ${p.ammo}`));
-        state.pvo.forEach(sys => {
-            if (sys.type === 'ua_ship') updateToolbar(sys, `<b style="color:var(--ua-gold)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
-            else if (sys.type === 'mrg') updateToolbar(sys, `<b style="color:var(--mobile-pvo)">${sys.name}</b><br>SPD: ${Math.round(sys.curSpeed)} км/ч`);
-        });
-        state.missiles.forEach(m => { if(!m.target.active) return; const pt = map.latLngToContainerPoint(m.pos); m.toolbar.style.left = pt.x + 'px'; m.toolbar.style.top = pt.y + 'px'; m.toolbar.innerHTML = `${Math.round(m.curSpeed)} км/ч`; });
-        state.carriers.forEach(c => { const pt = map.latLngToContainerPoint(c.pos); c.tb.style.left = pt.x + 'px'; c.tb.style.top = pt.y + 'px'; });
-    }
-
-    function updateToolbar(obj, text) {
-        const targetPos = obj.currentPos || obj.pos; if (!targetPos || !obj.toolbar) return;
-        const pt = map.latLngToContainerPoint(targetPos);
-        obj.toolbar.style.left = pt.x + 'px'; obj.toolbar.style.top = pt.y + 'px'; obj.toolbar.innerHTML = text;
-    }
-
-    function markEvent(pos, type) {
-        const icon = L.divIcon({ className: 'event-marker', html: type === 'intercept' ? '<i class="fas fa-skull" style="color:white; font-size:18px;"></i>' : '<i class="fas fa-certificate" style="color:#ffbb33; font-size:20px;"></i>' });
-        L.marker(pos, { icon }).addTo(map);
-        const p = map.latLngToContainerPoint(pos);
-        const d = document.createElement('div'); d.className = 'explosion'; d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
-        document.body.appendChild(d); setTimeout(() => d.remove(), 500);
-        if(type === 'hit') Snd.hit(); else Snd.intercept();
-    }
-
-    function interpolate(path, dist) {
-        let acc = 0;
-        for (let i = 0; i < path.length - 1; i++) {
-            const d = map.distance(path[i], path[i+1]) / 1000;
-            if (acc + d > dist) { const r = (dist - acc) / d; return [path[i][0] + (path[i+1][0] - path[i][0]) * r, path[i][1] + (path[i+1][1] - path[i][1]) * r]; }
-            acc += d;
-        }
-        return path[path.length-1];
-    }
-
-    function getRadarSizeInPixels(radiusKm, lat) {
-        const zoom = map.getZoom();
-        const metersPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
-        return ((radiusKm * 1000) / metersPerPixel) * 2;
-    }
-
-    map.on('click', (e) => {
-        Snd.init(); 
-        Snd.ping();
-        const pos = [e.latlng.lat, e.latlng.lng];
-        if (state.currentMode === 'pvo') {
-            const type = document.getElementById('pvoSelect').value;
-            if (CONFIG[type].type === 'mrg') {
-                state.pendingPath.push(pos); state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: 'var(--mobile-pvo)' }).addTo(map));
-                if(state.activeFutureLine) state.activeFutureLine.remove();
-                state.activeFutureLine = L.polyline(state.pendingPath, { color: 'var(--mobile-pvo)', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
-            } else createPVO(pos);
-        } else {
-            const type = document.getElementById('targetSelect').value;
-            const cfg = CONFIG[type];
-            if (state.pendingPath.length === 0) {
-                state.pendingPath.push(pos);
-                state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
-                state.rangeCircle = L.circle(pos, { radius: cfg.maxRange * 1000, color: cfg.color, weight: 1, fillOpacity: 0.05, dashArray: '10, 10', interactive: false }).addTo(map);
-            } else {
-                const startPos = state.pendingPath[0];
-                const dist = map.distance(startPos, pos) / 1000;
-                if (dist > cfg.maxRange) {
-                    notifyOnMap(pos, `ПРЕВЫШЕНА ДАЛЬНОСТЬ (${Math.round(dist)} > ${cfg.maxRange} км)`, "var(--ru-red)");
-                    Snd.warning(); return;
-                }
-                state.pendingPath.push(pos);
-                state.tempMarkers.push(L.circleMarker(pos, { radius: 4, color: '#fff' }).addTo(map));
-                if(state.activeFutureLine) state.activeFutureLine.remove();
-                state.activeFutureLine = L.polyline(state.pendingPath, { color: '#fff', weight: 1, dashArray: '5, 8', opacity: 0.5 }).addTo(map);
-            }
-        }
-        updateNav();
-    });
-
-    document.getElementById('playBtn').onclick = () => {
-        Snd.init();
-        if (state.pendingPath.length > 0) {
-             Snd.ping();
-             if (state.currentMode === 'pvo') {
-                 if (state.pendingPath.length >= 2 || CONFIG[document.getElementById('pvoSelect').value].type !== 'mrg') { createPVO(state.pendingPath[0]); }
-             } else { if (state.pendingPath.length >= 2) createTarget(); }
-        } else {
-            state.isSimulating = !state.isSimulating; state.lastFrame = performance.now();
-            if (state.isSimulating) { 
-                Snd.alert();
-                requestAnimationFrame(simLoop); 
-                notifyOnMap(map.getCenter(), "СИМУЛЯЦИЯ ЗАПУЩЕНА", "var(--primary)"); 
-            } 
-            else { 
-                Snd.ping();
-                syncAllToolbars(); 
-                notifyOnMap(map.getCenter(), "ПАУЗА", "var(--ua-gold)"); 
-            }
-        }
-        updateNav();
-    };
-
-    map.on('move', syncAllToolbars);
-    map.on('zoomend', syncAllToolbars);
-
-    function updateClock() { document.getElementById('simTime').innerText = getSimTimeString(); }
-    
-    function updateNav() {
-        const btn = document.getElementById('playBtn');
-        const undo = document.getElementById('undoBtn');
-        const attack = document.getElementById('attackBtn');
-        
-        undo.classList.toggle('visible', state.pendingPath.length > 0 || state.history.length > 0);
-        attack.style.display = state.isSimulating ? 'flex' : 'none';
-
-        if(state.pendingPath.length > 0) { btn.innerHTML = '<i class="fas fa-check"></i>'; btn.className = 'btn btn-confirm'; } 
-        else { btn.innerHTML = state.isSimulating ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; btn.className = 'btn'; btn.classList.toggle('simulating', state.isSimulating); }
-    }
-
-    map.on('zoom', () => {
-        state.pvo.forEach(p => {
-            if(p.type === 'sam') {
-                const size = getRadarSizeInPixels(p.radius, p.pos[0]);
-                const el = p.layers[0].getElement();
-                if(el) { const sweep = el.querySelector('.radar-sweep'); if(sweep) { sweep.style.width = size + 'px'; sweep.style.height = size + 'px'; } }
-            }
-        });
-    });
-    
-    updateClock();
-    setInterval(updateClock, 1000);
-</script>
+  </div>
+</section>
+</x-dc>
 </body>
 </html>
