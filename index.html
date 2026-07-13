@@ -1,35 +1,38 @@
 <!DOCTYPE html>
-<html>
+<html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
-</head>
-<body>
-<x-dc>
-<helmet>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>RADAR-UA · Планування ППО</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/deck.gl@9.1.0/dist.min.js"></script>
 <style>
-@font-face{font-family:'SF Pro Text';src:url('uploads/SF-Pro-Text-Regular.otf') format('opentype');font-weight:400;font-display:swap;}
-@font-face{font-family:'SF Pro Text';src:url('uploads/SF-Pro-Text-Medium.otf') format('opentype');font-weight:500;font-display:swap;}
-@font-face{font-family:'SF Pro Text';src:url('uploads/SF-Pro-Text-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
-@font-face{font-family:'SF Pro Text';src:url('uploads/SF-Pro-Text-Bold.otf') format('opentype');font-weight:700;font-display:swap;}
-@font-face{font-family:'SF Pro Display';src:url('uploads/SF-Pro-Display-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
-@font-face{font-family:'SF Pro Display';src:url('uploads/SF-Pro-Display-Bold.otf') format('opentype');font-weight:700;font-display:swap;}
+@font-face{font-family:'SF Pro Text';src:local('SF Pro Text'),url('uploads/SF-Pro-Text-Regular.otf') format('opentype');font-weight:400;font-display:swap;}
+@font-face{font-family:'SF Pro Text';src:local('SF Pro Text'),url('uploads/SF-Pro-Text-Medium.otf') format('opentype');font-weight:500;font-display:swap;}
+@font-face{font-family:'SF Pro Text';src:local('SF Pro Text'),url('uploads/SF-Pro-Text-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
+@font-face{font-family:'SF Pro Text';src:local('SF Pro Text'),url('uploads/SF-Pro-Text-Bold.otf') format('opentype');font-weight:700;font-display:swap;}
+@font-face{font-family:'SF Pro Display';src:local('SF Pro Display'),url('uploads/SF-Pro-Display-Semibold.otf') format('opentype');font-weight:600;font-display:swap;}
+@font-face{font-family:'SF Pro Display';src:local('SF Pro Display'),url('uploads/SF-Pro-Display-Bold.otf') format('opentype');font-weight:700;font-display:swap;}
 :root{--bg:#040706;--panel:rgba(6,13,10,.82);--border:rgba(34,255,153,.22);--green:#22ff99;--dim:#0fae74;--amber:#ffb84d;--red:#ff5555;--blue:#4ec3ff;--gold:#ffd24d;--mpvo:#e1ff00;--text:#bff5da;--muted:#4f8570;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;width:100%;margin:0;background:var(--bg);color:var(--text);font-family:'SF Pro Text',-apple-system,sans-serif;overflow:hidden;}
+html,body{height:100%;width:100%;margin:0;background:var(--bg);color:var(--text);font-family:'SF Pro Text',-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;overflow:hidden;}
 #map{position:absolute;inset:0;z-index:1;background:#050a08;}
-.leaflet-container{background:#050a08;font-family:inherit;}
+.maplibregl-canvas{outline:none;}
+#map canvas{background:#050a08;}
+.maplibregl-ctrl-bottom-right,.maplibregl-ctrl-bottom-left{opacity:.42;}
+.maplibregl-ctrl-attrib.maplibregl-compact{background:rgba(4,7,6,.6);}
 a{color:var(--green);} a:hover{color:#7dffc4;}
-.radar-container{display:flex;align-items:center;justify-content:center;pointer-events:none;}
-.radar-sweep{position:absolute;border-radius:50%;background:conic-gradient(from 0deg,rgba(34,255,153,.30),rgba(34,255,153,.05) 55deg,rgba(34,255,153,0) 82deg);animation:radarSpin 4s linear infinite;pointer-events:none;will-change:transform;box-shadow:inset 0 0 0 1px rgba(34,255,153,.16);}
+/* object markers (positioned by MapLibre; we only rotate/label inside) */
+.obj-marker{position:relative;width:30px;height:30px;will-change:transform;}
+.obj-icon{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;display:flex;align-items:center;justify-content:center;transform-origin:center;will-change:transform;}
+.obj-lbl{position:absolute;left:16px;top:-14px;background:var(--panel);color:#eafff4;padding:3px 7px;backdrop-filter:blur(6px);border-radius:5px;font-size:10px;white-space:nowrap;border:1px solid var(--border);line-height:1.35;pointer-events:none;}
+.sweep-wrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.radar-sweep{border-radius:50%;background:conic-gradient(from 0deg,rgba(34,255,153,.30),rgba(34,255,153,.05) 55deg,rgba(34,255,153,0) 82deg);animation:radarSpin 4s linear infinite;box-shadow:inset 0 0 0 1px rgba(34,255,153,.16);will-change:transform;}
+.sam-dot{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--green);border:2px solid #fff;box-shadow:0 0 6px var(--green);}
+body.mode-3d .radar-sweep{display:none;}
 @keyframes radarSpin{from{transform:rotate(360deg);}to{transform:rotate(0deg);}}
-.rotated-icon{display:flex;align-items:center;justify-content:center;width:30px;height:30px;transform-origin:center;will-change:transform;}
-.static-icon,.event-marker{display:flex;align-items:center;justify-content:center;}
-.obj-toolbar{position:absolute;background:var(--panel);color:#eafff4;padding:3px 7px;backdrop-filter:blur(6px);border-radius:5px;font-size:10px;pointer-events:none;z-index:600;transform:translate(14px,-14px);white-space:nowrap;border:1px solid var(--border);line-height:1.35;}
 .explosion{position:absolute;width:60px;height:60px;background:radial-gradient(circle,#fff 10%,var(--red) 30%,transparent 70%);border-radius:50%;z-index:700;animation:explode .5s ease-out forwards;pointer-events:none;transform:translate(-50%,-50%);}
 @keyframes explode{0%{transform:translate(-50%,-50%) scale(0);opacity:1;}100%{transform:translate(-50%,-50%) scale(3);opacity:0;}}
 .map-notification{position:absolute;padding:6px 11px;border-radius:6px;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap;z-index:750;pointer-events:none;animation:floatUp 3s ease-out forwards;border:1px solid rgba(255,255,255,.2);box-shadow:0 4px 15px rgba(0,0,0,.5);backdrop-filter:blur(4px);letter-spacing:.5px;}
@@ -48,6 +51,7 @@ a{color:var(--green);} a:hover{color:#7dffc4;}
 .chip i{font-size:11px;color:var(--muted);}
 .chip-red i{color:var(--red);}.chip-green i{color:var(--green);}.chip-gold i{color:var(--gold);}.chip-blue i{color:var(--blue);}.chip-yellow i{color:var(--mpvo);}
 .chip b{color:#eafff4;font-weight:600;}
+#alertChip{border-color:rgba(255,85,85,.55);animation:blink 1.4s infinite;}
 .lang{display:flex;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:3px;backdrop-filter:blur(6px);}
 .lang span{font-size:11px;padding:4px 8px;border-radius:5px;color:var(--muted);cursor:pointer;}
 .lang span.active{background:var(--green);color:#040706;font-weight:600;}
@@ -70,7 +74,7 @@ a{color:var(--green);} a:hover{color:#7dffc4;}
 .dc-bar-head{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:4px;}
 .dc-bar-track{height:6px;background:rgba(34,255,153,.12);border-radius:3px;overflow:hidden;}
 .dc-bar-fill{height:100%;background:linear-gradient(90deg,var(--dim),var(--green));box-shadow:0 0 8px var(--green);transition:width .3s;}
-.dock{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:900;display:flex;flex-direction:column;gap:10px;width:min(720px,calc(100% - 24px));}
+.dock{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:900;display:flex;flex-direction:column;gap:10px;width:min(760px,calc(100% - 24px));}
 .dock-selects{display:flex;gap:10px;}
 .tool-card{flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 10px;backdrop-filter:blur(10px);cursor:pointer;}
 .tool-card.active{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green);}
@@ -131,14 +135,10 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
 .badge-launch{color:var(--gold);border:1px solid var(--gold);}
 .badge-hit{color:var(--red);border:1px solid var(--red);}
 .badge-deploy{color:var(--blue);border:1px solid var(--blue);}
-.onboard{position:absolute;inset:0;z-index:2000;background:rgba(2,4,3,.82);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;}
-.onboard.hide{display:none;}
-.ob-box{max-width:430px;background:var(--panel);border:1px solid var(--green);border-radius:16px;padding:26px;box-shadow:0 0 60px rgba(34,255,153,.15);}
-.ob-title{font-family:'SF Pro Display';font-weight:700;letter-spacing:2px;color:var(--green);font-size:13px;margin-bottom:16px;}
-.ob-steps{margin:0 0 20px;padding-left:20px;color:var(--text);font-size:14px;line-height:1.85;}
-.ob-btn{width:100%;background:var(--green);color:#040706;border:none;border-radius:10px;padding:13px;font-family:'SF Pro Display';font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer;}
 .hint{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:870;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 14px;font-size:11px;color:var(--text);backdrop-filter:blur(8px);pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;}
 .hint.show{opacity:1;}
+.btn:focus-visible,select:focus-visible,.lang span:focus-visible,.speed-pill span:focus-visible,.pop-item:focus-visible,.tool-card:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
+@media (prefers-reduced-motion: reduce){.radar-sweep,.pulse,.btn-attack,#alertChip{animation:none !important;}.map-notification{animation-duration:.01ms;}.detail-card{transition:none;}}
 @media (max-width:640px){
 .ht-title{display:none;}
 .clock{font-size:15px;}
@@ -150,6 +150,8 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
 .detail-card{top:auto;bottom:206px;right:8px;left:8px;width:auto;}
 .dock{bottom:12px;width:calc(100% - 16px);gap:8px;}
 .dock-selects{flex-direction:column;}
+.dock-actions{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.dock-actions::-webkit-scrollbar{display:none;}
 .btn{width:42px;height:42px;font-size:14px;}
 .btn-play{width:50px;height:50px;font-size:17px;}
 .speed-pill span{padding:5px 7px;}
@@ -157,11 +159,8 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
 #timelinePanel{width:calc(100% - 16px);}
 }
 </style>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/deck.gl@8.9.35/dist.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/deck.gl-leaflet@1.2.1/dist/deck.gl-leaflet.min.js"></script>
-</helmet>
-
+</head>
+<body>
 <div id="map"></div>
 
 <div class="hud-top">
@@ -172,6 +171,7 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
   </div>
   <div class="ht-title" data-i18n="title">RADAR-UA · ПЛАНУВАННЯ</div>
   <div class="ht-right">
+    <span class="chip chip-red" id="alertChip" style="display:none" title="alert"><i class="fas fa-triangle-exclamation"></i> <b id="alertCount">0</b> <span data-i18n="alertObl">обл.</span></span>
     <span class="chip chip-red" title="threats"><i class="fas fa-bullseye"></i> <b id="targetCount">0</b></span>
     <span class="chip chip-green" title="pvo"><i class="fas fa-shield-alt"></i> <b id="pvoCount">0</b></span>
     <span class="chip chip-yellow" title="mrg"><i class="fas fa-truck-pickup"></i> <b id="mobileCount">0</b></span>
@@ -210,7 +210,7 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
       <span class="tc-label" data-i18n="forces">СИЛИ ОБОРОНИ УКРАЇНИ</span>
       <select id="pvoSelect">
         <optgroup id="ogp1" label="Дальнього / середнього радіусу">
-          <option value="pvo_patriot">Patriot PAC-3 (160 км) — ПРО</option>
+          <option value="pvo_patriot">Patriot (PAC-2/PAC-3 авто) — ПРО</option>
           <option value="pvo_samp">SAMP/T Mamba (100 км)</option>
           <option value="pvo_s300">С-300ПС (75 км)</option>
           <option value="pvo_iris">IRIS-T SLM (40 км)</option>
@@ -265,6 +265,7 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
   </div>
   <div class="dock-actions">
     <button class="btn" id="locBtn" title="геопозиція"><i class="fas fa-crosshairs"></i></button>
+    <button class="btn" id="modeBtn" title="2D / 3D"><i class="fas fa-cube"></i></button>
     <button class="btn" id="layerBtn" title="карта"><i class="fas fa-layer-group"></i></button>
     <button class="btn on" id="dsBtn" title="території DeepState"><i class="fas fa-draw-polygon"></i></button>
     <button class="btn" id="soundBtn" title="звук"><i class="fas fa-volume-up"></i></button>
@@ -320,96 +321,41 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
   <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:4px;" data-i18n="tlHint">перетягніть повзунок для перегляду · клік по події — перехід</div>
 </div>
 
-<div class="onboard" id="onboard">
-  <div class="ob-box">
-    <div class="ob-title" data-i18n="obTitle">ШВИДКИЙ СТАРТ · RADAR-UA</div>
-    <ol class="ob-steps">
-      <li data-i18n="ob1">Оберіть силу оборони або ціль у нижній панелі.</li>
-      <li data-i18n="ob2">Клікніть на карті: ППО — точка розгортання, ціль/МРГ — маршрут (2+ точки), ✓ підтвердити.</li>
-      <li data-i18n="ob3">Натисніть ▶ і керуйте швидкістю часу (1x/2x/4x). Клік по об'єкту показує деталі.</li>
-    </ol>
-    <button class="ob-btn" id="obBtn" data-i18n="obStart">ПОЧАТИ</button>
-  </div>
-</div>
-</x-dc>
-<script type="text/x-dc" data-dc-script>
-class Component extends DCLogic {
-  componentDidMount() {
-    if (this._booted) return;
-    this._booted = true;
-    const boot = () => {
-      const el = document.getElementById('map');
-      if (!window.L || !el || el.clientHeight < 40 || el.clientWidth < 40) { setTimeout(boot, 60); return; }
-      this.run();
-    };
-    boot();
-  }
-
-  run() {
+<script>
+const OBLASTS_DATA = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[33.73,44.398],[33.958,44.383],[34.341,44.558],[34.469,44.73],[34.757,44.821],[35.006,44.835],[35.389,45.002],[35.547,45.12],[35.771,45.066],[35.848,44.992],[36.048,45.049],[36.225,45.008],[36.44,45.067],[36.418,45.23],[36.614,45.409],[36.3,45.473],[36.137,45.462],[36.022,45.368],[35.792,45.412],[35.695,45.33],[35.481,45.298],[35.332,45.371],[35.044,45.67],[34.789,45.804],[34.689,45.974],[34.465,45.955],[34.362,46.056],[34.105,46.095],[33.846,46.196],[33.671,46.173],[33.629,46.125],[33.709,45.91],[33.482,45.854],[33.265,45.754],[32.937,45.663],[32.525,45.458],[32.513,45.341],[32.663,45.32],[32.899,45.354],[33.26,45.156],[33.413,45.185],[33.563,45.094],[33.62,44.931],[33.571,44.852],[33.675,44.792],[33.713,44.582],[33.852,44.432],[33.73,44.398]]]},"properties":{"iso":"UA-43","ua":"АР Крим","en":"Crimea"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[33.571,44.852],[33.547,44.71],[33.38,44.565],[33.73,44.398],[33.852,44.432],[33.713,44.582],[33.675,44.792],[33.571,44.852]]]},"properties":{"iso":"UA-40","ua":"м. Севастополь","en":"Sevastopol"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[33.089,47.583],[33.005,47.592],[32.984,47.71],[33.06,47.776],[33.069,47.911],[33.039,47.915],[33.032,47.92],[33.031,47.926],[33.035,47.967],[33.019,47.974],[33.016,47.993],[33.011,48.003],[32.992,48.018],[32.984,48.029],[32.983,48.036],[32.979,48.043],[32.949,48.035],[32.907,48.038],[32.884,48.029],[32.683,47.955],[32.64,47.8],[32.467,47.781],[32.234,47.82],[32.139,47.748],[31.866,47.88],[31.71,48.017],[31.76,48.092],[31.499,48.119],[31.471,48.117],[31.444,48.116],[31.414,48.108],[31.25,48.121],[31.183,48.208],[31.063,48.221],[31.042,48.219],[31.025,48.215],[31.007,48.211],[30.913,48.158],[30.88,48.165],[30.875,48.179],[30.857,48.186],[30.853,48.186],[30.85,48.185],[30.841,48.181],[30.705,48.182],[30.626,48.146],[30.293,48.136],[30.216,47.999],[30.298,47.945],[30.476,47.622],[30.78,47.634],[30.868,47.543],[30.834,47.43],[30.915,47.277],[31.224,47.166],[31.295,47.05],[31.215,46.974],[31.037,46.953],[31.162,46.825],[31.188,46.629],[31.338,46.601],[31.481,46.646],[31.858,46.629],[31.965,46.722],[32.172,46.747],[32.632,46.861],[32.822,46.827],[33.059,47.021],[32.915,47.104],[33.105,47.272],[33.124,47.416],[33.116,47.53],[33.089,47.548],[33.087,47.562],[33.087,47.574],[33.089,47.583]]]},"properties":{"iso":"UA-48","ua":"Миколаївська","en":"Mykolayiv"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[33.401,52.344],[33.197,52.369],[32.927,52.247],[32.725,52.252],[32.528,52.316],[32.34,52.287],[32.307,52.141],[32.096,52.041],[31.892,52.036],[31.826,52.104],[31.475,52.118],[31.135,52.077],[30.941,52.02],[30.662,51.819],[30.534,51.553],[30.638,51.336],[30.555,51.243],[30.512,51.017],[30.625,51],[30.738,50.76],[31.084,50.769],[31.205,50.671],[31.275,50.521],[31.463,50.5],[31.748,50.553],[31.847,50.624],[32.031,50.504],[32.011,50.428],[32.139,50.35],[32.376,50.409],[32.727,50.358],[32.883,50.401],[33.062,50.538],[33.182,50.971],[32.945,51.095],[33.074,51.285],[33.151,51.559],[33.153,51.693],[33.062,51.793],[33.161,51.904],[33.366,51.947],[33.318,52.21],[33.401,52.344]]]},"properties":{"iso":"UA-74","ua":"Чернігівська","en":"Chernihiv"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[27.666,51.49],[27.705,51.568],[27.477,51.624],[27.254,51.595],[27.178,51.747],[26.855,51.749],[26.408,51.851],[26.081,51.901],[25.547,51.919],[25.655,51.893],[25.524,51.725],[25.554,51.358],[25.808,51.332],[26.056,51.184],[26.024,51.073],[26.09,50.976],[25.868,50.781],[25.837,50.636],[25.603,50.707],[25.295,50.616],[25.271,50.54],[25.093,50.465],[25.195,50.37],[25.063,50.295],[25.207,50.25],[25.202,50.095],[25.368,50.013],[25.467,50.105],[25.809,50.179],[25.947,50.265],[26.166,50.242],[26.233,50.152],[26.465,50.248],[26.746,50.467],[27.126,50.582],[27.192,50.541],[27.272,50.737],[27.198,50.991],[27.295,51.044],[27.449,51.228],[27.502,51.44],[27.666,51.49]]]},"properties":{"iso":"UA-56","ua":"Рівненська","en":"Rivne"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[26.381,48.517],[26.149,48.54],[26.062,48.628],[25.912,48.588],[25.794,48.67],[25.636,48.678],[25.565,48.621],[25.585,48.393],[25.293,48.34],[24.935,48.013],[24.981,47.828],[24.929,47.714],[25.122,47.77],[25.262,47.899],[25.753,47.935],[26.173,47.993],[26.303,48.212],[26.618,48.259],[26.843,48.394],[27.176,48.362],[27.504,48.472],[27.37,48.63],[27.248,48.57],[26.788,48.568],[26.566,48.457],[26.381,48.517]]]},"properties":{"iso":"UA-77","ua":"Чернівецька","en":"Chernivtsi"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[25.636,48.678],[25.629,48.76],[25.431,48.849],[25.277,48.781],[25.12,48.951],[24.978,48.977],[24.967,49.113],[24.707,49.492],[24.45,49.517],[24.364,49.237],[24.158,49.135],[23.755,49.115],[23.576,48.969],[23.533,48.724],[23.895,48.55],[23.943,48.47],[24.137,48.527],[24.145,48.375],[24.305,48.388],[24.495,48.267],[24.538,48.134],[24.639,48.048],[24.57,47.937],[24.661,47.854],[24.929,47.714],[24.981,47.828],[24.935,48.013],[25.293,48.34],[25.585,48.393],[25.565,48.621],[25.636,48.678]]]},"properties":{"iso":"UA-26","ua":"Івано-Франківська","en":"Ivano-Frankivs'k"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[26.233,50.152],[26.151,49.957],[26.253,49.662],[26.148,49.517],[26.256,49.294],[26.193,48.902],[26.235,48.685],[26.381,48.517],[26.566,48.457],[26.788,48.568],[27.248,48.57],[27.37,48.63],[27.425,48.777],[27.372,48.93],[27.5,49.126],[27.767,49.116],[27.889,49.163],[27.877,49.277],[27.729,49.489],[27.868,49.76],[27.661,49.799],[27.548,50.008],[27.646,50.169],[27.229,50.395],[27.192,50.541],[27.126,50.582],[26.746,50.467],[26.465,50.248],[26.233,50.152]]]},"properties":{"iso":"UA-68","ua":"Хмельницька","en":"Khmel'nyts'kyy"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[25.063,50.295],[24.932,50.37],[24.773,50.341],[24.457,50.461],[24.379,50.601],[24.108,50.63],[24.106,50.539],[23.981,50.405],[23.748,50.389],[23.101,49.957],[22.641,49.529],[22.724,49.367],[22.706,49.169],[22.865,49.013],[22.892,48.935],[23.18,48.79],[23.533,48.724],[23.576,48.969],[23.755,49.115],[24.158,49.135],[24.364,49.237],[24.45,49.517],[24.707,49.492],[24.729,49.555],[24.948,49.627],[25.099,49.817],[25.39,49.88],[25.368,50.013],[25.202,50.095],[25.207,50.25],[25.063,50.295]]]},"properties":{"iso":"UA-46","ua":"Львівська","en":"L'viv"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[25.368,50.013],[25.39,49.88],[25.099,49.817],[24.948,49.627],[24.729,49.555],[24.707,49.492],[24.967,49.113],[24.978,48.977],[25.12,48.951],[25.277,48.781],[25.431,48.849],[25.629,48.76],[25.636,48.678],[25.794,48.67],[25.912,48.588],[26.062,48.628],[26.149,48.54],[26.381,48.517],[26.235,48.685],[26.193,48.902],[26.256,49.294],[26.148,49.517],[26.253,49.662],[26.151,49.957],[26.233,50.152],[26.166,50.242],[25.947,50.265],[25.809,50.179],[25.467,50.105],[25.368,50.013]]]},"properties":{"iso":"UA-61","ua":"Тернопільська","en":"Ternopil'"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[23.533,48.724],[23.18,48.79],[22.892,48.935],[22.865,49.013],[22.54,49.072],[22.449,48.971],[22.322,48.7],[22.154,48.586],[22.133,48.405],[22.272,48.403],[22.357,48.243],[22.481,48.243],[22.6,48.101],[22.746,48.116],[22.862,48.028],[23.063,48.007],[23.231,48.08],[23.36,47.993],[23.563,48.006],[23.977,47.962],[24.231,47.897],[24.429,47.953],[24.57,47.937],[24.639,48.048],[24.538,48.134],[24.495,48.267],[24.305,48.388],[24.145,48.375],[24.137,48.527],[23.943,48.47],[23.895,48.55],[23.533,48.724]]]},"properties":{"iso":"UA-21","ua":"Закарпатська","en":"Transcarpathia"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[25.547,51.919],[25.183,51.95],[24.722,51.882],[24.391,51.88],[24.244,51.718],[23.981,51.586],[23.75,51.644],[23.594,51.605],[23.698,51.404],[23.634,51.339],[23.875,51.136],[23.912,51.007],[24.13,50.869],[23.97,50.825],[24.108,50.63],[24.379,50.601],[24.457,50.461],[24.773,50.341],[24.932,50.37],[25.063,50.295],[25.195,50.37],[25.093,50.465],[25.271,50.54],[25.295,50.616],[25.603,50.707],[25.837,50.636],[25.868,50.781],[26.09,50.976],[26.024,51.073],[26.056,51.184],[25.808,51.332],[25.554,51.358],[25.524,51.725],[25.655,51.893],[25.547,51.919]]]},"properties":{"iso":"UA-07","ua":"Волинська","en":"Volyn"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[32.069,50.239],[31.85,50.095],[31.874,50.031],[31.707,49.847],[31.476,49.855],[31.43,49.906],[31.212,49.854],[31.156,49.556],[30.868,49.361],[30.73,49.322],[30.428,49.344],[30.35,49.258],[30.104,49.298],[29.92,49.246],[29.862,49.174],[29.697,49.227],[29.675,48.987],[29.772,48.769],[29.959,48.652],[30.076,48.455],[30.574,48.565],[30.541,48.619],[30.702,48.765],[31.055,48.728],[31.333,48.724],[31.462,48.761],[31.544,48.924],[31.81,48.924],[31.895,48.862],[32.332,49.09],[32.556,48.952],[32.845,49.001],[32.753,49.188],[32.789,49.262],[32.676,49.482],[32.754,49.547],[32.693,49.672],[32.427,49.807],[32.409,49.976],[32.268,50.128],[32.069,50.239]]]},"properties":{"iso":"UA-71","ua":"Черкаська","en":"Cherkasy"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[30.083,48.144],[30.293,48.136],[30.626,48.146],[30.705,48.182],[30.841,48.181],[30.85,48.185],[30.853,48.186],[30.857,48.186],[30.875,48.179],[30.88,48.165],[30.913,48.158],[31.007,48.211],[31.025,48.215],[31.042,48.219],[31.063,48.221],[31.183,48.208],[31.25,48.121],[31.414,48.108],[31.444,48.116],[31.471,48.117],[31.499,48.119],[31.76,48.092],[31.71,48.017],[31.866,47.88],[32.139,47.748],[32.234,47.82],[32.467,47.781],[32.64,47.8],[32.683,47.955],[32.884,48.029],[32.907,48.038],[32.949,48.035],[32.979,48.043],[32.983,48.036],[32.984,48.029],[32.992,48.018],[33.011,48.003],[33.016,47.993],[33.019,47.974],[33.035,47.967],[33.226,48.133],[33.516,48.243],[33.478,48.541],[33.723,48.617],[33.919,48.866],[33.778,48.923],[33.543,48.903],[33.376,48.941],[33.038,49.182],[32.789,49.262],[32.753,49.188],[32.845,49.001],[32.556,48.952],[32.332,49.09],[31.895,48.862],[31.81,48.924],[31.544,48.924],[31.462,48.761],[31.333,48.724],[31.055,48.728],[30.702,48.765],[30.541,48.619],[30.574,48.565],[30.076,48.455],[29.859,48.417],[29.738,48.27],[29.775,48.203],[29.82,48.211],[29.997,48.221],[30.083,48.144]]]},"properties":{"iso":"UA-35","ua":"Кіровоградська","en":"Kirovohrad"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[30.555,51.243],[30.355,51.305],[30.329,51.389],[30.149,51.484],[29.829,51.43],[29.618,51.486],[29.353,51.377],[29.27,51.237],[29.483,51.072],[29.423,50.945],[29.489,50.789],[29.592,50.711],[29.479,50.594],[29.494,50.423],[29.696,50.258],[29.63,49.863],[29.437,49.791],[29.447,49.651],[29.562,49.536],[29.5,49.366],[29.697,49.227],[29.862,49.174],[29.92,49.246],[30.104,49.298],[30.35,49.258],[30.428,49.344],[30.73,49.322],[30.868,49.361],[31.156,49.556],[31.212,49.854],[31.43,49.906],[31.476,49.855],[31.707,49.847],[31.874,50.031],[31.85,50.095],[32.069,50.239],[32.139,50.35],[32.011,50.428],[32.031,50.504],[31.847,50.624],[31.748,50.553],[31.463,50.5],[31.275,50.521],[31.205,50.671],[31.084,50.769],[30.738,50.76],[30.625,51],[30.512,51.017],[30.555,51.243]],[[30.647,50.575],[30.846,50.353],[30.642,50.276],[30.648,50.034],[30.414,50.304],[30.238,50.415],[30.27,50.633],[30.647,50.575]]]},"properties":{"iso":"UA-32","ua":"Київська","en":"Kiev"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[30.293,48.136],[30.083,48.144],[29.997,48.221],[29.82,48.211],[29.775,48.203],[29.717,48.182],[29.682,48.182],[29.666,48.169],[29.68,48.092],[29.497,48.093],[29.458,48.109],[29.454,48.111],[29.45,48.114],[29.435,48.113],[29.246,48.085],[29.17,48.106],[29.153,48.117],[29.136,48.125],[29.104,48.144],[29.041,48.128],[29.046,48.083],[29.035,48.077],[29.026,48.074],[29.018,48.071],[28.964,48.036],[28.88,48.011],[28.862,48.001],[28.883,47.977],[28.95,47.935],[29.124,47.976],[29.239,47.756],[29.117,47.533],[29.359,47.353],[29.557,47.324],[29.53,47.124],[29.603,47.046],[29.559,46.946],[29.844,46.854],[29.953,46.725],[29.916,46.519],[30.081,46.374],[29.848,46.341],[29.727,46.456],[29.599,46.363],[29.475,46.432],[29.201,46.357],[29.163,46.538],[28.946,46.455],[28.934,46.259],[29.015,46.183],[28.932,45.993],[28.758,45.961],[28.738,45.838],[28.577,45.762],[28.474,45.658],[28.481,45.502],[28.271,45.522],[28.33,45.323],[28.71,45.227],[28.816,45.326],[28.966,45.32],[29.322,45.444],[29.57,45.395],[29.756,45.321],[29.747,45.463],[29.59,45.559],[29.865,45.672],[29.969,45.839],[30.138,45.82],[30.494,46.08],[30.772,46.396],[30.755,46.516],[30.991,46.601],[31.188,46.629],[31.162,46.825],[31.037,46.953],[31.215,46.974],[31.295,47.05],[31.224,47.166],[30.915,47.277],[30.834,47.43],[30.868,47.543],[30.78,47.634],[30.476,47.622],[30.298,47.945],[30.216,47.999],[30.293,48.136]]]},"properties":{"iso":"UA-51","ua":"Одеська","en":"Odessa"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[27.504,48.472],[27.752,48.452],[27.926,48.339],[28.056,48.321],[28.2,48.212],[28.294,48.236],[28.437,48.15],[28.799,48.112],[28.862,48.001],[28.88,48.011],[28.964,48.036],[29.018,48.071],[29.026,48.074],[29.035,48.077],[29.046,48.083],[29.041,48.128],[29.104,48.144],[29.136,48.125],[29.153,48.117],[29.17,48.106],[29.246,48.085],[29.435,48.113],[29.45,48.114],[29.454,48.111],[29.458,48.109],[29.497,48.093],[29.68,48.092],[29.666,48.169],[29.682,48.182],[29.717,48.182],[29.775,48.203],[29.738,48.27],[29.859,48.417],[30.076,48.455],[29.959,48.652],[29.772,48.769],[29.675,48.987],[29.697,49.227],[29.5,49.366],[29.562,49.536],[29.447,49.651],[29.269,49.586],[29.002,49.59],[29.004,49.731],[28.91,49.872],[28.71,49.794],[28.431,49.808],[27.868,49.76],[27.729,49.489],[27.877,49.277],[27.889,49.163],[27.767,49.116],[27.5,49.126],[27.372,48.93],[27.425,48.777],[27.37,48.63],[27.504,48.472]]]},"properties":{"iso":"UA-05","ua":"Вінницька","en":"Vinnytsya"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[27.192,50.541],[27.229,50.395],[27.646,50.169],[27.548,50.008],[27.661,49.799],[27.868,49.76],[28.431,49.808],[28.71,49.794],[28.91,49.872],[29.004,49.731],[29.002,49.59],[29.269,49.586],[29.447,49.651],[29.437,49.791],[29.63,49.863],[29.696,50.258],[29.494,50.423],[29.479,50.594],[29.592,50.711],[29.489,50.789],[29.423,50.945],[29.483,51.072],[29.27,51.237],[29.353,51.377],[29.221,51.467],[29.16,51.603],[29.044,51.626],[28.8,51.533],[28.604,51.554],[28.347,51.525],[28.21,51.652],[28.071,51.558],[27.813,51.602],[27.666,51.49],[27.502,51.44],[27.449,51.228],[27.295,51.044],[27.198,50.991],[27.272,50.737],[27.192,50.541]]]},"properties":{"iso":"UA-18","ua":"Житомирська","en":"Zhytomyr"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[33.062,50.538],[33.34,50.525],[33.721,50.463],[33.913,50.53],[34.259,50.436],[34.504,50.175],[34.634,50.115],[34.908,50.146],[35.135,50.245],[35.426,50.33],[35.692,50.344],[35.57,50.376],[35.425,50.5],[35.378,50.622],[35.445,50.688],[35.342,50.916],[35.124,51.091],[35.099,51.183],[34.962,51.215],[34.748,51.165],[34.409,51.253],[34.28,51.361],[34.128,51.681],[34.376,51.709],[34.386,51.818],[34.068,52.031],[34.056,52.17],[33.804,52.355],[33.532,52.289],[33.401,52.344],[33.318,52.21],[33.366,51.947],[33.161,51.904],[33.062,51.793],[33.153,51.693],[33.151,51.559],[33.074,51.285],[32.945,51.095],[33.182,50.971],[33.062,50.538]]]},"properties":{"iso":"UA-59","ua":"Сумська","en":"Sumy"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[33.089,47.583],[33.165,47.569],[33.193,47.554],[33.217,47.551],[33.267,47.543],[33.293,47.536],[33.304,47.514],[33.313,47.506],[33.334,47.496],[33.371,47.515],[33.654,47.487],[33.752,47.491],[33.807,47.501],[33.88,47.514],[33.902,47.514],[34.058,47.481],[34.204,47.478],[34.319,47.505],[34.446,47.523],[34.584,47.567],[34.833,47.526],[34.945,47.739],[34.82,47.907],[34.877,48.084],[35.245,48.13],[35.547,48.085],[35.674,48.127],[35.979,48.026],[36.115,47.94],[36.079,47.845],[36.308,47.814],[36.576,47.844],[36.575,48.058],[36.839,48.034],[36.906,48.294],[36.809,48.413],[36.892,48.538],[36.725,48.626],[36.271,48.647],[36.138,48.721],[35.931,48.976],[35.784,48.935],[35.456,48.977],[35.148,49.153],[34.984,49.164],[34.837,49.181],[34.43,49.075],[34.301,48.964],[34.316,48.84],[34.237,48.746],[33.919,48.866],[33.723,48.617],[33.478,48.541],[33.516,48.243],[33.226,48.133],[33.035,47.967],[33.031,47.926],[33.032,47.92],[33.039,47.915],[33.069,47.911],[33.06,47.776],[32.984,47.71],[33.005,47.592],[33.089,47.583]]]},"properties":{"iso":"UA-12","ua":"Дніпропетровська","en":"Dnipropetrovs'k"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[36.576,47.844],[36.72,47.658],[36.893,47.551],[36.988,47.553],[37.221,47.455],[37.164,47.346],[36.914,47.284],[37.011,47.066],[37.118,47.028],[37.038,46.877],[37.208,46.934],[37.335,46.882],[37.581,47.09],[37.861,47.102],[38.13,47.075],[38.217,47.103],[38.201,47.291],[38.26,47.493],[38.353,47.607],[38.735,47.677],[38.877,47.861],[39.036,47.857],[39.027,48.007],[38.862,48.02],[38.814,48.111],[38.63,48.166],[38.406,48.437],[38.302,48.459],[38.249,48.664],[38.304,48.729],[38.21,48.924],[38.058,48.937],[38.041,49.07],[37.847,49.232],[37.374,49.053],[37.181,48.831],[36.69,48.778],[36.725,48.626],[36.892,48.538],[36.809,48.413],[36.906,48.294],[36.839,48.034],[36.575,48.058],[36.576,47.844]]]},"properties":{"iso":"UA-14","ua":"Донецька","en":"Donets'k"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[34.908,50.146],[34.841,50],[34.888,49.918],[35.191,49.832],[35.239,49.705],[35.42,49.637],[35.475,49.56],[35.314,49.468],[35.361,49.392],[35.188,49.292],[35.025,49.317],[34.984,49.164],[35.148,49.153],[35.456,48.977],[35.784,48.935],[35.931,48.976],[36.138,48.721],[36.271,48.647],[36.725,48.626],[36.69,48.778],[37.181,48.831],[37.374,49.053],[37.847,49.232],[37.864,49.417],[38.065,49.837],[38.023,49.909],[37.916,50.003],[37.728,50.079],[37.589,50.215],[37.599,50.291],[37.435,50.425],[37.197,50.362],[36.914,50.339],[36.683,50.261],[36.4,50.307],[36.269,50.281],[36.106,50.421],[35.837,50.423],[35.692,50.344],[35.426,50.33],[35.135,50.245],[34.908,50.146]]]},"properties":{"iso":"UA-63","ua":"Харківська","en":"Kharkiv"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[39.036,47.857],[39.392,47.823],[39.759,47.833],[39.843,48.12],[39.993,48.273],[39.809,48.584],[39.632,48.587],[39.759,48.895],[39.681,49.02],[39.919,49.048],[39.952,49.125],[40.142,49.246],[40.16,49.334],[40.041,49.455],[40.116,49.591],[39.974,49.603],[39.802,49.542],[39.623,49.613],[39.57,49.713],[39.238,49.765],[39.183,49.859],[38.937,49.803],[38.852,49.866],[38.344,49.992],[38.023,49.909],[38.065,49.837],[37.864,49.417],[37.847,49.232],[38.041,49.07],[38.058,48.937],[38.21,48.924],[38.304,48.729],[38.249,48.664],[38.302,48.459],[38.406,48.437],[38.63,48.166],[38.814,48.111],[38.862,48.02],[39.027,48.007],[39.036,47.857]]]},"properties":{"iso":"UA-09","ua":"Луганська","en":"Luhans'k"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[32.139,50.35],[32.069,50.239],[32.268,50.128],[32.409,49.976],[32.427,49.807],[32.693,49.672],[32.754,49.547],[32.676,49.482],[32.789,49.262],[33.038,49.182],[33.376,48.941],[33.543,48.903],[33.778,48.923],[33.919,48.866],[34.237,48.746],[34.316,48.84],[34.301,48.964],[34.43,49.075],[34.837,49.181],[34.984,49.164],[35.025,49.317],[35.188,49.292],[35.361,49.392],[35.314,49.468],[35.475,49.56],[35.42,49.637],[35.239,49.705],[35.191,49.832],[34.888,49.918],[34.841,50],[34.908,50.146],[34.634,50.115],[34.504,50.175],[34.259,50.436],[33.913,50.53],[33.721,50.463],[33.34,50.525],[33.062,50.538],[32.883,50.401],[32.727,50.358],[32.376,50.409],[32.139,50.35]]]},"properties":{"iso":"UA-53","ua":"Полтавська","en":"Poltava"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[34.204,47.478],[34.298,47.272],[34.476,47.27],[34.51,47.113],[34.604,46.966],[34.797,46.832],[34.687,46.724],[34.629,46.693],[34.733,46.662],[34.759,46.55],[35.035,46.456],[35.06,46.306],[35.214,46.412],[35.342,46.336],[35.511,46.457],[35.902,46.653],[36.189,46.669],[36.696,46.78],[36.83,46.732],[37.038,46.877],[37.118,47.028],[37.011,47.066],[36.914,47.284],[37.164,47.346],[37.221,47.455],[36.988,47.553],[36.893,47.551],[36.72,47.658],[36.576,47.844],[36.308,47.814],[36.079,47.845],[36.115,47.94],[35.979,48.026],[35.674,48.127],[35.547,48.085],[35.245,48.13],[34.877,48.084],[34.82,47.907],[34.945,47.739],[34.833,47.526],[34.584,47.567],[34.446,47.523],[34.319,47.505],[34.204,47.478]]]},"properties":{"iso":"UA-23","ua":"Запорізька","en":"Zaporizhzhya"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[30.647,50.575],[30.27,50.633],[30.238,50.415],[30.414,50.304],[30.648,50.034],[30.642,50.276],[30.846,50.353],[30.647,50.575]]]},"properties":{"iso":"UA-30","ua":"м. Київ","en":"Kiev City"}},{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[34.689,45.974],[34.789,45.804],[35.002,45.729],[34.874,45.926],[34.811,46.166],[35.031,46.252],[35.035,46.456],[34.759,46.55],[34.733,46.662],[34.629,46.693],[34.687,46.724],[34.797,46.832],[34.604,46.966],[34.51,47.113],[34.476,47.27],[34.298,47.272],[34.204,47.478],[34.058,47.481],[33.902,47.514],[33.88,47.514],[33.807,47.501],[33.752,47.491],[33.654,47.487],[33.371,47.515],[33.334,47.496],[33.313,47.506],[33.304,47.514],[33.293,47.536],[33.267,47.543],[33.217,47.551],[33.193,47.554],[33.165,47.569],[33.089,47.583],[33.087,47.574],[33.087,47.562],[33.089,47.548],[33.116,47.53],[33.124,47.416],[33.105,47.272],[32.915,47.104],[33.059,47.021],[32.822,46.827],[32.632,46.861],[32.172,46.747],[31.965,46.722],[32.023,46.629],[32.336,46.562],[32.276,46.471],[32.112,46.512],[31.852,46.522],[31.816,46.483],[32.008,46.449],[31.968,46.351],[32.262,46.128],[32.503,46.076],[32.79,46.134],[32.913,46.115],[33.293,46.136],[33.486,46.053],[33.597,46.156],[33.755,46.193],[33.846,46.196],[34.105,46.095],[34.362,46.056],[34.465,45.955],[34.689,45.974]]]},"properties":{"iso":"UA-65","ua":"Херсонська","en":"Kherson"}}]};
+(function(){
+  "use strict";
   const $ = id => document.getElementById(id);
 
-  /* ---------- i18n ---------- */
+  /* ================= i18n ================= */
   const LANG = {
-    ua: {
-      sector:'СЕКТОР ПІВДЕНЬ', title:'RADAR-UA · ПЛАНУВАННЯ',
-      forces:'СИЛИ ОБОРОНИ УКРАЇНИ', targets:'ЦІЛІ (СИМУЛЯЦІЯ)',
-      down:'ЗБИТО', leak:'ПРОРВ.', eff:'ЕФЕКТ.', status:'СТАТУС',
-      scenarios:'СЦЕНАРІЇ АТАК', scnMassive:'Масований комбінований удар', scnSwarm:'Рій «Шахедів»', scnBallistic:'Балістичний залп', scnNaval:'Морський наліт',
-      obTitle:'ШВИДКИЙ СТАРТ · RADAR-UA', obStart:'ПОЧАТИ',
-      ob1:'Оберіть силу оборони або ціль у нижній панелі.',
-      ob2:'Клікніть на карті: ППО — точка розгортання, ціль/МРГ — маршрут (2+ точки), ✓ підтвердити.',
-      ob3:'Натисніть ▶ і керуйте швидкістю часу (1x/2x/4x). Клік по об\u0027єкту показує деталі.',
-      logTitle:'ЖУРНАЛ БОЙОВИХ ДІЙ', logHint:'натисніть на рядок для переходу',
-      cTime:'Час', cObj:'Об\u0027єкт', cEvt:'Подія', cLoc:'Локація',
-      st_active:'АКТИВНИЙ', st_patrol:'ПАТРУЛЮВАННЯ',
-      b_deploy:'Розгорнуто', b_launch:'Пуск', b_intercept:'Збито', b_hit:'Приліт',
-      n_deploy:'РОЗГОРНУТО', n_launch:'ПУСК', n_ship:'СПУЩЕНО', n_takeoff:'ЗЛІТ', n_intercept:'ЗБИТО', n_hit:'ПРИЛІТ',
-      n_patrol:'МРГ ВИЙШЛА НА ПАТРУЛЬ', n_simstart:'СИМУЛЯЦІЮ ЗАПУЩЕНО', n_pause:'ПАУЗА',
-      n_range:'ПЕРЕВИЩЕНО ДАЛЬНІСТЬ', n_water:'ПОМИЛКА: ЛИШЕ НА ВОДІ', n_land:'ПОМИЛКА: ЛИШЕ НА СУШІ',
-      n_mrg:'МРГ: ВКАЖІТЬ МАРШРУТ (2+ ТОЧКИ)', n_massive:'МАСОВАНИЙ УДАР: ЗАФІКСОВАНО НОСІЇ', n_geo:'ВАША ПОЗИЦІЯ', n_geooff:'ГЕОПОЗИЦІЯ НЕДОСТУПНА',
-      hint_pvo:'Клікніть на карті, щоб розгорнути ППО', hint_target:'Клікніть, щоб задати маршрут цілі (2+ точки)',
-      tlTitle:'ТАЙМЛАЙН БОЮ', tlHint:'перетягніть повзунок для перегляду · клік по події — перехід'
-    },
-    en: {
-      sector:'SECTOR SOUTH', title:'RADAR-UA · PLANNING',
-      forces:'UKRAINIAN DEFENSE FORCES', targets:'TARGETS (SIMULATION)',
-      down:'DOWNED', leak:'LEAKED', eff:'EFFECT.', status:'STATUS',
-      scenarios:'ATTACK SCENARIOS', scnMassive:'Massed combined strike', scnSwarm:'Shahed swarm', scnBallistic:'Ballistic volley', scnNaval:'Naval raid',
-      obTitle:'QUICK START · RADAR-UA', obStart:'START',
-      ob1:'Pick a defense force or a target in the bottom panel.',
-      ob2:'Click the map: SAM = deploy point, target/patrol = route (2+ points), ✓ to confirm.',
-      ob3:'Hit ▶ and control time speed (1x/2x/4x). Click any object for details.',
-      logTitle:'COMBAT LOG', logHint:'tap a row to fly there',
-      cTime:'Time', cObj:'Object', cEvt:'Event', cLoc:'Location',
-      st_active:'ACTIVE', st_patrol:'PATROLLING',
-      b_deploy:'Deployed', b_launch:'Launch', b_intercept:'Down', b_hit:'Impact',
-      n_deploy:'DEPLOYED', n_launch:'LAUNCH', n_ship:'DEPLOYED', n_takeoff:'TAKEOFF', n_intercept:'DOWNED', n_hit:'IMPACT',
-      n_patrol:'PATROL GROUP ON ROUTE', n_simstart:'SIMULATION STARTED', n_pause:'PAUSED',
-      n_range:'RANGE EXCEEDED', n_water:'ERROR: WATER ONLY', n_land:'ERROR: LAND ONLY',
-      n_mrg:'PATROL: SET A ROUTE (2+ POINTS)', n_massive:'MASSED STRIKE: CARRIERS DETECTED', n_geo:'YOUR POSITION', n_geooff:'GEOLOCATION UNAVAILABLE',
-      hint_pvo:'Click the map to deploy air defense', hint_target:'Click to set the target route (2+ points)',
-      tlTitle:'BATTLE TIMELINE', tlHint:'drag the handle to review · click an event to jump'
-    },
-    ru: {
-      sector:'СЕКТОР ЮГ', title:'RADAR-UA · ПЛАНИРОВАНИЕ',
-      forces:'СИЛЫ ОБОРОНЫ УКРАИНЫ', targets:'ЦЕЛИ (СИМУЛЯЦИЯ)',
-      down:'СБИТО', leak:'ПРОРВ.', eff:'ЭФФЕКТ.', status:'СТАТУС',
-      scenarios:'СЦЕНАРИИ АТАК', scnMassive:'Массированный комбинированный удар', scnSwarm:'Рой «Шахедов»', scnBallistic:'Баллистический залп', scnNaval:'Морской налёт',
-      obTitle:'БЫСТРЫЙ СТАРТ · RADAR-UA', obStart:'НАЧАТЬ',
-      ob1:'Выберите силу обороны или цель в нижней панели.',
-      ob2:'Кликните по карте: ПВО — точка, цель/патруль — маршрут (2+ точки), ✓ подтвердить.',
-      ob3:'Нажмите ▶ и управляйте скоростью времени (1x/2x/4x). Клик по объекту — детали.',
-      logTitle:'ЖУРНАЛ БОЕВЫХ ДЕЙСТВИЙ', logHint:'нажмите на строку для перехода',
-      cTime:'Время', cObj:'Объект', cEvt:'Событие', cLoc:'Локация',
-      st_active:'АКТИВЕН', st_patrol:'ПАТРУЛИРОВАНИЕ',
-      b_deploy:'Развёрнут', b_launch:'Пуск', b_intercept:'Сбито', b_hit:'Прилёт',
-      n_deploy:'РАЗВЁРНУТО', n_launch:'ПУСК', n_ship:'СПУЩЕНО', n_takeoff:'ВЗЛЁТ', n_intercept:'СБИТО', n_hit:'ПРИЛЁТ',
-      n_patrol:'МРГ ВЫШЛА НА ПАТРУЛЬ', n_simstart:'СИМУЛЯЦИЯ ЗАПУЩЕНА', n_pause:'ПАУЗА',
-      n_range:'ПРЕВЫШЕНА ДАЛЬНОСТЬ', n_water:'ОШИБКА: ТОЛЬКО НА ВОДЕ', n_land:'ОШИБКА: ТОЛЬКО НА СУШЕ',
-      n_mrg:'МРГ: УКАЖИТЕ МАРШРУТ (2+ ТОЧКИ)', n_massive:'МАССИРОВАННЫЙ УДАР: ЗАФИКСИРОВАНЫ НОСИТЕЛИ', n_geo:'ВАША ПОЗИЦИЯ', n_geooff:'ГЕОПОЗИЦИЯ НЕДОСТУПНА',
-      hint_pvo:'Кликните по карте, чтобы развернуть ПВО', hint_target:'Кликните, чтобы задать маршрут цели (2+ точки)',
-      tlTitle:'ТАЙМЛАЙН БОЯ', tlHint:'перетащите ползунок для просмотра · клик по событию — переход'
-    }
+    ua:{sector:'СЕКТОР ПІВДЕНЬ',title:'RADAR-UA · ПЛАНУВАННЯ',forces:'СИЛИ ОБОРОНИ УКРАЇНИ',targets:'ЦІЛІ (СИМУЛЯЦІЯ)',down:'ЗБИТО',leak:'ПРОРВ.',eff:'ЕФЕКТ.',status:'СТАТУС',alertObl:'обл.',
+      scenarios:'СЦЕНАРІЇ АТАК',scnMassive:'Масований комбінований удар',scnSwarm:'Рій «Шахедів»',scnBallistic:'Балістичний залп',scnNaval:'Морський наліт',
+      logTitle:'ЖУРНАЛ БОЙОВИХ ДІЙ',logHint:'натисніть на рядок для переходу',cTime:'Час',cObj:'Об\u0027єкт',cEvt:'Подія',cLoc:'Локація',
+      st_active:'АКТИВНИЙ',st_patrol:'ПАТРУЛЮВАННЯ',b_deploy:'Розгорнуто',b_launch:'Пуск',b_intercept:'Збито',b_hit:'Приліт',
+      n_deploy:'РОЗГОРНУТО',n_launch:'ПУСК',n_ship:'СПУЩЕНО',n_takeoff:'ЗЛІТ',n_intercept:'ЗБИТО',n_hit:'ПРИЛІТ',
+      n_patrol:'МРГ ВИЙШЛА НА ПАТРУЛЬ',n_simstart:'СИМУЛЯЦІЮ ЗАПУЩЕНО',n_pause:'ПАУЗА',n_range:'ПЕРЕВИЩЕНО ДАЛЬНІСТЬ',n_water:'ПОМИЛКА: ЛИШЕ НА ВОДІ',n_land:'ПОМИЛКА: ЛИШЕ НА СУШІ',
+      n_mrg:'МРГ: ВКАЖІТЬ МАРШРУТ (2+ ТОЧКИ)',n_massive:'МАСОВАНИЙ УДАР: ЗАФІКСОВАНО НОСІЇ',n_geo:'ВАША ПОЗИЦІЯ',n_geooff:'ГЕОПОЗИЦІЯ НЕДОСТУПНА',
+      hint_pvo:'Клікніть на карті, щоб розгорнути ППО',hint_target:'Клікніть, щоб задати маршрут цілі (2+ точки)',tlTitle:'ТАЙМЛАЙН БОЮ',tlHint:'перетягніть повзунок для перегляду · клік по події — перехід',
+      mode2d:'Вид 2D',mode3d:'Вид 3D'},
+    en:{sector:'SECTOR SOUTH',title:'RADAR-UA · PLANNING',forces:'UKRAINIAN DEFENSE FORCES',targets:'TARGETS (SIMULATION)',down:'DOWNED',leak:'LEAKED',eff:'EFFECT.',status:'STATUS',alertObl:'obl.',
+      scenarios:'ATTACK SCENARIOS',scnMassive:'Massed combined strike',scnSwarm:'Shahed swarm',scnBallistic:'Ballistic volley',scnNaval:'Naval raid',
+      logTitle:'COMBAT LOG',logHint:'tap a row to fly there',cTime:'Time',cObj:'Object',cEvt:'Event',cLoc:'Location',
+      st_active:'ACTIVE',st_patrol:'PATROLLING',b_deploy:'Deployed',b_launch:'Launch',b_intercept:'Down',b_hit:'Impact',
+      n_deploy:'DEPLOYED',n_launch:'LAUNCH',n_ship:'DEPLOYED',n_takeoff:'TAKEOFF',n_intercept:'DOWNED',n_hit:'IMPACT',
+      n_patrol:'PATROL GROUP ON ROUTE',n_simstart:'SIMULATION STARTED',n_pause:'PAUSED',n_range:'RANGE EXCEEDED',n_water:'ERROR: WATER ONLY',n_land:'ERROR: LAND ONLY',
+      n_mrg:'PATROL: SET A ROUTE (2+ POINTS)',n_massive:'MASSED STRIKE: CARRIERS DETECTED',n_geo:'YOUR POSITION',n_geooff:'GEOLOCATION UNAVAILABLE',
+      hint_pvo:'Click the map to deploy air defense',hint_target:'Click to set the target route (2+ points)',tlTitle:'BATTLE TIMELINE',tlHint:'drag the handle to review · click an event to jump',
+      mode2d:'2D view',mode3d:'3D view'},
+    ru:{sector:'СЕКТОР ЮГ',title:'RADAR-UA · ПЛАНИРОВАНИЕ',forces:'СИЛЫ ОБОРОНЫ УКРАИНЫ',targets:'ЦЕЛИ (СИМУЛЯЦИЯ)',down:'СБИТО',leak:'ПРОРВ.',eff:'ЭФФЕКТ.',status:'СТАТУС',alertObl:'обл.',
+      scenarios:'СЦЕНАРИИ АТАК',scnMassive:'Массированный комбинированный удар',scnSwarm:'Рой «Шахедов»',scnBallistic:'Баллистический залп',scnNaval:'Морской налёт',
+      logTitle:'ЖУРНАЛ БОЕВЫХ ДЕЙСТВИЙ',logHint:'нажмите на строку для перехода',cTime:'Время',cObj:'Объект',cEvt:'Событие',cLoc:'Локация',
+      st_active:'АКТИВЕН',st_patrol:'ПАТРУЛИРОВАНИЕ',b_deploy:'Развёрнут',b_launch:'Пуск',b_intercept:'Сбито',b_hit:'Прилёт',
+      n_deploy:'РАЗВЁРНУТО',n_launch:'ПУСК',n_ship:'СПУЩЕНО',n_takeoff:'ВЗЛЁТ',n_intercept:'СБИТО',n_hit:'ПРИЛЁТ',
+      n_patrol:'МРГ ВЫШЛА НА ПАТРУЛЬ',n_simstart:'СИМУЛЯЦИЯ ЗАПУЩЕНА',n_pause:'ПАУЗА',n_range:'ПРЕВЫШЕНА ДАЛЬНОСТЬ',n_water:'ОШИБКА: ТОЛЬКО НА ВОДЕ',n_land:'ОШИБКА: ТОЛЬКО НА СУШЕ',
+      n_mrg:'МРГ: УКАЖИТЕ МАРШРУТ (2+ ТОЧКИ)',n_massive:'МАССИРОВАННЫЙ УДАР: ЗАФИКСИРОВАНЫ НОСИТЕЛИ',n_geo:'ВАША ПОЗИЦИЯ',n_geooff:'ГЕОПОЗИЦИЯ НЕДОСТУПНА',
+      hint_pvo:'Кликните по карте, чтобы развернуть ПВО',hint_target:'Кликните, чтобы задать маршрут цели (2+ точки)',tlTitle:'ТАЙМЛАЙН БОЯ',tlHint:'перетащите ползунок для просмотра · клик по событию — переход',
+      mode2d:'Вид 2D',mode3d:'Вид 3D'}
   };
   const GROUPS = {
     ua:{ogp1:'Дальнього / середнього радіусу',ogp2:'Малого радіусу / анти-дрон',ogp3:'Вертолітна група (перехоплення БПЛА)',ogp4:'Авіація (перехоплення)',ogp5:'Морський щит',ogt1:'Гіперзвук / балістика',ogt2:'Крилаті / надзвук',ogt3:'БПЛА (камікадзе / розвідка)'},
@@ -417,21 +363,22 @@ class Component extends DCLogic {
     ru:{ogp1:'Дальнего / среднего радиуса',ogp2:'Малого радиуса / анти-дрон',ogp3:'Вертолётная группа (перехват БПЛА)',ogp4:'Авиация (перехват)',ogp5:'Морской щит',ogt1:'Гиперзвук / баллистика',ogt2:'Крылатые / сверхзвук',ogt3:'БПЛА (камикадзе / разведка)'}
   };
   let lang = localStorage.getItem('radarLang') || 'ua';
-  const t = k => (LANG[lang] && LANG[lang][k]) || (LANG.ua[k]) || k;
-  function applyLang(l) {
+  const t = k => (LANG[lang] && LANG[lang][k]) || LANG.ua[k] || k;
+  function applyLang(l){
     lang = l; localStorage.setItem('radarLang', l);
-    document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.getAttribute('data-i18n'); if (LANG[l][k] != null) el.textContent = LANG[l][k]; });
-    Object.entries(GROUPS[l]).forEach(([id,label]) => { const g = $(id); if (g) g.label = label; });
-    document.querySelectorAll('#langSwitch span').forEach(s => s.classList.toggle('active', s.dataset.lang === l));
-    if (state.selected && state.selected.active) refreshDetail();
+    document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(LANG[l][k]!=null) el.textContent=LANG[l][k]; });
+    Object.entries(GROUPS[l]).forEach(([id,label])=>{ const g=$(id); if(g) g.label=label; });
+    document.querySelectorAll('#langSwitch span').forEach(s=>s.classList.toggle('active', s.dataset.lang===l));
+    $('modeBtn').title = is3d ? t('mode3d') : t('mode2d');
+    if(state.selected && state.selected.active) refreshDetail();
   }
 
-  /* ---------- sound ---------- */
+  /* ================= sound ================= */
   let soundOn = localStorage.getItem('radarSound') !== '0';
   const Snd = {
     ctx:null,
-    init(){ if(!this.ctx) this.ctx=new (window.AudioContext||window.webkitAudioContext)(); if(this.ctx.state==='suspended') this.ctx.resume(); },
-    osc(f,ty,d,v){ if(!soundOn||!this.ctx) return; const o=this.ctx.createOscillator(),g=this.ctx.createGain(); o.type=ty; o.frequency.setValueAtTime(f,this.ctx.currentTime); g.gain.setValueAtTime(v,this.ctx.currentTime); g.gain.setTargetAtTime(0.0001,this.ctx.currentTime,d/3); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+d); },
+    init(){ try{ if(!this.ctx) this.ctx=new (window.AudioContext||window.webkitAudioContext)(); if(this.ctx.state==='suspended') this.ctx.resume(); }catch(_){} },
+    osc(f,ty,d,v){ if(!soundOn||!this.ctx) return; try{ const o=this.ctx.createOscillator(),g=this.ctx.createGain(); o.type=ty; o.frequency.setValueAtTime(f,this.ctx.currentTime); g.gain.setValueAtTime(v,this.ctx.currentTime); g.gain.setTargetAtTime(0.0001,this.ctx.currentTime,d/3); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+d); }catch(_){} },
     launch(){ this.init(); this.osc(300,'sawtooth',0.4,0.05); },
     intercept(){ this.init(); this.osc(60,'sine',0.8,0.3); },
     hit(){ this.init(); this.osc(40,'triangle',1.0,0.4); },
@@ -439,102 +386,73 @@ class Component extends DCLogic {
     warning(){ this.init(); this.osc(120,'square',0.5,0.1); },
     alert(){ this.init(); this.osc(800,'sawtooth',0.1,0.05); setTimeout(()=>this.osc(600,'sawtooth',0.1,0.05),100); }
   };
-  document.body.addEventListener('click', () => { Snd.init(); ensureRenderer(); }, { once:false });
 
-  /* ---------- map ---------- */
-  const map = L.map('map', { zoomControl:false, attributionControl:false }).setView([48.0,31.0],6);
-  let _rend=null;
-  function ensureRenderer(){ if(!_rend){ _rend=L.svg(); _rend.addTo(map); map.options.renderer=_rend; } return _rend; }
-  const layers = {
-    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'),
-    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
-    labels: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', { pane:'shadowPane', opacity:0.8 })
-  };
-  layers.dark.addTo(map); layers.labels.addTo(map);
-  let currentLayer = 'dark';
-  function toggleMapLayer(){ Snd.ping(); if(currentLayer==='dark'){ map.removeLayer(layers.dark); layers.satellite.addTo(map); currentLayer='satellite'; } else { map.removeLayer(layers.satellite); layers.dark.addTo(map); currentLayer='dark'; } }
-  function locateUser(){ Snd.ping(); map.locate({ setView:true, maxZoom:10 }); }
-  map.on('locationfound', e => { Snd.alert(); L.circle(e.latlng,{ radius:500, color:'#22ff99', weight:2 }).addTo(map); notifyOnMap(e.latlng, t('n_geo'), '#22ff99'); });
-  map.on('locationerror', () => { Snd.warning(); notifyOnMap(map.getCenter(), t('n_geooff'), '#ff5555'); });
+  /* ================= geo helpers (internal coords are [lat,lng]) ================= */
+  const RAD = Math.PI/180;
+  function haversine(a,b){ const R=6371000; const dLat=(b[0]-a[0])*RAD, dLng=(b[1]-a[1])*RAD; const la1=a[0]*RAD, la2=b[0]*RAD; const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.min(1,Math.sqrt(h))); }
+  function headingDeg(p1,p2){ if(!p1||!p2) return 0; const la1=p1[0]*RAD,la2=p2[0]*RAD,lo1=p1[1]*RAD,lo2=p2[1]*RAD; const y=Math.sin(lo2-lo1)*Math.cos(la2); const x=Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(lo2-lo1); return (Math.atan2(y,x)*180/Math.PI+360)%360; }
+  function interpolate(path,distKm){ let acc=0; for(let i=0;i<path.length-1;i++){ const d=haversine(path[i],path[i+1])/1000; if(acc+d>=distKm){ const r=d?(distKm-acc)/d:0; return [path[i][0]+(path[i+1][0]-path[i][0])*r, path[i][1]+(path[i+1][1]-path[i][1])*r]; } acc+=d; } const L=path[path.length-1]; return [L[0],L[1]]; }
+  const PH1=0.15, PH2=0.78;
+  function buildArc(a,b,apogee){ const n=44; const bf=Math.max(0.02,Math.min(0.22,apogee/140000)); const dLat=b[0]-a[0], dLng=b[1]-a[1]; const len=Math.hypot(dLat,dLng)||1e-6; const pLat=-dLng/len, pLng=dLat/len, off=len*bf; const pts=[]; for(let i=0;i<=n;i++){ const u=i/n, s=Math.sin(Math.PI*u); let alt; if(u<PH1) alt=apogee*(u/PH1); else if(u<PH2) alt=apogee; else alt=apogee*(1-(u-PH2)/(1-PH2)); pts.push([a[0]+dLat*u+pLat*s*off, a[1]+dLng*u+pLng*s*off, Math.max(0,alt)]); } return pts; }
+  function cumDist(path){ const c=[0]; for(let i=1;i<path.length;i++) c[i]=c[i-1]+haversine(path[i-1],path[i])/1000; return c; }
+  function circleRing(center,km,n){ n=n||64; const R=6371, d=km/R, lat=center[0]*RAD, lng=center[1]*RAD, ring=[]; for(let i=0;i<=n;i++){ const b=2*Math.PI*i/n; const la=Math.asin(Math.sin(lat)*Math.cos(d)+Math.cos(lat)*Math.sin(d)*Math.cos(b)); const lo=lng+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(lat),Math.cos(d)-Math.sin(lat)*Math.sin(la)); ring.push([lo/RAD, la/RAD]); } return ring; }
+  const LL = p => [p[1],p[0]];          // [lat,lng] -> [lng,lat]
+  const LLZ = p => [p[1],p[0],p[2]||0]; // [lat,lng,alt] -> [lng,lat,alt]
+  function phaseColor(u){ if(u<PH1) return [34,255,153,235]; if(u<PH2) return [255,184,77,225]; return [255,85,85,235]; }
 
-  /* ---------- DeepState territory + flight arcs (deck.gl with Leaflet fallback) ---------- */
-  let dsLayer=null, dsVisible=true, occFC=null;
-  let useDeck=false, deckLayer=null, deckFailed=false;
-  function styleFor(f){ const c=f.properties.fill;
-    if(c==='#a52714') return { color:'#ff4d4d', weight:2.2, opacity:0.9, fillColor:'#a52714', fillOpacity:0.17 };
-    if(c==='#880e4f') return { color:'#d64a84', weight:1.3, opacity:0.7, fillColor:'#7a0f45', fillOpacity:0.22 };
-    return { color:'#b3b3b3', weight:1, opacity:0.5, dashArray:'4,4', fillColor:'#8a8a8a', fillOpacity:0.10 };
-  }
-  const dsOrder={ '#bcaaa4':0, '#880e4f':1, '#a52714':2 };
-  const frontFallback=[[46.4,32.2],[46.6,32.6],[47.2,33.4],[47.5,34.4],[47.4,35.5],[47.5,36.5],[47.8,37.6],[48.1,38.0],[48.6,38.2],[49.2,38.0],[50.1,38.4],[50.4,37.8]];
-  function dFill(f){ const c=f.properties.fill; if(c==='#a52714') return [165,39,20,60]; if(c==='#880e4f') return [122,15,69,90]; return [150,150,150,32]; }
-  function dLine(f){ const c=f.properties.fill; if(c==='#a52714') return [255,77,77,235]; if(c==='#880e4f') return [214,74,132,175]; return [179,179,179,110]; }
-  function dLineW(f){ return f.properties.fill==='#a52714'?2.2:1; }
-  function makeSegs(pts){ const toLL=p=>[p[1],p[0]]; const n=pts.length; const a=Math.max(1,Math.floor(n*0.15)), b=Math.min(n-1,Math.floor(n*0.78)); return [ {path:pts.slice(0,a+1).map(toLL),color:[34,255,153,235],width:3}, {path:pts.slice(a,b+1).map(toLL),color:[255,184,77,220],width:2.4}, {path:pts.slice(b).map(toLL),color:[255,85,85,235],width:3} ]; }
-  function buildDeck(){ if(!useDeck||!deckLayer||!window.deck) return; const D=window.deck; const layers=[];
-    if(dsVisible&&occFC) layers.push(new D.GeoJsonLayer({ id:'occ', data:occFC, stroked:true, filled:true, getFillColor:dFill, getLineColor:dLine, getLineWidth:dLineW, lineWidthUnits:'pixels', lineWidthMinPixels:1, parameters:{ depthTest:false } }));
-    const arcData=[]; state.targets.forEach(t=>{ if(t.active&&t.arcSegs) t.arcSegs.forEach(s=>arcData.push(s)); });
-    layers.push(new D.PathLayer({ id:'arcs', data:arcData, getPath:d=>d.path, getColor:d=>d.color, getWidth:d=>d.width, widthUnits:'pixels', widthMinPixels:1.5, capRounded:true, jointRounded:true, parameters:{ depthTest:false } }));
-    deckLayer.setProps({ layers });
-  }
-  function initDeck(){ const D=window.deck; const LL=window.DeckGlLeaflet&&window.DeckGlLeaflet.LeafletLayer; if(!D||!LL) return false;
-    try{ deckLayer=new LL({ views:[new D.MapView({ repeat:true })], layers:[], onError:()=>{ if(!deckFailed){ deckFailed=true; deckToLeaflet(); } } }); map.addLayer(deckLayer); useDeck=true; return true; }catch(_){ return false; }
-  }
-  function deckToLeaflet(){ useDeck=false; try{ if(deckLayer) map.removeLayer(deckLayer); }catch(_){} deckLayer=null; drawTerritoryLeaflet(); state.targets.forEach(t=>{ if(t.active&&!t.arcLines) drawArcLeaflet(t); }); }
-  function drawTerritoryLeaflet(){ if(dsLayer){ try{ map.removeLayer(dsLayer); }catch(_){} dsLayer=null; } const rnd=ensureRenderer();
-    if(occFC&&occFC.features.length) dsLayer=L.geoJSON(occFC,{ style:styleFor, interactive:false, renderer:rnd }).addTo(map);
-    else dsLayer=L.polyline(frontFallback,{ color:'#ff3b3b', weight:3, dashArray:'10, 10', opacity:0.6, interactive:false, renderer:rnd }).addTo(map);
-    if(!dsVisible&&dsLayer.setStyle) dsLayer.setStyle({ opacity:0, fillOpacity:0 });
-  }
-  function renderTerritory(){ if(useDeck) buildDeck(); else drawTerritoryLeaflet(); }
-  async function loadDeepState(){
-    try{
-      const r=await fetch('https://deepstatemap.live/api/history/last'); const j=await r.json();
-      const feats=(j.map&&j.map.features)||[];
-      const inUA=f=>{ let c=f.geometry.coordinates; while(Array.isArray(c[0])) c=c[0]; return c[0]>21&&c[0]<42&&c[1]>43.5&&c[1]<53; };
-      const keep=feats.filter(f=>f.geometry&&f.geometry.type==='Polygon'&&['#a52714','#880e4f','#bcaaa4'].includes(f.properties.fill)&&inUA(f));
-      keep.sort((a,b)=>(dsOrder[a.properties.fill]||0)-(dsOrder[b.properties.fill]||0));
-      occFC={ type:'FeatureCollection', features:keep };
-      const sub=document.querySelector('.ht-sub');
-      if(sub&&j.datetime){ sub.textContent='DeepState · '+String(j.datetime).replace(/\s*o\s*/i,' '); sub.removeAttribute('data-i18n'); }
-    }catch(e){ const sub=document.querySelector('.ht-sub'); if(sub){ sub.textContent='DeepState offline'; sub.removeAttribute('data-i18n'); } }
-    const draw=()=>renderTerritory();
-    if(map._loaded) setTimeout(draw,450); else map.whenReady(()=>setTimeout(draw,450));
-  }
-  function toggleDS(){ Snd.ping(); dsVisible=!dsVisible; $('dsBtn').classList.toggle('on',dsVisible);
-    if(useDeck){ buildDeck(); return; }
-    if(!dsLayer) return; if(!dsVisible) dsLayer.setStyle({ opacity:0, fillOpacity:0 }); else if(dsLayer.resetStyle) dsLayer.setStyle(styleFor); else dsLayer.setStyle({ opacity:0.6 }); }
-  initDeck();
-  loadDeepState();
+  /* oblasts precompute (rings in [lng,lat]) */
+  const OB = OBLASTS_DATA.features.map(f=>{
+    const rings=[]; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+    const polys = f.geometry.type==='Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    polys.forEach(poly=>{ const outer=poly[0]; rings.push(outer); for(const pt of outer){ const x=pt[0],y=pt[1]; if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y; } });
+    return { name:f.properties.ua, iso:f.properties.iso, geometry:f.geometry, rings, bbox:[minx,miny,maxx,maxy], litUntil:0, alpha:0 };
+  });
+  function ringsContain(rings,x,y){ let inside=false; for(const ring of rings){ for(let i=0,j=ring.length-1;i<ring.length;j=i++){ const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1]; if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside=!inside; } } return inside; }
+  function regionIndexAt(pt){ const x=pt[1], y=pt[0]; for(let i=0;i<OB.length;i++){ const b=OB[i].bbox; if(x<b[0]||x>b[2]||y<b[1]||y>b[3]) continue; if(ringsContain(OB[i].rings,x,y)) return i; } return -1; }
 
-  /* ---------- flight trajectory arcs: launch / acceleration / descent ---------- */
-  function bowedArc(a,b,apogee){ const n=44, bf=Math.max(0.02,Math.min(0.30,apogee/120000)); const dLat=b[0]-a[0], dLng=b[1]-a[1]; const len=Math.hypot(dLat,dLng)||1e-6; const pLat=-dLng/len, pLng=dLat/len, off=len*bf; const pts=[]; for(let i=0;i<=n;i++){ const u=i/n, s=Math.sin(Math.PI*u); pts.push([a[0]+dLat*u+pLat*s*off, a[1]+dLng*u+pLng*s*off]); } return pts; }
-  function drawArcLeaflet(t){ const rnd=ensureRenderer(); const pts=t.path, n=pts.length; const a=Math.max(1,Math.floor(n*0.15)), b=Math.min(n-1,Math.floor(n*0.78));
-    t.arcLines=[
-      L.polyline(pts.slice(0,a+1),{ color:'#22ff99', weight:3, opacity:0.85, interactive:false, renderer:rnd }).addTo(map),
-      L.polyline(pts.slice(a,b+1),{ color:'#ffb84d', weight:2.4, opacity:0.8, interactive:false, renderer:rnd }).addTo(map),
-      L.polyline(pts.slice(b),{ color:'#ff5555', weight:3, opacity:0.85, interactive:false, renderer:rnd }).addTo(map)
-    ];
-  }
-  function drawTraj(t){ if(useDeck){ t.arcSegs=makeSegs(t.path); buildDeck(); } else drawArcLeaflet(t); }
+  /* ================= map + deck ================= */
+  const CARTO_DARK = ['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png`);
+  const CARTO_LABELS = ['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png`);
+  const ATTR = '© <a href="https://carto.com/attributions">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>';
+  const DARK_STYLE = { version:8, sources:{ base:{type:'raster',tiles:CARTO_DARK,tileSize:256,attribution:ATTR}, lbl:{type:'raster',tiles:CARTO_LABELS,tileSize:256} }, layers:[ {id:'bg',type:'background',paint:{'background-color':'#050a08'}}, {id:'base',type:'raster',source:'base'}, {id:'lbl',type:'raster',source:'lbl'} ] };
+  const SAT_STYLE = { version:8, sources:{ sat:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,attribution:'© Esri'}, lbl:{type:'raster',tiles:CARTO_LABELS,tileSize:256} }, layers:[ {id:'bg',type:'background',paint:{'background-color':'#050a08'}}, {id:'sat',type:'raster',source:'sat'}, {id:'lbl',type:'raster',source:'lbl',paint:{'raster-opacity':0.85}} ] };
 
+  const map = new maplibregl.Map({ container:'map', style:DARK_STYLE, center:[31,48], zoom:5, pitch:0, bearing:0, minZoom:3, maxZoom:14, maxPitch:70, attributionControl:false, dragRotate:false, pitchWithRotate:false });
+  map.addControl(new maplibregl.AttributionControl({compact:true}), 'bottom-right');
+  try{ map.touchZoomRotate.disableRotation(); }catch(_){}
+  try{ map.keyboard.disableRotation && map.keyboard.disableRotation(); }catch(_){}
+  try{ if(map.touchPitch) map.touchPitch.enable(); }catch(_){}
+
+  const D = window.deck || {};
+  const HAS_DECK = !!(D && D.MapboxOverlay);
+  const DashExt = (D && D.PathStyleExtension) ? [new D.PathStyleExtension({dash:true})] : null;
+  let overlay = null;
+  if(HAS_DECK){ overlay = new D.MapboxOverlay({ interleaved:false, layers:[] }); map.addControl(overlay); }
+
+  let currentLayer='dark', is3d=false;
+  function toggleMapLayer(){ Snd.ping(); currentLayer = currentLayer==='dark'?'satellite':'dark'; map.setStyle(currentLayer==='dark'?DARK_STYLE:SAT_STYLE); }
+  function toggle3d(){ is3d=!is3d; map.easeTo({pitch:is3d?60:0, duration:650}); $('modeBtn').classList.toggle('on',is3d); $('modeBtn').title=is3d?t('mode3d'):t('mode2d'); Snd.ping(); }
+  function locateUser(){ Snd.ping(); if(!navigator.geolocation){ notify(mapCenterLL(), t('n_geooff'), '#ff5555'); return; } navigator.geolocation.getCurrentPosition(p=>{ const ll=[p.coords.latitude,p.coords.longitude]; Snd.alert(); map.flyTo({center:LL(ll), zoom:10}); notify(ll, t('n_geo'), '#22ff99'); }, ()=>{ Snd.warning(); notify(mapCenterLL(), t('n_geooff'), '#ff5555'); }, {enableHighAccuracy:true,timeout:8000}); }
+  function mapCenterLL(){ const c=map.getCenter(); return [c.lat,c.lng]; }
+
+  /* ================= config ================= */
   const CONFIG = {
-    drone_shahed:{name:'SHAHED-136',speed:185,maxRange:1500,color:'#22ff99',altMin:50,altMax:2000,icon:'fa-location-arrow',iconAdj:45,cheap:true},
-    drone_orlan:{name:'ОРЛАН-10',speed:150,maxRange:600,color:'#22ff99',altMin:500,altMax:5000,icon:'fa-location-arrow',iconAdj:45,cheap:true},
-    drone_supercam:{name:'SUPERCAM',speed:120,maxRange:200,color:'#22ff99',altMin:1000,altMax:4000,icon:'fa-location-arrow',iconAdj:45,cheap:true},
-    drone_zala:{name:'ZALA',speed:110,maxRange:150,color:'#22ff99',altMin:800,altMax:3500,icon:'fa-location-arrow',iconAdj:45,cheap:true},
-    missile_x101:{name:'X-101',speed:850,maxRange:3500,color:'#ffbb33',altMin:100,altMax:8000,icon:'fa-location-arrow',iconAdj:45},
-    missile_kalibr:{name:'КАЛІБР',speed:900,maxRange:2000,color:'#33bbff',altMin:50,altMax:500,icon:'fa-location-arrow',iconAdj:45},
-    missile_x22:{name:'X-22 БУРЯ',speed:4000,maxRange:600,color:'#ff5555',altMin:12000,altMax:22000,icon:'fa-location-arrow',iconAdj:45},
-    missile_zircon:{name:'ЦИРКОН',speed:11000,maxRange:1000,color:'#ff00ff',altMin:30000,altMax:40000,icon:'fa-location-arrow',iconAdj:45},
-    missile_iskander:{name:'ІСКАНДЕР-M',speed:7500,maxRange:500,color:'#ff5555',altMin:20000,altMax:70000,icon:'fa-location-arrow',iconAdj:45},
-    missile_kinzhal:{name:'КИНЖАЛ',speed:12000,maxRange:2000,color:'#ff0000',altMin:30000,altMax:80000,icon:'fa-location-arrow',iconAdj:45},
-    missile_oniks:{name:'ОНІКС',speed:2800,maxRange:600,color:'#ff5555',altMin:50,altMax:14000,icon:'fa-location-arrow',iconAdj:45},
-    missile_x59:{name:'X-59МК2',speed:1050,maxRange:285,color:'#ffbb33',altMin:100,altMax:5000,icon:'fa-location-arrow',iconAdj:45},
-    missile_tochka:{name:'ТОЧКА-У',speed:3900,maxRange:120,color:'#ff5555',altMin:10000,altMax:50000,icon:'fa-location-arrow',iconAdj:45},
+    drone_shahed:{name:'SHAHED-136',speed:185,maxRange:1500,color:'#22ff99',altMin:50,altMax:2000,icon:'fa-location-arrow',iconAdj:45,cheap:true,cls:'drone'},
+    drone_orlan:{name:'ОРЛАН-10',speed:150,maxRange:600,color:'#22ff99',altMin:500,altMax:5000,icon:'fa-location-arrow',iconAdj:45,cheap:true,cls:'drone'},
+    drone_supercam:{name:'SUPERCAM',speed:120,maxRange:200,color:'#22ff99',altMin:1000,altMax:4000,icon:'fa-location-arrow',iconAdj:45,cheap:true,cls:'drone'},
+    drone_zala:{name:'ZALA',speed:110,maxRange:150,color:'#22ff99',altMin:800,altMax:3500,icon:'fa-location-arrow',iconAdj:45,cheap:true,cls:'drone'},
+    missile_x101:{name:'X-101',speed:850,maxRange:3500,color:'#ffbb33',altMin:100,altMax:6000,icon:'fa-location-arrow',iconAdj:45,cls:'cruise'},
+    missile_kalibr:{name:'КАЛІБР',speed:900,maxRange:2000,color:'#33bbff',altMin:50,altMax:500,icon:'fa-location-arrow',iconAdj:45,cls:'cruise'},
+    missile_x22:{name:'X-22 БУРЯ',speed:4700,maxRange:600,color:'#ff5555',altMin:12000,altMax:22000,icon:'fa-location-arrow',iconAdj:45,cls:'hyper'},
+    missile_zircon:{name:'ЦИРКОН',speed:11000,maxRange:1000,color:'#ff00ff',altMin:30000,altMax:40000,icon:'fa-location-arrow',iconAdj:45,cls:'hyper'},
+    missile_iskander:{name:'ІСКАНДЕР-M',speed:7500,maxRange:500,color:'#ff5555',altMin:20000,altMax:50000,icon:'fa-location-arrow',iconAdj:45,cls:'ballistic'},
+    missile_kinzhal:{name:'КИНЖАЛ',speed:12000,maxRange:2000,color:'#ff0000',altMin:30000,altMax:80000,icon:'fa-location-arrow',iconAdj:45,cls:'hyper'},
+    missile_oniks:{name:'ОНІКС',speed:2800,maxRange:600,color:'#ff5555',altMin:50,altMax:14000,icon:'fa-location-arrow',iconAdj:45,cls:'cruise'},
+    missile_x59:{name:'X-59МК2',speed:1050,maxRange:285,color:'#ffbb33',altMin:100,altMax:1200,icon:'fa-location-arrow',iconAdj:45,cls:'cruise'},
+    missile_tochka:{name:'ТОЧКА-У',speed:5000,maxRange:120,color:'#ff5555',altMin:10000,altMax:26000,icon:'fa-location-arrow',iconAdj:45,cls:'ballistic'},
     pvo_iris:{r:40,s:3700,name:'IRIS-T',mName:'SLM',type:'sam'},
     pvo_nasams:{r:25,s:4100,name:'NASAMS',mName:'AIM-120',type:'sam'},
-    pvo_patriot:{r:160,s:6000,name:'Patriot',mName:'PAC-3',type:'sam',ignoreCheap:true},
+    pvo_patriot:{name:'Patriot',type:'sam',patriot:true,r:160,ignoreCheap:true,mName:'PAC-2 / PAC-3',pac2:{r:160,mName:'PAC-2 GEM-T',s:5500},pac3:{r:60,mName:'PAC-3 MSE',s:6000}},
     pvo_samp:{r:100,s:4500,name:'SAMP/T',mName:'Aster-30',type:'sam'},
     pvo_s300:{r:75,s:4000,name:'С-300ПС',mName:'5В55Р',type:'sam'},
     pvo_buk:{r:35,s:3500,name:'Бук-М1',mName:'9М38',type:'sam'},
@@ -551,38 +469,266 @@ class Component extends DCLogic {
     ua_ship_hetman:{name:'Hetman Ivan Mazepa',speed:45,mSpeed:1200,ammo:8,range:180,mName:'NSM',type:'ua_ship',icon:'fa-ship'}
   };
 
+  /* ================= state ================= */
   let state = {
     currentMode:'pvo', isSimulating:false,
     targets:[], pvo:[], missiles:[], uaPlanes:[],
-    pendingPath:[], tempMarkers:[], activeFutureLine:null, rangeCircle:null,
+    pendingPath:[], rangeCfg:null,
     simSeconds:0, lastFrame:0, history:[], timeCompression:1, baseTime:new Date(),
-    isAttackActive:false, carriers:[], selected:null, stats:{ down:0, leak:0 }, rec:[], _lastRec:-1
+    isAttackActive:false, carriers:[], selected:null, stats:{down:0,leak:0}, rec:[], _lastRec:-1,
+    occFC:null, frontLine:null, eventMarkers:[], samRings:[], mrgRoutes:[]
   };
-  let reviewT=null;
-  const ghostLayer=L.layerGroup();
+  let reviewT=null, ghostPts=[];
+  let alertTrig=0, alertData=[], prevActive=new Set(), lastAlertSound=0;
+
+  const dsOrder={ '#bcaaa4':0, '#880e4f':1, '#a52714':2 };
+  const frontFallback=[[46.4,32.2],[46.6,32.6],[47.2,33.4],[47.5,34.4],[47.4,35.5],[47.5,36.5],[47.8,37.6],[48.1,38.0],[48.6,38.2],[49.2,38.0],[50.1,38.4],[50.4,37.8]];
+  function dFill(f){ const c=f.properties.fill; if(c==='#a52714') return [165,39,20,60]; if(c==='#880e4f') return [122,15,69,90]; return [150,150,150,32]; }
+  function dLine(f){ const c=f.properties.fill; if(c==='#a52714') return [255,77,77,235]; if(c==='#880e4f') return [214,74,132,175]; return [179,179,179,110]; }
+  function dLineW(f){ return f.properties.fill==='#a52714'?2.2:1; }
+
+  /* ================= markers ================= */
+  function makeMarker(innerHTML, latlng, opts){ opts=opts||{}; const el=document.createElement('div'); el.className='obj-marker'; const ic=document.createElement('div'); ic.className='obj-icon'; ic.innerHTML=innerHTML; const lbl=document.createElement('div'); lbl.className='obj-lbl'; lbl.style.display='none'; el.appendChild(ic); el.appendChild(lbl); const marker=new maplibregl.Marker({element:el, anchor:'center', rotationAlignment:'viewport', pitchAlignment:'viewport'}).setLngLat(LL(latlng)).addTo(map); return {el, ic, lbl, marker}; }
+  function bindClick(obj){ obj.mk.el.addEventListener('click', ev=>{ ev.stopPropagation(); selectObject(obj); Snd.ping(); }); obj.mk.el.style.cursor='pointer'; }
+  function setRot(obj, ang){ if(obj.mk && obj.mk.ic) obj.mk.ic.style.transform='rotate('+ang+'deg)'; }
+  function setLbl(obj, html){ const l=obj.mk&&obj.mk.lbl; if(!l) return; if(html==null){ l.style.display='none'; } else { l.style.display=''; l.innerHTML=html; } }
+  function moveMk(obj, latlng){ if(obj.mk&&obj.mk.marker) obj.mk.marker.setLngLat(LL(latlng)); }
+
+  function samSweepPx(radiusKm, lat){ const z=map.getZoom(); const mpp=40075016.686*Math.cos(lat*RAD)/(512*Math.pow(2,z)); return Math.max(10,(radiusKm*1000)/mpp*2); }
+  function resizeSweeps(){ state.pvo.forEach(s=>{ if(s.type==='sam'&&s.sweep){ const px=samSweepPx(s.radius,s.pos[0]); s.sweep.style.width=px+'px'; s.sweep.style.height=px+'px'; } }); }
+
+  /* ================= create UA systems ================= */
+  function createPVO(pos){
+    const key=$('pvoSelect').value, cfg=CONFIG[key];
+    if(cfg.type==='ua_ship'){ if(!isWater(pos[0],pos[1])){ notify(pos,t('n_water'),'#ff5555'); Snd.warning(); return; } createUAShip(pos,cfg); return; }
+    else if(cfg.type!=='fighter'){ if(isWater(pos[0],pos[1])){ notify(pos,t('n_land'),'#ff5555'); Snd.warning(); return; } }
+    if(cfg.type==='mrg'){ if(state.pendingPath.length<2){ notify(pos,t('n_mrg'),'#e1ff00'); Snd.ping(); return; } createMRG(cfg); return; }
+    if(cfg.type==='fighter'){ createUAFighter(pos,cfg); return; }
+    Snd.alert();
+    const sz=samSweepPx(cfg.r,pos[0]);
+    const sys={ id:Math.random(), pos, currentPos:pos, radius:cfg.r, mSpeed:cfg.s||(cfg.pac2&&cfg.pac2.s)||5000, name:cfg.name, mName:cfg.mName, type:'sam', ignoreCheap:cfg.ignoreCheap, patriot:!!cfg.patriot, pac2:cfg.pac2, pac3:cfg.pac3, side:'UA', active:true };
+    sys.mk=makeMarker(`<div class="sweep-wrap"><div class="radar-sweep" style="width:${sz}px;height:${sz}px"></div></div><div class="sam-dot"></div>`, pos);
+    sys.sweep=sys.mk.el.querySelector('.radar-sweep');
+    bindClick(sys);
+    state.pvo.push(sys); rebuildStatic(); addToHistory(cfg.name,'deploy',pos);
+    notify(pos,`${t('n_deploy')}: ${cfg.name}`,'#22ff99'); updateCounters(); updateNav(); updateDeck();
+  }
+  function createMRG(cfg){
+    const path=[...state.pendingPath];
+    const m={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:[...path[0]], path, speed:cfg.speed, curSpeed:0, radius:cfg.r, mSpeed:cfg.mSpeed, active:true, side:'UA', type:'mrg', progressKm:0, totalDist:0 };
+    m.mk=makeMarker(`<i class="fas fa-truck-pickup" style="color:#e1ff00;font-size:14px"></i>`, path[0]);
+    for(let i=0;i<path.length-1;i++) m.totalDist+=haversine(path[i],path[i+1])/1000;
+    bindClick(m); state.pvo.push(m); rebuildStatic(); addToHistory(cfg.name,'deploy',path[0]); resetCurrentSelection(); Snd.alert();
+    notify(path[0],t('n_patrol'),'#e1ff00'); updateCounters(); updateNav(); updateDeck();
+  }
+  function createUAShip(pos,cfg){
+    const s={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:pos, patrolTarget:pos, speed:cfg.speed, curSpeed:0, mSpeed:cfg.mSpeed, ammo:cfg.ammo, range:cfg.range, active:true, side:'UA', type:'ua_ship', history:[pos] };
+    s.mk=makeMarker(`<i class="fas ${cfg.icon}" style="color:#ffd24d;font-size:16px"></i>`, pos);
+    bindClick(s); state.pvo.push(s); addToHistory(cfg.name,'deploy',pos); Snd.alert();
+    notify(pos,`${t('n_ship')}: ${cfg.name}`,'#ffd24d'); updateCounters(); updateNav(); updateDeck();
+  }
+  function createUAFighter(pos,cfg){
+    const p={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:pos, patrolTarget:pos, speed:cfg.speed, curSpeed:0, mSpeed:cfg.mSpeed, ammo:cfg.ammo, range:cfg.range, active:true, side:'UA', type:'fighter', altitude:2000, history:[pos], antiDroneOnly:cfg.antiDroneOnly||false, iconAdj:cfg.iconAdj };
+    p.mk=makeMarker(`<i class="fas ${cfg.icon||'fa-fighter-jet'}" style="color:#ffd24d;font-size:18px"></i>`, pos);
+    bindClick(p); state.uaPlanes.push(p); addToHistory(cfg.name,'deploy',pos); Snd.alert();
+    notify(pos,`${t('n_takeoff')}: ${cfg.name}`,'#ffd24d'); updateCounters(); updateNav(); updateDeck();
+  }
+  function createTarget(cfgOverride,pathOverride){
+    const type=cfgOverride||$('targetSelect').value, cfg=CONFIG[type];
+    const raw=pathOverride||[...state.pendingPath]; if(raw.length<2) return;
+    const apogee=Math.floor(Math.random()*(cfg.altMax-cfg.altMin)+cfg.altMin);
+    const path=buildArc(raw[0], raw[raw.length-1], apogee);
+    const cum=cumDist(path);
+    const target={ id:Math.random(), name:cfg.name, path, segCum:cum, totalDist:cum[cum.length-1], speed:cfg.speed, curSpeed:0, currentPos:[path[0][0],path[0][1]], progressKm:0, active:true, engagedBy:new Set(), side:'RU', iconAdj:cfg.iconAdj, altitude:0, targetAlt:apogee, apogee, history:[], cheap:cfg.cheap||false, cls:cfg.cls };
+    target.mk=makeMarker(`<i class="fas ${cfg.icon||'fa-location-arrow'}" style="color:${cfg.color};font-size:14px"></i>`, target.currentPos, {rotate:true});
+    bindClick(target);
+    state.targets.push(target); addToHistory(cfg.name,'launch',raw[0]); Snd.launch();
+    if(!pathOverride) resetCurrentSelection(); updateCounters(); updateNav(); updateDeck();
+  }
 
   function isWater(lat,lon){ const bs=lat<46.5&&lon>29&&lon<42; const az=lat>45&&lat<47.5&&lon>34.5&&lon<39.5; const dn=lon>32&&lon<33&&lat<47; return bs||az||dn; }
 
-  /* ---------- history ---------- */
-  function toggleHistory(){ Snd.ping(); const m=$('historyModal'); const on=m.classList.toggle('show'); $('historyBtn').classList.toggle('on',on); if(on){ closePreset(); updateHistoryTable(); } }
-  function addToHistory(name,ev,pos){ state.history.push({ time:getSimTimeString(), tSec:state.simSeconds, name, type:ev, pos }); Snd.ping(); if($('historyModal').classList.contains('show')) updateHistoryTable(); if($('timelinePanel').classList.contains('show')) updateTimeline(); updateNav(); }
-  function updateHistoryTable(){
-    const body=$('historyTableBody'); body.innerHTML='';
-    state.history.slice().reverse().forEach(e=>{
-      const row=document.createElement('tr');
-      row.onclick=()=>{ map.flyTo(e.pos,9); Snd.ping(); };
-      const statusText = e.type==='deploy'?t('b_deploy'):e.type==='launch'?t('b_launch'):e.type==='intercept'?t('b_intercept'):t('b_hit');
-      row.innerHTML=`<td style="color:var(--muted);font-variant-numeric:tabular-nums;">${e.time}</td><td style="font-weight:600;color:#eafff4;">${e.name}</td><td><span class="badge badge-${e.type}">${statusText}</span></td><td style="color:#8fc4ad;font-size:9px;">${e.pos[0].toFixed(2)}, ${e.pos[1].toFixed(2)}</td>`;
-      body.appendChild(row);
+  /* ================= deck layers ================= */
+  function rebuildStatic(){
+    state.samRings=[]; state.mrgRoutes=[];
+    state.pvo.forEach(s=>{
+      if(s.type==='sam'){
+        if(s.patriot){ state.samRings.push({ring:circleRing(s.pos,s.pac2.r).map(c=>c), color:[34,255,153,80]}); state.samRings.push({ring:circleRing(s.pos,s.pac3.r).map(c=>c), color:[255,120,120,110]}); }
+        else state.samRings.push({ring:circleRing(s.pos,s.radius).map(c=>c), color:[34,255,153,90]});
+      } else if(s.type==='mrg'){ state.mrgRoutes.push({path:s.path.map(LL), color:[225,255,0,120]}); }
     });
   }
+  function pushTraj(tg, solidArr, dashArr){
+    const path=tg.path, cum=tg.segCum, prog=Math.min(tg.progressKm,tg.totalDist);
+    let cur=null;
+    const flush=()=>{ if(cur&&cur.pts.length>=2) (cur.dash?dashArr:solidArr).push({path:cur.pts,color:cur.color}); cur=null; };
+    const add=(A,B,base,dash)=>{ const col=dash?base:[base[0],base[1],base[2],Math.round(base[3]*0.5)]; const k=col[0]+'_'+col[3]+'_'+dash; if(cur&&cur.k===k){ cur.pts.push(B); } else { flush(); cur={pts:[A,B],color:col,dash,k}; } };
+    const P=i=>[path[i][1],path[i][0],path[i][2]];
+    for(let i=0;i<path.length-1;i++){
+      const col=phaseColor((i+0.5)/(path.length-1)); const sK=cum[i], eK=cum[i+1];
+      if(eK<=prog){ add(P(i),P(i+1),col,false); }
+      else if(sK>=prog){ add(P(i),P(i+1),col,true); }
+      else { const r=(eK-sK)?(prog-sK)/(eK-sK):0; const sp=[path[i][1]+(path[i+1][1]-path[i][1])*r, path[i][0]+(path[i+1][0]-path[i][0])*r, path[i][2]+(path[i+1][2]-path[i][2])*r]; add(P(i),sp,col,false); add(sp,P(i+1),col,true); }
+    }
+    flush();
+  }
+  function buildAlertData(){
+    const now=performance.now(); const pulse=0.5+0.5*Math.sin(now/450); alertData=[]; let cnt=0;
+    for(const rg of OB){ const base = now<rg.litUntil ? 0.16 : 0; rg.alpha += (base-rg.alpha)*0.18; if(rg.alpha>0.012){ const a=Math.round(Math.min(1,rg.alpha*(0.72+0.4*pulse))*255); alertData.push({type:'Feature', geometry:rg.geometry, properties:{a}, __a:a}); if(rg.alpha>0.05) cnt++; } }
+    const chip=$('alertChip'); if(reviewT==null && cnt>0){ chip.style.display=''; $('alertCount').textContent=cnt; } else chip.style.display='none';
+  }
+  function updateDeck(){
+    if(!HAS_DECK||!overlay) return;
+    alertTrig++;
+    const layers=[];
+    // DeepState territory
+    if(dsVisible){
+      if(state.occFC && state.occFC.features.length) layers.push(new D.GeoJsonLayer({ id:'occ', data:state.occFC, stroked:true, filled:true, getFillColor:dFill, getLineColor:dLine, getLineWidth:dLineW, lineWidthUnits:'pixels', lineWidthMinPixels:1, pickable:false, parameters:{depthTest:false} }));
+      else if(state.frontLine) layers.push(new D.PathLayer(Object.assign({ id:'front', data:[{path:state.frontLine}], getPath:d=>d.path, getColor:[255,59,59,160], getWidth:3, widthUnits:'pixels', pickable:false, parameters:{depthTest:false} }, DashExt?{getDashArray:[8,8],extensions:DashExt}:{})));
+    }
+    // alert regions
+    if(reviewT==null){ buildAlertData(); if(alertData.length) layers.push(new D.GeoJsonLayer({ id:'alerts', data:alertData, stroked:true, filled:true, getFillColor:f=>[255,59,59,f.__a], getLineColor:f=>[255,95,95,Math.min(220,f.__a*2.2+55)], getLineWidth:1.4, lineWidthUnits:'pixels', pickable:false, updateTriggers:{getFillColor:alertTrig,getLineColor:alertTrig}, parameters:{depthTest:false} })); }
+    else buildAlertData();
+    // SAM range rings
+    if(state.samRings.length) layers.push(new D.PolygonLayer(Object.assign({ id:'samrings', data:state.samRings, getPolygon:d=>d.ring, stroked:true, filled:false, getLineColor:d=>d.color, getLineWidth:1.2, lineWidthUnits:'pixels', pickable:false, parameters:{depthTest:false} }, DashExt?{getDashArray:[4,6],extensions:DashExt}:{})));
+    // MRG routes
+    if(state.mrgRoutes.length) layers.push(new D.PathLayer(Object.assign({ id:'mrgroutes', data:state.mrgRoutes, getPath:d=>d.path, getColor:d=>d.color, getWidth:1.6, widthUnits:'pixels', pickable:false, parameters:{depthTest:false} }, DashExt?{getDashArray:[5,6],extensions:DashExt}:{})));
+    // unit trails (ships / planes)
+    const trails=[];
+    state.uaPlanes.forEach(p=>{ if(p.active&&p.history&&p.history.length>=2) trails.push({path:p.history.map(LL), color:[255,210,77,150]}); });
+    state.pvo.forEach(s=>{ if(s.type==='ua_ship'&&s.history&&s.history.length>=2) trails.push({path:s.history.map(LL), color:[255,210,77,140]}); });
+    if(trails.length) layers.push(new D.PathLayer({ id:'unittrails', data:trails, getPath:d=>d.path, getColor:d=>d.color, getWidth:1.4, widthUnits:'pixels', pickable:false, parameters:{depthTest:false} }));
+    // target trajectories: solid (passed) + dashed (future), phase-colored, 3D height
+    const solid=[], dash=[];
+    state.targets.forEach(tg=>{ if(tg.active) pushTraj(tg, solid, dash); });
+    if(solid.length) layers.push(new D.PathLayer({ id:'traj-solid', data:solid, getPath:d=>d.path, getColor:d=>d.color, getWidth:2.6, widthUnits:'pixels', widthMinPixels:1.6, capRounded:true, jointRounded:true, pickable:false, parameters:{depthTest:false} }));
+    if(dash.length){ const dp={ id:'traj-dash', data:dash, getPath:d=>d.path, getColor:d=>d.color, getWidth:2, widthUnits:'pixels', widthMinPixels:1.2, capRounded:true, jointRounded:true, pickable:false, parameters:{depthTest:false} }; if(DashExt){ dp.getDashArray=[6,5]; dp.extensions=DashExt; } layers.push(new D.PathLayer(dp)); }
+    // missile trails
+    const mtr=[]; state.missiles.forEach(m=>{ if(m.target.active&&m.history.length>=2) mtr.push({path:m.history}); });
+    if(mtr.length) layers.push(new D.PathLayer({ id:'mtrails', data:mtr, getPath:d=>d.path, getColor:[255,187,51,220], getWidth:1.5, widthUnits:'pixels', pickable:false, parameters:{depthTest:false} }));
+    // pending path + range circle + dots
+    if(state.pendingPath.length){
+      const col = state.currentMode==='target' ? [255,255,255,230] : [225,255,0,230];
+      if(state.currentMode==='target' && state.rangeCfg) layers.push(new D.PolygonLayer(Object.assign({ id:'pend-range', data:[{ring:circleRing(state.pendingPath[0], state.rangeCfg.maxRange)}], getPolygon:d=>d.ring, stroked:true, filled:true, getFillColor:[255,255,255,10], getLineColor:[255,255,255,120], getLineWidth:1, lineWidthUnits:'pixels', pickable:false, parameters:{depthTest:false} }, DashExt?{getDashArray:[8,8],extensions:DashExt}:{})));
+      if(state.pendingPath.length>=2) layers.push(new D.PathLayer(Object.assign({ id:'pend-line', data:[{path:state.pendingPath.map(LL)}], getPath:d=>d.path, getColor:col, getWidth:1.5, widthUnits:'pixels', pickable:false, parameters:{depthTest:false} }, DashExt?{getDashArray:[5,8],extensions:DashExt}:{})));
+      layers.push(new D.ScatterplotLayer({ id:'pend-dots', data:state.pendingPath.map(LL), getPosition:d=>d, getRadius:4, radiusUnits:'pixels', getFillColor:col, stroked:false, pickable:false, parameters:{depthTest:false} }));
+    }
+    // ghosts (review)
+    if(reviewT!=null && ghostPts.length) layers.push(new D.ScatterplotLayer({ id:'ghosts', data:ghostPts, getPosition:d=>d.pos, getFillColor:d=>d.color, getRadius:5, radiusUnits:'pixels', stroked:true, getLineColor:[255,255,255,180], lineWidthUnits:'pixels', getLineWidth:1, pickable:false, parameters:{depthTest:false} }));
+    overlay.setProps({layers});
+  }
+  let deckTimer=null, lastDeck=0; const DECK_MS=60;
+  function scheduleDeck(){ const now=performance.now(); const gap=now-lastDeck; if(gap>=DECK_MS){ lastDeck=now; updateDeck(); } else if(!deckTimer){ deckTimer=setTimeout(()=>{ deckTimer=null; lastDeck=performance.now(); updateDeck(); }, DECK_MS-gap); } }
 
-  function getSimTimeString(){ const now=state.isSimulating?new Date(state.baseTime.getTime()+state.simSeconds*1000):new Date(); const h=now.getHours().toString().padStart(2,'0'),m=now.getMinutes().toString().padStart(2,'0'),s=now.getSeconds().toString().padStart(2,'0'); return `${h}:${m}:${s}`; }
-  function calculateHeading(p1,p2){ if(!p1||!p2) return 0; const la1=p1[0]*Math.PI/180,la2=p2[0]*Math.PI/180,lo1=p1[1]*Math.PI/180,lo2=p2[1]*Math.PI/180; const y=Math.sin(lo2-lo1)*Math.cos(la2); const x=Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(lo2-lo1); return (Math.atan2(y,x)*180/Math.PI+360)%360; }
-  function notifyOnMap(pos,text,color){ const pt=map.latLngToContainerPoint(pos); const el=document.createElement('div'); el.className='map-notification'; el.style.left=pt.x+'px'; el.style.top=pt.y+'px'; el.style.color=color; el.style.borderColor=color; el.textContent=text; document.body.appendChild(el); setTimeout(()=>el.remove(),3000); }
+  /* ================= alerts compute ================= */
+  const LOOKAHEAD=150, STEP=25, HOLD_MS=2000;
+  function computeAlerts(){
+    const now=performance.now(); const active=new Set();
+    for(const tg of state.targets){
+      if(!tg.active||tg.side!=='RU') continue;
+      let idx=regionIndexAt(tg.currentPos); if(idx>=0) active.add(idx);
+      for(let k=STEP;k<=LOOKAHEAD;k+=STEP){ const dd=tg.progressKm+k; const p=interpolate(tg.path,Math.min(tg.totalDist,dd)); const j=regionIndexAt(p); if(j>=0) active.add(j); if(dd>=tg.totalDist) break; }
+    }
+    active.forEach(i=>{ OB[i].litUntil=now+HOLD_MS; });
+    // sound on newly-lit region
+    let fresh=false; active.forEach(i=>{ if(!prevActive.has(i)) fresh=true; });
+    if(fresh && now-lastAlertSound>2000){ lastAlertSound=now; Snd.warning(); }
+    prevActive=active;
+  }
 
-  function setMode(m){ Snd.ping(); state.currentMode=m; $('pvoCard').classList.toggle('active',m==='pvo'); $('targetCard').classList.toggle('active',m==='target'); resetCurrentSelection(); showHint(m==='pvo'?t('hint_pvo'):t('hint_target')); updateNav(); }
+  /* ================= sim loop ================= */
+  function simLoop(time){
+    if(!state.isSimulating){ updateClock(); return; }
+    const dt=Math.min(0.1,(time-state.lastFrame)/1000); state.lastFrame=time;
+    const stepHours=(dt*state.timeCompression)/3600; const now=time;
 
+    state.uaPlanes.forEach(p=>{
+      if(!p.active) return; const prev=[...p.currentPos];
+      if(haversine(p.currentPos,p.patrolTarget)<1000) p.patrolTarget=[47+(Math.random()-0.5)*4,30+Math.random()*5];
+      const dist=haversine(p.currentPos,p.patrolTarget)||1; p.curSpeed=p.speed; const move=(p.curSpeed*stepHours*1000)/dist;
+      p.currentPos=[p.currentPos[0]+(p.patrolTarget[0]-p.currentPos[0])*move, p.currentPos[1]+(p.patrolTarget[1]-p.currentPos[1])*move];
+      moveMk(p,p.currentPos); setRot(p, headingDeg(prev,p.currentPos)+(p.iconAdj||-45));
+      p.history.push([...p.currentPos]); if(p.history.length>40) p.history.shift();
+      if(p.ammo>0) state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(p.id)){ if(p.antiDroneOnly&&!tg.cheap) return; if(haversine(p.currentPos,tg.currentPos)/1000<p.range){ tg.engagedBy.add(p.id); p.ammo--; launchMissile(p,tg); } } });
+    });
+
+    state.targets.forEach(tg=>{
+      if(!tg.active) return; const prev=[...tg.currentPos]; const remDist=tg.totalDist-tg.progressKm;
+      if(tg.progressKm<5){ tg.curSpeed=Math.min(tg.speed,tg.curSpeed+8000*stepHours*10); tg.altitude=Math.min(tg.targetAlt,tg.altitude+20000*stepHours); }
+      else if(remDist<15){ tg.curSpeed=tg.speed*1.1; tg.altitude=Math.max(0,tg.altitude-(tg.targetAlt/(15/(tg.curSpeed*stepHours||1)))); }
+      else { tg.curSpeed=tg.speed; tg.altitude=tg.targetAlt; }
+      tg.progressKm+=tg.curSpeed*stepHours; tg.currentPos=interpolate(tg.path,tg.progressKm); moveMk(tg,tg.currentPos);
+      setRot(tg, headingDeg(prev,tg.currentPos)+(tg.iconAdj||0));
+      if(tg.progressKm>=tg.totalDist){ tg.altitude=0; markEvent(tg.currentPos,'hit'); addToHistory(tg.name,'hit',tg.currentPos); notify(tg.currentPos,`${t('n_hit')}: ${tg.name}`,'#ff5555'); removeObj(tg); }
+    });
+
+    state.pvo.forEach(sys=>{
+      if(sys.type==='ua_ship'){
+        if(haversine(sys.currentPos,sys.patrolTarget)<5000) sys.patrolTarget=[45+(Math.random()-0.5),32+Math.random()*5];
+        const dist=haversine(sys.currentPos,sys.patrolTarget)||1; sys.curSpeed=sys.speed; const move=(sys.curSpeed*stepHours*1000)/dist;
+        sys.currentPos=[sys.currentPos[0]+(sys.patrolTarget[0]-sys.currentPos[0])*move, sys.currentPos[1]+(sys.patrolTarget[1]-sys.currentPos[1])*move];
+        moveMk(sys,sys.currentPos); sys.history.push([...sys.currentPos]); if(sys.history.length>50) sys.history.shift();
+        if(sys.ammo>0) state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(sys.id)){ if(haversine(sys.currentPos,tg.currentPos)/1000<sys.range){ tg.engagedBy.add(sys.id); sys.ammo--; launchMissile(sys,tg); } } });
+      } else if(sys.type==='mrg'){
+        sys.curSpeed=sys.speed; sys.progressKm+=sys.curSpeed*stepHours; if(sys.progressKm>=sys.totalDist) sys.progressKm=0; sys.currentPos=interpolate(sys.path,sys.progressKm); moveMk(sys,sys.currentPos);
+        state.targets.forEach(tg=>{ if(tg.active&&tg.cheap&&!tg.engagedBy.has(sys.id)){ if(haversine(sys.currentPos,tg.currentPos)/1000<sys.radius){ tg.engagedBy.add(sys.id); launchMissile(sys,tg); } } });
+      } else if(sys.type==='sam'){
+        state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(sys.id)){ if(sys.ignoreCheap&&tg.cheap) return; let rng=sys.radius, opt=null; if(sys.patriot){ const p3=(tg.cls==='ballistic'||tg.cls==='hyper'); const v=p3?sys.pac3:sys.pac2; rng=v.r; opt={mName:v.mName,mSpeed:v.s}; } if(haversine(sys.pos,tg.currentPos)/1000<rng){ tg.engagedBy.add(sys.id); launchMissile(sys,tg,opt); } } });
+      }
+    });
+
+    state.missiles=state.missiles.filter(m=>{
+      if(!m.target.active){ m.mk.marker.remove(); return false; }
+      const prev=[...m.pos]; const d=haversine(m.pos,m.target.currentPos);
+      if(d<500){ markEvent(m.target.currentPos,'intercept'); addToHistory(m.target.name,'intercept',m.target.currentPos); notify(m.target.currentPos,`${t('n_intercept')}: ${m.target.name}`,'#22ff99'); removeObj(m.target); m.mk.marker.remove(); return false; }
+      m.curSpeed=Math.min(m.speed*1.5,(m.curSpeed||m.speed)+2000*stepHours*10); const move=(m.curSpeed*stepHours*1000)/(d||1);
+      m.pos=[m.pos[0]+(m.target.currentPos[0]-m.pos[0])*move, m.pos[1]+(m.target.currentPos[1]-m.pos[1])*move]; moveMk(m,m.pos);
+      setRot(m, headingDeg(prev,m.pos)+45); m.history.push(LL(m.pos)); if(m.history.length>60) m.history.shift(); return true;
+    });
+
+    state.simSeconds+=dt*state.timeCompression;
+    if(state.simSeconds-state._lastRec>=0.5){ state._lastRec=state.simSeconds; state.rec.push({ t:state.simSeconds, tgts:state.targets.filter(x=>x.active).map(x=>({lat:x.currentPos[0],lng:x.currentPos[1],cheap:x.cheap})) }); if(state.rec.length>3000) state.rec.shift(); }
+
+    if(now-lastAlertT>150){ lastAlertT=now; computeAlerts(); }
+    if(now-lastLblT>100){ lastLblT=now; syncLabels(); }
+    updateClock(); scheduleDeck(); updateTimeline();
+    requestAnimationFrame(simLoop);
+  }
+  let lastAlertT=0, lastLblT=0;
+
+  function launchMissile(launcher,target,opts){
+    Snd.launch();
+    const start=(launcher.type==='fighter'||launcher.type==='ua_ship'||launcher.type==='mrg')?launcher.currentPos:launcher.pos;
+    const mName=(opts&&opts.mName)||launcher.mName||'SAM';
+    const mSpeed=(opts&&opts.mSpeed)||launcher.mSpeed||5000;
+    const m={ target, pos:[...start], history:[LL(start)], speed:mSpeed, curSpeed:mSpeed*0.5, mName };
+    m.mk=makeMarker(`<i class="fas fa-location-arrow" style="color:#ffbb33;font-size:12px"></i>`, start, {rotate:true});
+    state.missiles.push(m); scheduleDeck();
+  }
+
+  function removeObj(obj){ obj.active=false; if(obj.mk&&obj.mk.marker) obj.mk.marker.remove(); if(state.selected===obj){ state.selected=null; $('detailCard').classList.remove('show'); } updateCounters(); }
+
+  function markEvent(pos,type){
+    const el=document.createElement('div'); el.className='obj-marker'; const ic=document.createElement('div'); ic.className='obj-icon';
+    ic.innerHTML = type==='intercept' ? '<i class="fas fa-skull" style="color:#fff;font-size:18px;"></i>' : '<i class="fas fa-certificate" style="color:#ffbb33;font-size:20px;"></i>';
+    el.appendChild(ic);
+    const mk=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat(LL(pos)).addTo(map);
+    state.eventMarkers.push(mk); while(state.eventMarkers.length>40){ const old=state.eventMarkers.shift(); old.remove(); }
+    explosion(pos);
+    if(type==='hit'){ Snd.hit(); state.stats.leak++; } else { Snd.intercept(); state.stats.down++; }
+    updateStats();
+  }
+  function explosion(pos){ const pt=map.project(LL(pos)); const d=document.createElement('div'); d.className='explosion'; d.style.left=pt.x+'px'; d.style.top=pt.y+'px'; document.body.appendChild(d); setTimeout(()=>d.remove(),500); }
+  function notify(pos,text,color){ const pt=map.project(LL(pos)); const el=document.createElement('div'); el.className='map-notification'; el.style.left=pt.x+'px'; el.style.top=pt.y+'px'; el.style.color=color; el.style.borderColor=color; el.textContent=text; document.body.appendChild(el); setTimeout(()=>el.remove(),3000); }
+
+  /* ================= labels & counters ================= */
+  function syncLabels(){
+    state.targets.forEach(tg=>{ if(tg.active) setLbl(tg,`<b>${tg.name}</b><br>SPD ${Math.round(tg.curSpeed)}<br>ALT ${Math.round(tg.altitude)}м`); });
+    state.uaPlanes.forEach(p=>{ if(p.active) setLbl(p,`<b style="color:#ffd24d">${p.name}</b><br>SPD ${Math.round(p.curSpeed)}<br>AMMO ${p.ammo}`); });
+    state.pvo.forEach(s=>{ if(s.type==='ua_ship') setLbl(s,`<b style="color:#ffd24d">${s.name}</b><br>SPD ${Math.round(s.curSpeed)}`); else if(s.type==='mrg') setLbl(s,`<b style="color:#e1ff00">${s.name}</b><br>SPD ${Math.round(s.curSpeed)}`); });
+    state.missiles.forEach(m=>{ if(m.target.active) setLbl(m,`${Math.round(m.curSpeed)}`); });
+    if(state.selected) refreshDetail();
+  }
   function updateCounters(){
     const ta=state.targets.filter(x=>x.active).length;
     $('targetCount').textContent=ta;
@@ -590,124 +736,57 @@ class Component extends DCLogic {
     $('mobileCount').textContent=state.pvo.filter(x=>x.type==='mrg').length;
     $('shipCount').textContent=state.pvo.filter(x=>x.type==='ua_ship').length;
     $('uaPlaneCount').textContent=state.uaPlanes.filter(x=>x.active).length;
-    if(ta===0&&state.isAttackActive){ state.isAttackActive=false; $('attackBtn').disabled=false; state.carriers.forEach(c=>{ c.marker.remove(); c.tb.remove(); }); state.carriers=[]; }
+    if(ta===0&&state.isAttackActive){ state.isAttackActive=false; $('attackBtn').disabled=false; state.carriers.forEach(c=>{ c.marker.remove(); }); state.carriers=[]; }
   }
-  function updateStats(){
-    $('statDown').textContent=state.stats.down;
-    $('statLeak').textContent=state.stats.leak;
-    const tot=state.stats.down+state.stats.leak;
-    const pct=tot?Math.round(state.stats.down/tot*100):100;
-    $('statEff').textContent=pct+'%';
-  }
+  function updateStats(){ $('statDown').textContent=state.stats.down; $('statLeak').textContent=state.stats.leak; const tot=state.stats.down+state.stats.leak; $('statEff').textContent=(tot?Math.round(state.stats.down/tot*100):100)+'%'; }
+  function resetCurrentSelection(){ state.pendingPath=[]; state.rangeCfg=null; updateNav(); updateDeck(); }
 
-  function resetCurrentSelection(){ state.tempMarkers.forEach(m=>map.removeLayer(m)); state.tempMarkers=[]; state.pendingPath=[]; if(state.activeFutureLine){ state.activeFutureLine.remove(); state.activeFutureLine=null; } if(state.rangeCircle){ state.rangeCircle.remove(); state.rangeCircle=null; } updateNav(); }
-
-  /* ---------- object detail ---------- */
+  /* ================= detail card ================= */
   function selectObject(o){ state.selected=o; refreshDetail(); }
   function fmtEta(sec){ if(!isFinite(sec)||sec<0) return '—'; const m=Math.floor(sec/60),s=Math.floor(sec%60); return `${m}:${s.toString().padStart(2,'0')}`; }
   function refreshDetail(){
     const o=state.selected; const card=$('detailCard');
     if(!o||!o.active){ card.classList.remove('show'); return; }
-    card.classList.add('show');
-    const hostile=o.side==='RU';
-    card.classList.toggle('hostile',hostile);
-    $('dcName').textContent=o.name;
-    const badge=$('dcBadge'); badge.textContent=hostile?'HOSTILE':'FRIEND'; badge.classList.toggle('friend',!hostile);
-    let cells='';
-    const cell=(k,v)=>`<div class="dc-cell"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    card.classList.add('show'); const hostile=o.side==='RU'; card.classList.toggle('hostile',hostile);
+    $('dcName').textContent=o.name; const badge=$('dcBadge'); badge.textContent=hostile?'HOSTILE':'FRIEND'; badge.classList.toggle('friend',!hostile);
+    const cell=(k,v)=>`<div class="dc-cell"><div class="k">${k}</div><div class="v">${v}</div></div>`; let cells='';
     cells+=cell('SPEED',Math.round(o.curSpeed||o.speed||0)+'<span style="font-size:9px;color:var(--muted)"> км/год</span>');
     if(hostile){
       cells+=cell('ALT',Math.round(o.altitude||0)+'<span style="font-size:9px;color:var(--muted)"> м</span>');
       const rem=(o.totalDist||0)-(o.progressKm||0); const eta=o.curSpeed>0?rem/o.curSpeed*3600:Infinity;
-      cells+=cell('ETA',fmtEta(eta));
-      cells+=cell('DIST',Math.round(rem)+'<span style="font-size:9px;color:var(--muted)"> км</span>');
+      cells+=cell('ETA',fmtEta(eta)); cells+=cell('DIST',Math.round(rem)+'<span style="font-size:9px;color:var(--muted)"> км</span>');
     } else {
       if(o.ammo!=null) cells+=cell('AMMO',o.ammo); if(o.range!=null) cells+=cell('RANGE',o.range+'<span style="font-size:9px;color:var(--muted)"> км</span>');
       if(o.radius!=null) cells+=cell('ZONE',o.radius+'<span style="font-size:9px;color:var(--muted)"> км</span>');
       if(o.mName) cells+=cell('ARM',`<span style="font-size:11px">${o.mName}</span>`);
     }
     $('dcGrid').innerHTML=cells;
-    $('dcStatus').textContent=o.type==='mrg'||o.type==='ua_ship'||o.type==='fighter'?t('st_patrol'):t('st_active');
-    if(hostile){ const p=Math.max(0,Math.min(100,100-((o.progressKm||0)/(o.totalDist||1)*100))); $('dcBarFill').style.width=p+'%'; }
-    else $('dcBarFill').style.width='100%';
+    $('dcStatus').textContent=(o.type==='mrg'||o.type==='ua_ship'||o.type==='fighter')?t('st_patrol'):t('st_active');
+    if(hostile){ const p=Math.max(0,Math.min(100,100-((o.progressKm||0)/(o.totalDist||1)*100))); $('dcBarFill').style.width=p+'%'; } else $('dcBarFill').style.width='100%';
   }
 
-  /* ---------- create UA systems ---------- */
-  function createPVO(pos){
-    const key=$('pvoSelect').value, cfg=CONFIG[key];
-    if(cfg.type==='ua_ship'){ if(!isWater(pos[0],pos[1])){ notifyOnMap(pos,t('n_water'),'#ff5555'); Snd.warning(); return; } createUAShip(pos,cfg); return; }
-    else if(cfg.type!=='fighter'){ if(isWater(pos[0],pos[1])){ notifyOnMap(pos,t('n_land'),'#ff5555'); Snd.warning(); return; } }
-    if(cfg.type==='mrg'){ if(state.pendingPath.length<2){ notifyOnMap(pos,t('n_mrg'),'#e1ff00'); Snd.ping(); return; } createMRG(cfg); return; }
-    if(cfg.type==='fighter'){ createUAFighter(pos,cfg); return; }
-    Snd.alert();
-    const sz=getRadarSizeInPixels(cfg.r,pos[0]);
-    const rMarker=L.marker(pos,{ icon:L.divIcon({ className:'radar-container', html:`<div class="radar-sweep" style="width:${sz}px;height:${sz}px;"></div>`, iconSize:[0,0] }), interactive:false }).addTo(map);
-    const dot=L.circleMarker(pos,{ radius:6, color:'#fff', fillColor:'#22ff99', fillOpacity:1 }).addTo(map);
-    const item={ id:Math.random(), pos, currentPos:pos, radius:cfg.r, mSpeed:cfg.s, name:cfg.name, mName:cfg.mName, type:'sam', ignoreCheap:cfg.ignoreCheap, layers:[rMarker,dot], side:'UA', active:true };
-    dot.on('click',()=>{ selectObject(item); Snd.ping(); });
-    state.pvo.push(item); addToHistory(cfg.name,'deploy',pos);
-    notifyOnMap(pos,`${t('n_deploy')}: ${cfg.name}`,'#22ff99'); updateCounters(); updateNav();
+  /* ================= history ================= */
+  function getSimTimeString(){ const now=state.isSimulating?new Date(state.baseTime.getTime()+state.simSeconds*1000):new Date(); const h=String(now.getHours()).padStart(2,'0'),m=String(now.getMinutes()).padStart(2,'0'),s=String(now.getSeconds()).padStart(2,'0'); return `${h}:${m}:${s}`; }
+  function addToHistory(name,ev,pos){ state.history.push({ time:getSimTimeString(), tSec:state.simSeconds, name, type:ev, pos:[pos[0],pos[1]] }); if($('historyModal').classList.contains('show')) updateHistoryTable(); if($('timelinePanel').classList.contains('show')) updateTimeline(); }
+  function updateHistoryTable(){
+    const body=$('historyTableBody'); body.innerHTML='';
+    state.history.slice().reverse().forEach(e=>{
+      const row=document.createElement('tr'); row.onclick=()=>{ map.flyTo({center:LL(e.pos),zoom:9}); Snd.ping(); };
+      const st = e.type==='deploy'?t('b_deploy'):e.type==='launch'?t('b_launch'):e.type==='intercept'?t('b_intercept'):t('b_hit');
+      row.innerHTML=`<td style="color:var(--muted);font-variant-numeric:tabular-nums;">${e.time}</td><td style="font-weight:600;color:#eafff4;">${e.name}</td><td><span class="badge badge-${e.type}">${st}</span></td><td style="color:#8fc4ad;font-size:9px;">${e.pos[0].toFixed(2)}, ${e.pos[1].toFixed(2)}</td>`;
+      body.appendChild(row);
+    });
   }
-  function createMRG(cfg){
-    const path=[...state.pendingPath];
-    const m={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:[...path[0]], path, speed:cfg.speed, curSpeed:0, radius:cfg.r, mSpeed:cfg.mSpeed, active:true, side:'UA', type:'mrg', progressKm:0, totalDist:0,
-      marker:L.marker(path[0],{ icon:L.divIcon({ html:`<div class="static-icon"><i class="fas fa-truck-pickup" style="color:#e1ff00;font-size:14px;"></i></div>`, className:'event-marker' }) }).addTo(map),
-      toolbar:Object.assign(document.createElement('div'),{ className:'obj-toolbar' }),
-      line:L.polyline(path,{ color:'#e1ff00', weight:2, opacity:0.5, dashArray:'5, 5' }).addTo(map) };
-    for(let i=0;i<path.length-1;i++) m.totalDist+=map.distance(path[i],path[i+1])/1000;
-    m.marker.on('click',()=>{ selectObject(m); Snd.ping(); });
-    document.body.appendChild(m.toolbar); state.pvo.push(m); addToHistory(cfg.name,'deploy',path[0]); resetCurrentSelection(); Snd.alert();
-    notifyOnMap(path[0],t('n_patrol'),'#e1ff00'); updateCounters(); updateNav();
-  }
-  function createUAShip(pos,cfg){
-    const s={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:pos, patrolTarget:pos, speed:cfg.speed, curSpeed:0, mSpeed:cfg.mSpeed, ammo:cfg.ammo, range:cfg.range, active:true, side:'UA', type:'ua_ship', history:[pos],
-      marker:L.marker(pos,{ icon:L.divIcon({ html:`<div class="static-icon"><i class="fas ${cfg.icon}" style="color:#ffd24d;font-size:16px;"></i></div>`, className:'event-marker' }) }).addTo(map),
-      toolbar:Object.assign(document.createElement('div'),{ className:'obj-toolbar' }),
-      line:L.polyline([pos],{ color:'#ffd24d', weight:2, opacity:0.4, dashArray:'5, 5' }).addTo(map) };
-    s.marker.on('click',()=>{ selectObject(s); Snd.ping(); });
-    document.body.appendChild(s.toolbar); state.pvo.push(s); addToHistory(cfg.name,'deploy',pos); Snd.alert();
-    notifyOnMap(pos,`${t('n_ship')}: ${cfg.name}`,'#ffd24d'); updateCounters(); updateNav();
-  }
-  function createUAFighter(pos,cfg){
-    const p={ id:Math.random(), name:cfg.name, mName:cfg.mName, currentPos:pos, patrolTarget:pos, speed:cfg.speed, curSpeed:0, mSpeed:cfg.mSpeed, ammo:cfg.ammo, range:cfg.range, active:true, side:'UA', type:'fighter', altitude:2000, history:[pos], antiDroneOnly:cfg.antiDroneOnly||false, iconAdj:cfg.iconAdj,
-      marker:L.marker(pos,{ icon:L.divIcon({ html:`<div class="rotated-icon"><i class="fas ${cfg.icon||'fa-fighter-jet'}" style="color:#ffd24d;font-size:18px;"></i></div>`, className:'event-marker' }) }).addTo(map),
-      toolbar:Object.assign(document.createElement('div'),{ className:'obj-toolbar' }),
-      line:L.polyline([pos],{ color:'#ffd24d', weight:2, opacity:0.6 }).addTo(map) };
-    p.marker.on('click',()=>{ selectObject(p); Snd.ping(); });
-    document.body.appendChild(p.toolbar); state.uaPlanes.push(p); addToHistory(cfg.name,'deploy',pos); Snd.alert();
-    notifyOnMap(pos,`${t('n_takeoff')}: ${cfg.name}`,'#ffd24d'); updateCounters(); updateNav();
-  }
+  function toggleHistory(){ Snd.ping(); const m=$('historyModal'); const on=m.classList.toggle('show'); $('historyBtn').classList.toggle('on',on); if(on){ closePreset(); $('timelinePanel').classList.remove('show'); $('timelineBtn').classList.remove('on'); updateHistoryTable(); } }
 
-  function createTarget(cfgOverride=null,pathOverride=null){
-    const type=cfgOverride||$('targetSelect').value, cfg=CONFIG[type];
-    const raw=pathOverride||[...state.pendingPath]; if(raw.length<2) return;
-    const apogee=Math.floor(Math.random()*(cfg.altMax-cfg.altMin)+cfg.altMin);
-    const arcPts=bowedArc(raw[0], raw[raw.length-1], apogee);
-    const target={ id:Math.random(), name:cfg.name, path:arcPts, speed:cfg.speed, curSpeed:0, currentPos:[...arcPts[0]], progressKm:0, totalDist:0, active:true, engagedBy:new Set(), side:'RU', iconAdj:cfg.iconAdj, altitude:0, targetAlt:apogee, apogee, history:[[...arcPts[0]]], cheap:cfg.cheap||false,
-      toolbar:Object.assign(document.createElement('div'),{ className:'obj-toolbar' }),
-      marker:L.marker(arcPts[0],{ icon:L.divIcon({ html:`<div class="rotated-icon"><i class="fas ${cfg.icon||'fa-location-arrow'}" style="color:${cfg.color};font-size:14px;"></i></div>`, className:'event-marker' }) }).addTo(map) };
-    target.marker.on('click',()=>{ selectObject(target); Snd.ping(); });
-    document.body.appendChild(target.toolbar);
-    for(let i=0;i<target.path.length-1;i++) target.totalDist+=map.distance(target.path[i],target.path[i+1])/1000;
-    drawTraj(target,cfg);
-    state.targets.push(target); addToHistory(cfg.name,'launch',raw[0]); Snd.launch();
-    if(!pathOverride) resetCurrentSelection(); updateCounters(); updateNav();
-  }
-
-  /* ---------- scenarios ---------- */
+  /* ================= scenarios ================= */
   const UA_CITIES=[[50.45,30.52],[49.83,24.02],[46.48,30.72],[48.46,35.04],[49.99,36.23],[49.75,27.22],[49.23,28.46],[46.97,31.99],[50.74,25.32],[48.92,24.71],[48.37,31.16],[51.50,31.29]];
   const ZONES={ blackSea:[44.5,33.5], caspian:[47.5,43.5], belgorod:[50.6,36.6], crimea:[45.1,34.0], kursk:[51.7,36.1], belarus:[52.1,26.5], donetsk:[48.0,37.8], kherson_occ:[46.6,33.3] };
   const randCity=()=>UA_CITIES[Math.floor(Math.random()*UA_CITIES.length)];
   function ensureSim(){ if(!state.isSimulating){ state.isSimulating=true; state.lastFrame=performance.now(); requestAnimationFrame(simLoop); updateNav(); } }
-  function showCarrier(pos,name,icon){
-    const marker=L.marker(pos,{ icon:L.divIcon({ html:`<div class="static-icon"><i class="fas ${icon}" style="color:#ff5555;font-size:24px;filter:drop-shadow(0 0 5px red);"></i></div>`, className:'event-marker' }) }).addTo(map);
-    const tb=Object.assign(document.createElement('div'),{ className:'obj-toolbar', innerHTML:`<b style="color:#ff5555">${name}</b>` });
-    document.body.appendChild(tb); const pt=map.latLngToContainerPoint(pos); tb.style.left=pt.x+'px'; tb.style.top=pt.y+'px';
-    state.carriers.push({ marker, tb, pos });
-  }
+  function showCarrier(pos,name,icon){ const el=document.createElement('div'); el.className='obj-marker'; const ic=document.createElement('div'); ic.className='obj-icon'; ic.innerHTML=`<i class="fas ${icon}" style="color:#ff5555;font-size:24px;filter:drop-shadow(0 0 5px red);"></i>`; const lbl=document.createElement('div'); lbl.className='obj-lbl'; lbl.innerHTML=`<b style="color:#ff5555">${name}</b>`; el.appendChild(ic); el.appendChild(lbl); const marker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat(LL(pos)).addTo(map); state.carriers.push({marker,pos}); }
   function triggerMassiveAttack(){
-    if(state.isAttackActive) return; Snd.alert(); state.isAttackActive=true; $('attackBtn').disabled=true;
-    notifyOnMap(map.getCenter(),t('n_massive'),'#ff5555');
+    if(state.isAttackActive) return; Snd.alert(); state.isAttackActive=true; $('attackBtn').disabled=true; notify(mapCenterLL(),t('n_massive'),'#ff5555');
     showCarrier(ZONES.caspian,'ТУ-95МС','fa-fighter-jet'); showCarrier(ZONES.blackSea,'ФЛОТ/ПЛ','fa-ship'); showCarrier(ZONES.crimea,'ШАХЕД-ХАБ','fa-warehouse'); showCarrier(ZONES.belgorod,'ІСКАНДЕР','fa-truck-monster');
     for(let i=0;i<8;i++) setTimeout(()=>{ const s=Math.random()>0.5?ZONES.crimea:ZONES.belgorod; createTarget('drone_shahed',[s,[47+Math.random(),33+Math.random()],randCity()]); }, i*800);
     setTimeout(()=>{ for(let i=0;i<4;i++) createTarget('missile_kalibr',[ZONES.blackSea,randCity()]); },6000);
@@ -719,164 +798,31 @@ class Component extends DCLogic {
   function scnNaval(){ Snd.alert(); for(let i=0;i<4;i++) setTimeout(()=>createTarget('missile_kalibr',[ZONES.blackSea,randCity()]),i*900); setTimeout(()=>{ createTarget('missile_oniks',[ZONES.blackSea,[46.9,32]]); createTarget('missile_oniks',[ZONES.crimea,[46.5,30.7]]); },3500); ensureSim(); }
   function runScenario(id){ closePreset(); if(id==='massive') triggerMassiveAttack(); else if(id==='swarm') scnSwarm(); else if(id==='ballistic') scnBallistic(); else if(id==='naval') scnNaval(); }
 
-  /* ---------- sim loop ---------- */
-  function simLoop(time){
-    if(!state.isSimulating){ syncAllToolbars(); updateClock(); return; }
-    const dt=(time-state.lastFrame)/1000; state.lastFrame=time; const stepHours=(dt*state.timeCompression)/3600;
-    state.uaPlanes.forEach(p=>{
-      if(!p.active) return; const prev=[...p.currentPos];
-      if(map.distance(p.currentPos,p.patrolTarget)<1000) p.patrolTarget=[47+(Math.random()-0.5)*4,30+Math.random()*5];
-      const dist=map.distance(p.currentPos,p.patrolTarget); p.curSpeed=p.speed; const move=(p.curSpeed*stepHours*1000)/dist;
-      p.currentPos=[p.currentPos[0]+(p.patrolTarget[0]-p.currentPos[0])*move,p.currentPos[1]+(p.patrolTarget[1]-p.currentPos[1])*move];
-      p.marker.setLatLng(p.currentPos); const ang=calculateHeading(prev,p.currentPos); const ic=p.marker.getElement()?.querySelector('.rotated-icon'); if(ic) ic.style.transform=`rotate(${ang+(p.iconAdj||-45)}deg)`;
-      p.history.push([...p.currentPos]); if(p.history.length>40) p.history.shift(); p.line.setLatLngs(p.history);
-      if(p.ammo>0) state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(p.id)){ if(p.antiDroneOnly&&!tg.cheap) return; if(map.distance(p.currentPos,tg.currentPos)/1000<p.range){ tg.engagedBy.add(p.id); p.ammo--; launchMissile(p,tg); } } });
-    });
-    state.targets.forEach(tg=>{
-      if(!tg.active) return; const prev=[...tg.currentPos]; const remDist=tg.totalDist-tg.progressKm;
-      if(tg.progressKm<5){ tg.curSpeed=Math.min(tg.speed,tg.curSpeed+8000*stepHours*10); tg.altitude=Math.min(tg.targetAlt,tg.altitude+20000*stepHours); }
-      else if(remDist<15){ tg.curSpeed=tg.speed*1.1; tg.altitude=Math.max(0,tg.altitude-(tg.targetAlt/(15/(tg.curSpeed*stepHours)))); }
-      else { tg.curSpeed=tg.speed; tg.altitude=tg.targetAlt; }
-      tg.progressKm+=tg.curSpeed*stepHours; tg.currentPos=interpolate(tg.path,tg.progressKm); tg.marker.setLatLng(tg.currentPos);
-      const ang=calculateHeading(prev,tg.currentPos); const ic=tg.marker.getElement()?.querySelector('.rotated-icon'); if(ic) ic.style.transform=`rotate(${ang+(tg.iconAdj||0)}deg)`;
-      tg.history.push([...tg.currentPos]);
-      if(tg.progressKm>=tg.totalDist){ tg.altitude=0; markEvent(tg.currentPos,'hit'); addToHistory(tg.name,'hit',tg.currentPos); notifyOnMap(tg.currentPos,`${t('n_hit')}: ${tg.name}`,'#ff5555'); removeObj(tg,true); }
-    });
-    state.pvo.forEach(sys=>{
-      if(sys.type==='ua_ship'){
-        if(map.distance(sys.currentPos,sys.patrolTarget)<5000) sys.patrolTarget=[45+(Math.random()-0.5)*1,32+Math.random()*5];
-        const dist=map.distance(sys.currentPos,sys.patrolTarget); sys.curSpeed=sys.speed; const move=(sys.curSpeed*stepHours*1000)/dist;
-        sys.currentPos=[sys.currentPos[0]+(sys.patrolTarget[0]-sys.currentPos[0])*move,sys.currentPos[1]+(sys.patrolTarget[1]-sys.currentPos[1])*move];
-        sys.marker.setLatLng(sys.currentPos); sys.history.push([...sys.currentPos]); if(sys.history.length>50) sys.history.shift(); sys.line.setLatLngs(sys.history);
-        if(sys.ammo>0) state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(sys.id)){ if(map.distance(sys.currentPos,tg.currentPos)/1000<sys.range){ tg.engagedBy.add(sys.id); sys.ammo--; launchMissile(sys,tg); } } });
-      } else if(sys.type==='mrg'){
-        sys.curSpeed=sys.speed; sys.progressKm+=sys.curSpeed*stepHours; if(sys.progressKm>=sys.totalDist) sys.progressKm=0; sys.currentPos=interpolate(sys.path,sys.progressKm); sys.marker.setLatLng(sys.currentPos);
-        state.targets.forEach(tg=>{ if(tg.active&&tg.cheap&&!tg.engagedBy.has(sys.id)){ if(map.distance(sys.currentPos,tg.currentPos)/1000<sys.radius){ tg.engagedBy.add(sys.id); launchMissile(sys,tg); } } });
-      } else if(sys.type==='sam'){
-        state.targets.forEach(tg=>{ if(tg.active&&tg.side==='RU'&&!tg.engagedBy.has(sys.id)){ if(sys.ignoreCheap&&tg.cheap) return; if(map.distance(sys.pos,tg.currentPos)/1000<sys.radius){ tg.engagedBy.add(sys.id); launchMissile(sys,tg); } } });
-      }
-    });
-    state.missiles=state.missiles.filter(m=>{
-      if(!m.target.active){ m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; }
-      const prev=[...m.pos]; const d=map.distance(m.pos,m.target.currentPos);
-      if(d<500){ markEvent(m.target.currentPos,'intercept'); addToHistory(m.target.name,'intercept',m.target.currentPos); notifyOnMap(m.target.currentPos,`${t('n_intercept')}: ${m.target.name}`,'#22ff99'); removeObj(m.target,true); m.marker.remove(); m.line.remove(); m.toolbar.remove(); return false; }
-      m.curSpeed=Math.min(m.speed*1.5,(m.curSpeed||m.speed)+2000*stepHours*10); const move=(m.curSpeed*stepHours*1000)/d;
-      m.pos=[m.pos[0]+(m.target.currentPos[0]-m.pos[0])*move,m.pos[1]+(m.target.currentPos[1]-m.pos[1])*move]; m.marker.setLatLng(m.pos);
-      const ang=calculateHeading(prev,m.pos); const ic=m.marker.getElement()?.querySelector('.rotated-icon'); if(ic) ic.style.transform=`rotate(${ang+45}deg)`; m.history.push([...m.pos]); m.line.setLatLngs(m.history); return true;
-    });
-    state.simSeconds+=dt*state.timeCompression;
-    if(state.simSeconds-state._lastRec>=0.5){ state._lastRec=state.simSeconds; state.rec.push({ t:state.simSeconds, tgts:state.targets.filter(x=>x.active).map(x=>({ lat:x.currentPos[0], lng:x.currentPos[1], cheap:x.cheap })) }); if(state.rec.length>3000) state.rec.shift(); }
-    updateClock(); syncAllToolbars(); updateTimeline(); requestAnimationFrame(simLoop);
-  }
-
-  function launchMissile(launcher,target){
-    Snd.launch();
-    const startPos=(launcher.type==='fighter'||launcher.type==='ua_ship'||launcher.type==='mrg')?launcher.currentPos:launcher.pos;
-    const tb=Object.assign(document.createElement('div'),{ className:'obj-toolbar', innerHTML:launcher.mName||'SAM' }); tb.style.fontSize='8px'; document.body.appendChild(tb);
-    const m={ target, pos:[...startPos], history:[[...startPos]], speed:launcher.mSpeed||5000, curSpeed:(launcher.mSpeed||5000)*0.5, toolbar:tb,
-      marker:L.marker(startPos,{ icon:L.divIcon({ html:`<div class="rotated-icon"><i class="fas fa-location-arrow" style="color:#ffbb33;font-size:12px;"></i></div>`, className:'event-marker' }) }).addTo(map),
-      line:L.polyline([startPos],{ color:'#ffbb33', weight:1, opacity:0.8 }).addTo(map) };
-    state.missiles.push(m);
-  }
-
-  function removeObj(obj,keepPath=false){
-    obj.active=false; if(obj.marker) map.removeLayer(obj.marker); if(obj.toolbar) obj.toolbar.remove();
-    if(!keepPath){ if(obj.line) map.removeLayer(obj.line); if(obj.linePassed) map.removeLayer(obj.linePassed); if(obj.lineFuture) map.removeLayer(obj.lineFuture); }
-    if(obj.arcLines){ obj.arcLines.forEach(l=>map.removeLayer(l)); obj.arcLines=null; }
-    if(obj.arcSegs){ obj.arcSegs=null; if(useDeck) buildDeck(); }
-    if(state.selected===obj){ state.selected=null; $('detailCard').classList.remove('show'); }
-    updateCounters();
-  }
-
-  function undoLastAction(){
-    Snd.ping();
-    if(state.pendingPath.length>0){ state.pendingPath.pop(); const m=state.tempMarkers.pop(); if(m) map.removeLayer(m); if(state.activeFutureLine){ if(state.pendingPath.length>0) state.activeFutureLine.setLatLngs(state.pendingPath); else { state.activeFutureLine.remove(); state.activeFutureLine=null; } } if(state.pendingPath.length===0&&state.rangeCircle){ state.rangeCircle.remove(); state.rangeCircle=null; } }
-    else if(state.history.length>0){ const last=state.history.pop(); const idx=state.pvo.findIndex(i=>i.name===last.name); if(idx!==-1){ const item=state.pvo[idx]; if(item.type==='sam') item.layers.forEach(l=>map.removeLayer(l)); else removeObj(item); state.pvo.splice(idx,1); } }
-    updateCounters(); updateNav();
-  }
-
-  function syncAllToolbars(){
-    state.targets.forEach(tg=>tg.active&&updateToolbar(tg,`<b>${tg.name}</b><br>SPD ${Math.round(tg.curSpeed)}<br>ALT ${Math.round(tg.altitude)}м`));
-    state.uaPlanes.forEach(p=>p.active&&updateToolbar(p,`<b style="color:#ffd24d">${p.name}</b><br>SPD ${Math.round(p.curSpeed)}<br>AMMO ${p.ammo}`));
-    state.pvo.forEach(sys=>{ if(sys.type==='ua_ship') updateToolbar(sys,`<b style="color:#ffd24d">${sys.name}</b><br>SPD ${Math.round(sys.curSpeed)}`); else if(sys.type==='mrg') updateToolbar(sys,`<b style="color:#e1ff00">${sys.name}</b><br>SPD ${Math.round(sys.curSpeed)}`); });
-    state.missiles.forEach(m=>{ if(!m.target.active) return; const pt=map.latLngToContainerPoint(m.pos); m.toolbar.style.left=pt.x+'px'; m.toolbar.style.top=pt.y+'px'; m.toolbar.innerHTML=`${Math.round(m.curSpeed)}`; });
-    state.carriers.forEach(c=>{ const pt=map.latLngToContainerPoint(c.pos); c.tb.style.left=pt.x+'px'; c.tb.style.top=pt.y+'px'; });
-    if(state.selected) refreshDetail();
-  }
-  function updateToolbar(obj,text){ const p=obj.currentPos||obj.pos; if(!p||!obj.toolbar) return; const pt=map.latLngToContainerPoint(p); obj.toolbar.style.left=pt.x+'px'; obj.toolbar.style.top=pt.y+'px'; obj.toolbar.innerHTML=text; }
-
-  function markEvent(pos,type){
-    const icon=L.divIcon({ className:'event-marker', html: type==='intercept'?'<i class="fas fa-skull" style="color:#fff;font-size:18px;"></i>':'<i class="fas fa-certificate" style="color:#ffbb33;font-size:20px;"></i>' });
-    L.marker(pos,{ icon, interactive:false }).addTo(map);
-    const p=map.latLngToContainerPoint(pos); const d=document.createElement('div'); d.className='explosion'; d.style.left=p.x+'px'; d.style.top=p.y+'px'; document.body.appendChild(d); setTimeout(()=>d.remove(),500);
-    if(type==='hit'){ Snd.hit(); state.stats.leak++; } else { Snd.intercept(); state.stats.down++; }
-    updateStats();
-  }
-  function interpolate(path,dist){ let acc=0; for(let i=0;i<path.length-1;i++){ const d=map.distance(path[i],path[i+1])/1000; if(acc+d>dist){ const r=(dist-acc)/d; return [path[i][0]+(path[i+1][0]-path[i][0])*r,path[i][1]+(path[i+1][1]-path[i][1])*r]; } acc+=d; } return path[path.length-1]; }
-  function getRadarSizeInPixels(radiusKm,lat){ const zoom=map.getZoom(); const mpp=156543.03392*Math.cos(lat*Math.PI/180)/Math.pow(2,zoom); return ((radiusKm*1000)/mpp)*2; }
-
-  /* ---------- map click ---------- */
-  map.on('click', e => {
-    Snd.init(); ensureRenderer(); Snd.ping(); const pos=[e.latlng.lat,e.latlng.lng];
-    if(state.currentMode==='pvo'){
-      const type=$('pvoSelect').value;
-      if(CONFIG[type].type==='mrg'){ state.pendingPath.push(pos); state.tempMarkers.push(L.circleMarker(pos,{ radius:4, color:'#e1ff00' }).addTo(map)); if(state.activeFutureLine) state.activeFutureLine.remove(); state.activeFutureLine=L.polyline(state.pendingPath,{ color:'#e1ff00', weight:1, dashArray:'5, 8', opacity:0.5 }).addTo(map); }
-      else createPVO(pos);
-    } else {
-      const type=$('targetSelect').value, cfg=CONFIG[type];
-      if(state.pendingPath.length===0){ state.pendingPath.push(pos); state.tempMarkers.push(L.circleMarker(pos,{ radius:4, color:'#fff' }).addTo(map)); state.rangeCircle=L.circle(pos,{ radius:cfg.maxRange*1000, color:cfg.color, weight:1, fillOpacity:0.05, dashArray:'10, 10', interactive:false }).addTo(map); }
-      else { const startPos=state.pendingPath[0]; const dist=map.distance(startPos,pos)/1000; if(dist>cfg.maxRange){ notifyOnMap(pos,`${t('n_range')} (${Math.round(dist)} > ${cfg.maxRange} км)`,'#ff5555'); Snd.warning(); return; } state.pendingPath.push(pos); state.tempMarkers.push(L.circleMarker(pos,{ radius:4, color:'#fff' }).addTo(map)); if(state.activeFutureLine) state.activeFutureLine.remove(); state.activeFutureLine=L.polyline(state.pendingPath,{ color:'#fff', weight:1, dashArray:'5, 8', opacity:0.5 }).addTo(map); }
-    }
-    updateNav();
-  });
-
-  /* ---------- play / speed ---------- */
-  function doPlay(){
-    Snd.init();
-    if(reviewT!=null) exitReview();
-    if(state.pendingPath.length>0){ Snd.ping(); if(state.currentMode==='pvo'){ if(state.pendingPath.length>=2||CONFIG[$('pvoSelect').value].type!=='mrg') createPVO(state.pendingPath[0]); } else { if(state.pendingPath.length>=2) createTarget(); } }
-    else { state.isSimulating=!state.isSimulating; state.lastFrame=performance.now(); if(state.isSimulating){ Snd.alert(); requestAnimationFrame(simLoop); notifyOnMap(map.getCenter(),t('n_simstart'),'#22ff99'); } else { Snd.ping(); syncAllToolbars(); notifyOnMap(map.getCenter(),t('n_pause'),'#ffd24d'); } }
-    updateNav();
-  }
-  function setSpeed(v){
-    Snd.ping();
-    if(v==='pause'){ state.isSimulating=false; syncAllToolbars(); }
-    else { state.timeCompression=+v; if(!state.isSimulating){ state.isSimulating=true; state.lastFrame=performance.now(); requestAnimationFrame(simLoop); notifyOnMap(map.getCenter(),t('n_simstart'),'#22ff99'); } }
-    updateNav();
-  }
-  function updateSpeedUI(){
-    document.querySelectorAll('#speedPill span').forEach(s=>{ const d=s.dataset.speed; s.classList.toggle('active', state.isSimulating&&state.timeCompression===+d); });
-  }
-
-  /* ---------- timeline + scrub review ---------- */
+  /* ================= timeline + review ================= */
   function fmtT(sec){ sec=Math.max(0,sec); const m=Math.floor(sec/60), s=Math.floor(sec%60); return m+':'+String(s).padStart(2,'0'); }
   function toggleTimeline(){ Snd.ping(); const p=$('timelinePanel'); const on=p.classList.toggle('show'); $('timelineBtn').classList.toggle('on',on); if(on){ $('historyModal').classList.remove('show'); $('historyBtn').classList.remove('on'); closePreset(); updateTimeline(); } }
   function updateTimeline(){ const p=$('timelinePanel'); if(!p||!p.classList.contains('show')) return;
     const maxT=Math.max(state.simSeconds,1); const cur=reviewT==null?state.simSeconds:reviewT; const pc=Math.min(100,cur/maxT*100);
-    $('tlFill').style.width=pc+'%'; $('tlHead').style.left=pc+'%';
-    $('tlNow').textContent=fmtT(cur)+(reviewT!=null?' \u25c2':''); $('tlEnd').textContent=fmtT(maxT);
+    $('tlFill').style.width=pc+'%'; $('tlHead').style.left=pc+'%'; $('tlNow').textContent=fmtT(cur)+(reviewT!=null?' \u25c2':''); $('tlEnd').textContent=fmtT(maxT);
     const track=$('tlTicks'); track.innerHTML='';
     state.history.forEach(h=>{ if(h.tSec==null) return; const el=document.createElement('div'); el.className='tl-tick '+h.type; el.style.left=(Math.min(h.tSec,maxT)/maxT*100)+'%';
       const lbl=h.type==='launch'?t('b_launch'):h.type==='intercept'?t('b_intercept'):h.type==='hit'?t('b_hit'):t('b_deploy');
       el.addEventListener('mouseenter',()=>{ const tip=$('tlTip'); tip.style.display='block'; tip.style.left=el.style.left; tip.innerHTML=h.time+' \u00b7 <b>'+h.name+'</b> \u00b7 '+lbl; });
       el.addEventListener('mouseleave',()=>{ $('tlTip').style.display='none'; });
-      el.addEventListener('click',ev=>{ ev.stopPropagation(); map.flyTo(h.pos,9); Snd.ping(); });
+      el.addEventListener('click',ev=>{ ev.stopPropagation(); map.flyTo({center:LL(h.pos),zoom:9}); Snd.ping(); });
       track.appendChild(el);
     });
     const axis=$('tlAxis'); axis.innerHTML=''; for(let i=0;i<=4;i++){ const l=document.createElement('div'); l.className='tl-lbl'; l.style.left=(i*25)+'%'; l.textContent=fmtT(maxT*i/4); axis.appendChild(l); }
   }
-  function showGhosts(tt){ ghostLayer.addTo(map); ghostLayer.clearLayers(); if(!state.rec.length) return; let snap=state.rec[0]; for(const s of state.rec){ if(s.t<=tt) snap=s; else break; }
-    state.targets.forEach(x=>{ if(x.marker&&x.marker.setOpacity) x.marker.setOpacity(0); if(x.toolbar) x.toolbar.style.display='none'; });
-    snap.tgts.forEach(g=>{ L.circleMarker([g.lat,g.lng],{ radius:5, color:g.cheap?'#22ff99':'#ff5555', weight:2, opacity:0.95, fillColor:g.cheap?'#22ff99':'#ff5555', fillOpacity:0.5, interactive:false, renderer:ensureRenderer() }).addTo(ghostLayer); });
-  }
-  function enterReview(tt){ reviewT=tt; if(state.isSimulating){ state.isSimulating=false; updateNav(); } showGhosts(tt); updateTimeline(); }
-  function exitReview(){ if(reviewT==null) return; reviewT=null; ghostLayer.clearLayers(); state.targets.forEach(x=>{ if(x.marker&&x.marker.setOpacity) x.marker.setOpacity(1); if(x.toolbar) x.toolbar.style.display=''; }); updateTimeline(); }
+  function setLiveHidden(hidden){ const disp=hidden?'none':''; const all=[...state.targets,...state.uaPlanes,...state.pvo,...state.missiles]; all.forEach(o=>{ if(o.mk&&o.mk.el) o.mk.el.style.display=disp; }); }
+  function showGhosts(tt){ ghostPts=[]; if(state.rec.length){ let snap=state.rec[0]; for(const s of state.rec){ if(s.t<=tt) snap=s; else break; } snap.tgts.forEach(g=>{ ghostPts.push({pos:[g.lng,g.lat], color: g.cheap?[34,255,153,235]:[255,85,85,235]}); }); } setLiveHidden(true); updateDeck(); updateTimeline(); }
+  function enterReview(tt){ reviewT=tt; if(state.isSimulating){ state.isSimulating=false; updateNav(); } showGhosts(tt); }
+  function exitReview(){ if(reviewT==null) return; reviewT=null; ghostPts=[]; setLiveHidden(false); updateDeck(); updateTimeline(); }
   function tlScrub(clientX){ const tr=$('tlTrack'); const r=tr.getBoundingClientRect(); let pct=(clientX-r.left)/r.width; pct=Math.max(0,Math.min(1,pct)); enterReview(pct*Math.max(state.simSeconds,1)); }
 
-  map.on('move',syncAllToolbars); map.on('zoomend',syncAllToolbars);
-  map.on('zoom',()=>{ state.pvo.forEach(p=>{ if(p.type==='sam'){ const size=getRadarSizeInPixels(p.radius,p.pos[0]); const el=p.layers[0].getElement(); if(el){ const sw=el.querySelector('.radar-sweep'); if(sw){ sw.style.width=size+'px'; sw.style.height=size+'px'; } } } }); });
-
+  /* ================= play / speed ================= */
   function updateClock(){ $('simTime').textContent=getSimTimeString(); }
+  function updateSpeedUI(){ document.querySelectorAll('#speedPill span').forEach(s=>{ s.classList.toggle('active', state.isSimulating&&state.timeCompression===+s.dataset.speed); }); }
   function updateNav(){
     const btn=$('playBtn'), undo=$('undoBtn'), attack=$('attackBtn');
     undo.classList.toggle('visible',state.pendingPath.length>0||state.history.length>0);
@@ -885,25 +831,78 @@ class Component extends DCLogic {
     else { btn.innerHTML=state.isSimulating?'<i class="fas fa-pause"></i>':'<i class="fas fa-play"></i>'; btn.className='btn btn-play'+(state.isSimulating?' simulating':''); }
     updateSpeedUI();
   }
+  function doPlay(){
+    Snd.init(); if(reviewT!=null) exitReview();
+    if(state.pendingPath.length>0){ Snd.ping(); if(state.currentMode==='pvo'){ if(state.pendingPath.length>=2||CONFIG[$('pvoSelect').value].type!=='mrg') createPVO(state.pendingPath[0]); } else { if(state.pendingPath.length>=2) createTarget(); } }
+    else { state.isSimulating=!state.isSimulating; state.lastFrame=performance.now(); if(state.isSimulating){ Snd.alert(); requestAnimationFrame(simLoop); notify(mapCenterLL(),t('n_simstart'),'#22ff99'); } else { Snd.ping(); syncLabels(); notify(mapCenterLL(),t('n_pause'),'#ffd24d'); } }
+    updateNav();
+  }
+  function setSpeed(v){ Snd.ping(); if(reviewT!=null) exitReview(); state.timeCompression=+v; if(!state.isSimulating){ state.isSimulating=true; state.lastFrame=performance.now(); requestAnimationFrame(simLoop); notify(mapCenterLL(),t('n_simstart'),'#22ff99'); } updateNav(); }
 
-  /* ---------- hint ---------- */
-  let hintTimer=null;
-  function showHint(txt){ const h=$('hint'); h.textContent=txt; h.classList.add('show'); clearTimeout(hintTimer); hintTimer=setTimeout(()=>h.classList.remove('show'),2600); }
+  /* ================= DeepState ================= */
+  let dsVisible=true;
+  function toggleDS(){ Snd.ping(); dsVisible=!dsVisible; $('dsBtn').classList.toggle('on',dsVisible); updateDeck(); }
+  function setSub(txt){ const sub=document.querySelector('.ht-sub'); if(sub){ sub.textContent=txt; sub.removeAttribute('data-i18n'); } }
+  function parseDS(j){ const feats=(j.map&&j.map.features)||[]; const inUA=f=>{ let c=f.geometry.coordinates; while(Array.isArray(c[0])) c=c[0]; return c[0]>21&&c[0]<42&&c[1]>43.5&&c[1]<53; }; const keep=feats.filter(f=>f.geometry&&f.geometry.type==='Polygon'&&['#a52714','#880e4f','#bcaaa4'].includes(f.properties.fill)&&inUA(f)); keep.sort((a,b)=>(dsOrder[a.properties.fill]||0)-(dsOrder[b.properties.fill]||0)); return { type:'FeatureCollection', features:keep }; }
+  async function fetchDS(){ const r=await fetch('https://deepstatemap.live/api/history/last'); return await r.json(); }
+  async function loadDeepState(){
+    const CK='radarDSCacheV2';
+    try{
+      const j=await fetchDS(); const fc=parseDS(j); if(!fc.features.length) throw new Error('empty');
+      state.occFC=fc; state.frontLine=null;
+      try{ localStorage.setItem(CK, JSON.stringify({t:Date.now(), dt:j.datetime||'', fc})); }catch(_){}
+      setSub('DeepState · '+String(j.datetime||'').replace(/\s*o\s*/i,' '));
+    }catch(e1){
+      try{ await new Promise(r=>setTimeout(r,2000)); const j=await fetchDS(); const fc=parseDS(j); if(!fc.features.length) throw new Error('empty'); state.occFC=fc; state.frontLine=null; try{ localStorage.setItem(CK, JSON.stringify({t:Date.now(), dt:j.datetime||'', fc})); }catch(_){}; setSub('DeepState · '+String(j.datetime||'').replace(/\s*o\s*/i,' ')); }
+      catch(e2){
+        let cached=null; try{ cached=JSON.parse(localStorage.getItem(CK)||'null'); }catch(_){}
+        if(cached&&cached.fc){ state.occFC=cached.fc; state.frontLine=null; const days=Math.max(0,Math.round((Date.now()-cached.t)/86400000)); setSub('DeepState (кеш'+(days?(' · '+days+'д'):'')+')'); }
+        else { state.occFC=null; state.frontLine=frontFallback.map(LL); setSub('DeepState offline · приблизна ЛБЗ'); }
+      }
+    }
+    updateDeck();
+  }
 
-  /* ---------- preset menu ---------- */
+  /* ================= preset / reset ================= */
   function closePreset(){ $('presetMenu').classList.remove('show'); $('presetBtn').classList.remove('on'); }
-  function togglePreset(){ Snd.ping(); const on=$('presetMenu').classList.toggle('show'); $('presetBtn').classList.toggle('on',on); if(on){ $('historyModal').classList.remove('show'); $('historyBtn').classList.remove('on'); } }
-
-  /* ---------- reset ---------- */
+  function togglePreset(){ Snd.ping(); const on=$('presetMenu').classList.toggle('show'); $('presetBtn').classList.toggle('on',on); if(on){ $('historyModal').classList.remove('show'); $('historyBtn').classList.remove('on'); $('timelinePanel').classList.remove('show'); $('timelineBtn').classList.remove('on'); } }
   function resetAll(){ Snd.ping(); location.reload(); }
 
-  /* ---------- wire UI ---------- */
+  /* ================= hint ================= */
+  let hintTimer=null;
+  function showHint(txt){ const h=$('hint'); h.textContent=txt; h.classList.add('show'); clearTimeout(hintTimer); hintTimer=setTimeout(()=>h.classList.remove('show'),2600); }
+  function setMode(m){ Snd.ping(); state.currentMode=m; $('pvoCard').classList.toggle('active',m==='pvo'); $('targetCard').classList.toggle('active',m==='target'); resetCurrentSelection(); showHint(m==='pvo'?t('hint_pvo'):t('hint_target')); updateNav(); }
+
+  /* ================= map click ================= */
+  map.on('click', e=>{
+    Snd.init(); Snd.ping(); const pos=[e.lngLat.lat, e.lngLat.lng];
+    if(state.currentMode==='pvo'){
+      const type=$('pvoSelect').value;
+      if(CONFIG[type].type==='mrg'){ state.pendingPath.push(pos); }
+      else { createPVO(pos); return; }
+    } else {
+      const type=$('targetSelect').value, cfg=CONFIG[type];
+      if(state.pendingPath.length===0){ state.pendingPath.push(pos); state.rangeCfg=cfg; }
+      else { const d=haversine(state.pendingPath[0],pos)/1000; if(d>cfg.maxRange){ notify(pos,`${t('n_range')} (${Math.round(d)} > ${cfg.maxRange} км)`,'#ff5555'); Snd.warning(); return; } state.pendingPath.push(pos); }
+    }
+    updateDeck(); updateNav();
+  });
+
+  function undoLastAction(){
+    Snd.ping();
+    if(state.pendingPath.length>0){ state.pendingPath.pop(); if(state.pendingPath.length===0) state.rangeCfg=null; updateDeck(); }
+    else if(state.history.length>0){ const last=state.history.pop(); const idx=state.pvo.findIndex(i=>i.name===last.name&&i.active); if(idx!==-1){ removeObj(state.pvo[idx]); state.pvo.splice(idx,1); rebuildStatic(); } else { const pi=state.uaPlanes.findIndex(i=>i.name===last.name&&i.active); if(pi!==-1){ removeObj(state.uaPlanes[pi]); state.uaPlanes.splice(pi,1); } } updateDeck(); }
+    updateCounters(); updateNav();
+  }
+
+  /* ================= wire UI ================= */
   function openList(sel,e){ if(e&&e.target===sel) return; try{ if(sel.showPicker) sel.showPicker(); else { sel.focus(); sel.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); } }catch(_){ sel.focus(); } }
   $('pvoCard').addEventListener('click',e=>{ setMode('pvo'); openList($('pvoSelect'),e); });
   $('targetCard').addEventListener('click',e=>{ setMode('target'); openList($('targetSelect'),e); });
   $('pvoSelect').addEventListener('change',()=>Snd.ping());
   $('targetSelect').addEventListener('change',()=>Snd.ping());
   $('locBtn').addEventListener('click',locateUser);
+  $('modeBtn').addEventListener('click',toggle3d);
   $('layerBtn').addEventListener('click',toggleMapLayer);
   $('dsBtn').addEventListener('click',toggleDS);
   $('soundBtn').addEventListener('click',()=>{ soundOn=!soundOn; localStorage.setItem('radarSound',soundOn?'1':'0'); $('soundBtn').classList.toggle('on',soundOn); $('soundBtn').innerHTML=soundOn?'<i class="fas fa-volume-up"></i>':'<i class="fas fa-volume-mute"></i>'; if(soundOn) Snd.ping(); });
@@ -913,34 +912,35 @@ class Component extends DCLogic {
   $('presetBtn').addEventListener('click',togglePreset);
   $('historyBtn').addEventListener('click',toggleHistory);
   $('timelineBtn').addEventListener('click',toggleTimeline);
-  (function(){ const tr=$('tlTrack'); if(!tr) return; let drag=false;
-    const cx=e=>e.touches?e.touches[0].clientX:e.clientX;
-    const down=e=>{ drag=true; tlScrub(cx(e)); e.preventDefault(); };
-    const move=e=>{ if(drag) tlScrub(cx(e)); };
-    const up=()=>{ drag=false; };
-    tr.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
-    tr.addEventListener('touchstart',down,{passive:false}); window.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
-  })();
   $('resetBtn').addEventListener('click',resetAll);
   $('dcClose').addEventListener('click',()=>{ state.selected=null; $('detailCard').classList.remove('show'); Snd.ping(); });
   document.querySelectorAll('#speedPill span').forEach(s=>s.addEventListener('click',()=>setSpeed(s.dataset.speed)));
   document.querySelectorAll('#presetMenu [data-scn]').forEach(b=>b.addEventListener('click',()=>runScenario(b.dataset.scn)));
   document.querySelectorAll('#langSwitch span').forEach(s=>s.addEventListener('click',()=>{ Snd.ping(); applyLang(s.dataset.lang); }));
   $('soundBtn').classList.toggle('on',soundOn);
+  (function(){ const tr=$('tlTrack'); if(!tr) return; let drag=false; const cx=e=>e.touches?e.touches[0].clientX:e.clientX;
+    const down=e=>{ drag=true; tlScrub(cx(e)); e.preventDefault(); }; const move=e=>{ if(drag) tlScrub(cx(e)); }; const up=()=>{ drag=false; };
+    tr.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+    tr.addEventListener('touchstart',down,{passive:false}); window.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
+  })();
+  document.body.addEventListener('click',()=>Snd.init(),{once:true});
 
-  /* ---------- onboarding ---------- */
-  const ob=$('onboard');
-  if(localStorage.getItem('radarOnboardV1')==='1') ob.classList.add('hide');
-  $('obBtn').addEventListener('click',()=>{ Snd.init(); Snd.ping(); ob.classList.add('hide'); localStorage.setItem('radarOnboardV1','1'); showHint(t('hint_pvo')); });
+  /* ================= map events ================= */
+  map.on('zoom',resizeSweeps);
+  map.on('pitch',()=>{ document.body.classList.toggle('mode-3d', map.getPitch()>12); });
+  map.on('styledata',()=>{ /* deck overlay persists as control */ });
 
-  /* ---------- init ---------- */
-  applyLang(lang);
-  updateClock(); setInterval(()=>{ if(!state.isSimulating) updateClock(); },1000);
-  updateNav(); updateStats();
-  map.whenReady(()=>map.invalidateSize());
-  setTimeout(()=>map.invalidateSize(),300);
-  }
-}
+  /* ================= init ================= */
+  map.on('load',()=>{
+    resizeSweeps();
+    applyLang(lang);
+    updateNav(); updateStats(); updateClock();
+    loadDeepState();
+    updateDeck();
+    showHint(t('hint_pvo'));
+  });
+  setInterval(()=>{ if(!state.isSimulating) updateClock(); },1000);
+})();
 </script>
 </body>
 </html>
