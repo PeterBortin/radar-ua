@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>RADAR-UA · Планування ППО</title>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="https://unpkg.com/deck.gl@9.1.0/dist.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/deck.gl@9.1.0/dist.min.js"></script>
 <style>
 @font-face{font-family:'SF Pro Text';src:local('SF Pro Text'),url('uploads/SF-Pro-Text-Regular.otf') format('opentype');font-weight:400;font-display:swap;}
 @font-face{font-family:'SF Pro Text';src:local('SF Pro Text'),url('uploads/SF-Pro-Text-Medium.otf') format('opentype');font-weight:500;font-display:swap;}
@@ -83,12 +83,15 @@ body.mode-3d .radar-sweep{display:none;}
 select{width:100%;background:#0a1310;color:#eafff4;border:1px solid var(--border);border-radius:6px;padding:7px;font-family:inherit;font-size:12px;outline:none;}
 optgroup{background:#040706;color:var(--muted);}
 option{background:#0a1310;color:#eafff4;}
-.dock-actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
-.btn{width:46px;height:46px;border-radius:50%;border:1px solid var(--border);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;backdrop-filter:blur(8px);transition:.15s;flex-shrink:0;}
+.dock-actions{display:flex;flex-direction:column;gap:8px;}
+.dock-utils{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
+.dock-primary{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:nowrap;}
+.dock-utils .btn{width:40px;height:40px;font-size:14px;}
+.btn{width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;backdrop-filter:blur(8px);transition:.15s;flex-shrink:0;}
 .btn:hover{border-color:var(--green);color:#eafff4;}
 .btn:active{transform:scale(.92);}
 .btn.on{border-color:var(--green);color:var(--green);}
-.btn-play{width:58px;height:58px;background:var(--green);color:#040706;border:none;font-size:20px;box-shadow:0 0 22px rgba(34,255,153,.45);}
+.btn-play{width:56px;height:56px;background:var(--green);color:#040706;border:none;font-size:20px;box-shadow:0 0 22px rgba(34,255,153,.45);}
 .btn-play.simulating{background:#0a1310;color:var(--green);border:1px solid var(--green);box-shadow:none;}
 .btn-play.confirm{background:var(--green);color:#040706;box-shadow:0 0 26px rgba(34,255,153,.6);}
 .btn-undo{opacity:.3;pointer-events:none;}
@@ -138,25 +141,38 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
 .hint{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:870;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:7px 14px;font-size:11px;color:var(--text);backdrop-filter:blur(8px);pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;}
 .hint.show{opacity:1;}
 .btn:focus-visible,select:focus-visible,.lang span:focus-visible,.speed-pill span:focus-visible,.pop-item:focus-visible,.tool-card:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
+#historyModal,.popover,#timelinePanel{bottom:196px;}
+@media (min-width:900px){ .dock-actions{flex-direction:row;gap:16px;align-items:center;} #historyModal,.popover,#timelinePanel{bottom:150px;} }
 @media (prefers-reduced-motion: reduce){.radar-sweep,.pulse,.btn-attack,#alertChip{animation:none !important;}.map-notification{animation-duration:.01ms;}.detail-card{transition:none;}}
 @media (max-width:640px){
 .ht-title{display:none;}
 .clock{font-size:15px;}
 .ht-sub{display:none;}
-.chip{padding:4px 7px;font-size:11px;}
-.stat-cluster{bottom:auto;top:50px;left:8px;gap:5px;}
-.stat{padding:5px 9px;min-width:56px;}
+.hud-top{padding:8px 10px;gap:7px;}
+.ht-right{gap:5px;}
+.chip{padding:3px 6px;font-size:10px;gap:4px;border-radius:6px;}
+.lang{padding:2px;}
+.lang span{padding:3px 6px;font-size:10px;}
+.stat-cluster{bottom:auto;top:48px;left:8px;gap:5px;}
+.stat{padding:5px 9px;min-width:54px;}
 .stat-n{font-size:16px;}
-.detail-card{top:auto;bottom:206px;right:8px;left:8px;width:auto;}
-.dock{bottom:12px;width:calc(100% - 16px);gap:8px;}
-.dock-selects{flex-direction:column;}
-.dock-actions{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-.dock-actions::-webkit-scrollbar{display:none;}
+.detail-card{top:auto;bottom:196px;right:8px;left:8px;width:auto;padding:11px;}
+.dock{bottom:10px;width:calc(100% - 14px);gap:7px;}
+.dock-selects{flex-direction:row;gap:7px;}
+.tool-card{padding:7px 9px;}
+.tc-label{font-size:8px;margin-bottom:4px;}
+select{padding:6px;font-size:11px;}
+.dock-actions{gap:7px;}
+.dock-utils{gap:6px;}
+.dock-primary{gap:6px;}
+.dock-utils .btn{width:36px;height:36px;font-size:13px;}
 .btn{width:42px;height:42px;font-size:14px;}
-.btn-play{width:50px;height:50px;font-size:17px;}
-.speed-pill span{padding:5px 7px;}
-#historyModal,.popover,#timelinePanel{bottom:92px;}
-#timelinePanel{width:calc(100% - 16px);}
+.btn-play{width:48px;height:48px;font-size:16px;}
+.speed-pill{padding:3px;gap:1px;}
+.speed-pill span{padding:6px 7px;font-size:11px;}
+#historyModal,.popover,#timelinePanel{bottom:196px;}
+#historyModal{max-height:36vh;}
+#timelinePanel{width:calc(100% - 14px);}
 }
 </style>
 </head>
@@ -264,23 +280,27 @@ tbody tr:hover{background:rgba(34,255,153,.05);}
     </div>
   </div>
   <div class="dock-actions">
-    <button class="btn" id="locBtn" title="геопозиція"><i class="fas fa-crosshairs"></i></button>
-    <button class="btn" id="modeBtn" title="2D / 3D"><i class="fas fa-cube"></i></button>
-    <button class="btn" id="layerBtn" title="карта"><i class="fas fa-layer-group"></i></button>
-    <button class="btn on" id="dsBtn" title="території DeepState"><i class="fas fa-draw-polygon"></i></button>
-    <button class="btn" id="soundBtn" title="звук"><i class="fas fa-volume-up"></i></button>
-    <button class="btn btn-undo" id="undoBtn"><i class="fas fa-undo"></i></button>
-    <button class="btn btn-play" id="playBtn"><i class="fas fa-play"></i></button>
-    <button class="btn" id="timelineBtn" title="таймлайн"><i class="fas fa-timeline"></i></button>
-    <div class="speed-pill" id="speedPill">
-      <span data-speed="1" class="active">1x</span>
-      <span data-speed="2">2x</span>
-      <span data-speed="4">4x</span>
+    <div class="dock-utils">
+      <button class="btn" id="locBtn" title="геопозиція"><i class="fas fa-crosshairs"></i></button>
+      <button class="btn" id="modeBtn" title="2D / 3D"><i class="fas fa-cube"></i></button>
+      <button class="btn" id="layerBtn" title="карта"><i class="fas fa-layer-group"></i></button>
+      <button class="btn on" id="dsBtn" title="території DeepState"><i class="fas fa-draw-polygon"></i></button>
+      <button class="btn" id="soundBtn" title="звук"><i class="fas fa-volume-up"></i></button>
+      <button class="btn" id="timelineBtn" title="таймлайн"><i class="fas fa-timeline"></i></button>
+      <button class="btn" id="historyBtn" title="журнал"><i class="fas fa-list-ul"></i></button>
+      <button class="btn" id="resetBtn" title="скинути"><i class="fas fa-rotate-left"></i></button>
     </div>
-    <button class="btn btn-attack" id="attackBtn" title="масований удар"><i class="fas fa-radiation"></i></button>
-    <button class="btn" id="presetBtn" title="сценарії"><i class="fas fa-bolt"></i></button>
-    <button class="btn" id="historyBtn"><i class="fas fa-list-ul"></i></button>
-    <button class="btn" id="resetBtn" title="скинути"><i class="fas fa-rotate-left"></i></button>
+    <div class="dock-primary">
+      <button class="btn btn-undo" id="undoBtn" title="крок назад"><i class="fas fa-undo"></i></button>
+      <button class="btn" id="presetBtn" title="сценарії"><i class="fas fa-bolt"></i></button>
+      <button class="btn btn-play" id="playBtn"><i class="fas fa-play"></i></button>
+      <button class="btn btn-attack" id="attackBtn" title="масований удар"><i class="fas fa-radiation"></i></button>
+      <div class="speed-pill" id="speedPill">
+        <span data-speed="1" class="active">1x</span>
+        <span data-speed="2">2x</span>
+        <span data-speed="4">4x</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -411,26 +431,34 @@ const OBLASTS_DATA = {"type":"FeatureCollection","features":[{"type":"Feature","
   function regionIndexAt(pt){ const x=pt[1], y=pt[0]; for(let i=0;i<OB.length;i++){ const b=OB[i].bbox; if(x<b[0]||x>b[2]||y<b[1]||y>b[3]) continue; if(ringsContain(OB[i].rings,x,y)) return i; } return -1; }
 
   /* ================= map + deck ================= */
-  const CARTO_DARK = ['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png`);
-  const CARTO_LABELS = ['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png`);
-  const ATTR = '© <a href="https://carto.com/attributions">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>';
-  const DARK_STYLE = { version:8, sources:{ base:{type:'raster',tiles:CARTO_DARK,tileSize:256,attribution:ATTR}, lbl:{type:'raster',tiles:CARTO_LABELS,tileSize:256} }, layers:[ {id:'bg',type:'background',paint:{'background-color':'#050a08'}}, {id:'base',type:'raster',source:'base'}, {id:'lbl',type:'raster',source:'lbl'} ] };
-  const SAT_STYLE = { version:8, sources:{ sat:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,attribution:'© Esri'}, lbl:{type:'raster',tiles:CARTO_LABELS,tileSize:256} }, layers:[ {id:'bg',type:'background',paint:{'background-color':'#050a08'}}, {id:'sat',type:'raster',source:'sat'}, {id:'lbl',type:'raster',source:'lbl',paint:{'raster-opacity':0.85}} ] };
+  // CARTO keyless hosted vector style — reliable + crisp when tilted (3D)
+  const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+  // Satellite: Esri World Imagery + Esri reference labels (keyless)
+  const SAT_STYLE = { version:8, sources:{ sat:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,attribution:'© Esri, Maxar, Earthstar Geographics'}, ref:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],tileSize:256} }, layers:[ {id:'bg',type:'background',paint:{'background-color':'#050a08'}}, {id:'sat',type:'raster',source:'sat'}, {id:'ref',type:'raster',source:'ref',paint:{'raster-opacity':0.9}} ] };
+  // Emergency fallback (different provider) if the vector style is blocked
+  const FALLBACK_STYLE = { version:8, sources:{ osm:{type:'raster',tiles:['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png','https://b.tile.openstreetmap.org/{z}/{x}/{y}.png','https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,attribution:'© OpenStreetMap'} }, layers:[ {id:'bg',type:'background',paint:{'background-color':'#050a08'}}, {id:'osm',type:'raster',source:'osm',paint:{'raster-brightness-max':0.55,'raster-saturation':-0.55,'raster-contrast':0.1}} ] };
 
   const map = new maplibregl.Map({ container:'map', style:DARK_STYLE, center:[31,48], zoom:5, pitch:0, bearing:0, minZoom:3, maxZoom:14, maxPitch:70, attributionControl:false, dragRotate:false, pitchWithRotate:false });
   map.addControl(new maplibregl.AttributionControl({compact:true}), 'bottom-right');
   try{ map.touchZoomRotate.disableRotation(); }catch(_){}
   try{ map.keyboard.disableRotation && map.keyboard.disableRotation(); }catch(_){}
   try{ if(map.touchPitch) map.touchPitch.enable(); }catch(_){}
+  map.on('error', e=>{ try{ console.warn('map error:', e && e.error && e.error.message); }catch(_){} });
+  window.addEventListener('resize', ()=>{ try{ map.resize(); }catch(_){} });
 
   const D = window.deck || {};
   const HAS_DECK = !!(D && D.MapboxOverlay);
   const DashExt = (D && D.PathStyleExtension) ? [new D.PathStyleExtension({dash:true})] : null;
   let overlay = null;
-  if(HAS_DECK){ overlay = new D.MapboxOverlay({ interleaved:false, layers:[] }); map.addControl(overlay); }
+  if(HAS_DECK){ try{ overlay = new D.MapboxOverlay({ interleaved:false, layers:[] }); map.addControl(overlay); }catch(err){ overlay=null; try{console.warn('deck overlay failed:',err);}catch(_){} } }
 
-  let currentLayer='dark', is3d=false;
-  function toggleMapLayer(){ Snd.ping(); currentLayer = currentLayer==='dark'?'satellite':'dark'; map.setStyle(currentLayer==='dark'?DARK_STYLE:SAT_STYLE); }
+  let currentLayer='dark', is3d=false, mapReady=false, didInit=false;
+  function initApp(){ if(didInit) return; didInit=true; map.resize(); resizeSweeps(); applyLang(lang); updateNav(); updateStats(); updateClock(); loadDeepState(); updateDeck(); showHint(t('hint_pvo')); }
+  function afterStyle(){ map.once('idle',()=>{ resizeSweeps(); updateDeck(); }); }
+  // safety net: if the primary style can't load within 8s, swap to a raster fallback so the map still renders
+  setTimeout(()=>{ if(!mapReady){ try{ currentLayer='dark'; map.setStyle(FALLBACK_STYLE); }catch(_){} map.once('idle',()=>{ initApp(); resizeSweeps(); updateDeck(); }); } }, 8000);
+  setTimeout(()=>{ initApp(); }, 12000);
+  function toggleMapLayer(){ Snd.ping(); currentLayer = currentLayer==='dark'?'satellite':'dark'; map.setStyle(currentLayer==='dark'?DARK_STYLE:SAT_STYLE); afterStyle(); }
   function toggle3d(){ is3d=!is3d; map.easeTo({pitch:is3d?60:0, duration:650}); $('modeBtn').classList.toggle('on',is3d); $('modeBtn').title=is3d?t('mode3d'):t('mode2d'); Snd.ping(); }
   function locateUser(){ Snd.ping(); if(!navigator.geolocation){ notify(mapCenterLL(), t('n_geooff'), '#ff5555'); return; } navigator.geolocation.getCurrentPosition(p=>{ const ll=[p.coords.latitude,p.coords.longitude]; Snd.alert(); map.flyTo({center:LL(ll), zoom:10}); notify(ll, t('n_geo'), '#22ff99'); }, ()=>{ Snd.warning(); notify(mapCenterLL(), t('n_geooff'), '#ff5555'); }, {enableHighAccuracy:true,timeout:8000}); }
   function mapCenterLL(){ const c=map.getCenter(); return [c.lat,c.lng]; }
@@ -574,7 +602,7 @@ const OBLASTS_DATA = {"type":"FeatureCollection","features":[{"type":"Feature","
   }
   function buildAlertData(){
     const now=performance.now(); const pulse=0.5+0.5*Math.sin(now/450); alertData=[]; let cnt=0;
-    for(const rg of OB){ const base = now<rg.litUntil ? 0.16 : 0; rg.alpha += (base-rg.alpha)*0.18; if(rg.alpha>0.012){ const a=Math.round(Math.min(1,rg.alpha*(0.72+0.4*pulse))*255); alertData.push({type:'Feature', geometry:rg.geometry, properties:{a}, __a:a}); if(rg.alpha>0.05) cnt++; } }
+    for(const rg of OB){ const base = now<rg.litUntil ? 0.26 : 0; rg.alpha += (base-rg.alpha)*0.18; if(rg.alpha>0.012){ const a=Math.round(Math.min(1,rg.alpha*(0.72+0.4*pulse))*255); alertData.push({type:'Feature', geometry:rg.geometry, properties:{a}, __a:a}); if(rg.alpha>0.05) cnt++; } }
     const chip=$('alertChip'); if(reviewT==null && cnt>0){ chip.style.display=''; $('alertCount').textContent=cnt; } else chip.style.display='none';
   }
   function updateDeck(){
@@ -931,14 +959,7 @@ const OBLASTS_DATA = {"type":"FeatureCollection","features":[{"type":"Feature","
   map.on('styledata',()=>{ /* deck overlay persists as control */ });
 
   /* ================= init ================= */
-  map.on('load',()=>{
-    resizeSweeps();
-    applyLang(lang);
-    updateNav(); updateStats(); updateClock();
-    loadDeepState();
-    updateDeck();
-    showHint(t('hint_pvo'));
-  });
+  map.on('load',()=>{ mapReady=true; initApp(); });
   setInterval(()=>{ if(!state.isSimulating) updateClock(); },1000);
 })();
 </script>
