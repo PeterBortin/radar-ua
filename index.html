@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Δ⁹ · delta⁹ // ППО 3D</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/deck.gl@9.1.0/dist.min.js"></script>
+<style>
+:root{
+  --bg:#06080c;--bg2:#04060a;--panel:#0a0f15;--panel2:#0c131b;--panel3:#0f1822;
+  --line:#15251d;--line2:#101d17;--line3:#20382b;
+  --amber:#ffb454;--amber-d:#b0863f;--amber-dd:#6d5227;--green:#4dffa6;--green-d:#2f9668;--green-dd:#154a35;
+  --ink:#cbe6d6;--ink-d:#6f9585;--ink-dd:#3f5b4e;
+  --drone:#ffb000;--cruise:#ff6a3c;--ballistic:#ff4fa3;--hyper:#c58cff;--int:#4dffa6;--threat:#ff5a5a;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --glyph:-apple-system,"SF Pro Text","SF Pro",system-ui,"IBM Plex Mono",monospace;
+  --r1:3px;--r2:5px;--r3:8px;--r4:12px;
+  --glass:rgba(9,14,20,.82);--topoff:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;line-height:1.4;overflow:hidden;
+  font-variant-numeric:tabular-nums;letter-spacing:.01em;-webkit-text-size-adjust:100%}
+button,select,input{font-family:var(--mono)}
+a{color:var(--amber);text-decoration:none}a:hover{color:var(--green)}
+::selection{background:rgba(255,180,84,.28);color:#fff}
+/* atmosphere — dialled back for a cleaner, refined read */
+.scan{position:fixed;inset:0;z-index:60;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.08) 3px);mix-blend-mode:multiply;opacity:.14}
+.vig{position:fixed;inset:0;z-index:59;pointer-events:none;background:radial-gradient(135% 105% at 50% 38%,transparent 68%,rgba(0,0,0,.4) 100%)}
+
+.pnl{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2)}
+.ttl{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber-d);display:flex;align-items:center;gap:7px}
+.ttl::before{content:"";width:9px;height:9px;border:1.5px solid var(--amber-dd);border-left-color:var(--amber);border-radius:1px;transform:rotate(45deg);flex:none}
+
+#app{position:fixed;inset:0}
+#head{position:absolute;left:10px;right:10px;top:10px;z-index:30;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line3);border-radius:var(--r3);box-shadow:0 10px 34px rgba(0,0,0,.45)}
+#tl{position:absolute;left:12px;right:12px;bottom:10px;z-index:26;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line3);border-radius:var(--r3)}
+#rpanel-dock{display:none}
+#b-ctrl{position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:28;width:40px;height:40px;padding:0;border:1px solid var(--line3);background:rgba(8,13,18,.86);backdrop-filter:blur(6px);color:var(--ink-d);display:grid;place-items:center;font-size:16px;font-family:var(--glyph);border-radius:var(--r2);cursor:pointer;transition:.15s}
+#b-ctrl:hover{border-color:var(--amber);color:var(--amber)}
+#b-ctrl.on{border-color:var(--green);color:var(--green);background:rgba(77,255,166,.09)}
+/* ===== geo module ===== */
+.rtabs{display:flex;flex:none}
+.rtab{flex:1;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--ink-d);font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:10px 6px;cursor:pointer}
+.rtab.on{color:var(--amber);border-bottom-color:var(--amber)}
+.rtab b{color:var(--green)}
+.gtools{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.gtool{min-height:46px;border:1px solid var(--line2);border-radius:var(--r2);background:var(--panel2);color:var(--ink);font-family:var(--mono);font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.12s}
+.gtool .g{font-size:16px;color:var(--ink-d);font-family:var(--glyph)}
+.gtool:hover{border-color:var(--ink-d)}
+.gtool.on{border-color:var(--amber);color:var(--amber);background:rgba(255,180,84,.09)}
+.gtool.on .g{color:var(--amber)}
+.affrow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.affbtn{min-height:36px;border:1px solid var(--line2);border-radius:var(--r2);background:var(--panel2);color:var(--ink-d);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.affbtn .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.affbtn.on{color:#fff;border-color:currentColor}
+.draftbar{border:1px solid var(--amber-dd);border-radius:var(--r2);background:rgba(255,180,84,.06);padding:10px;margin-top:11px;font-size:10.5px;color:var(--amber);line-height:1.5}
+.draftbar .dbtns{display:flex;gap:6px;margin-top:9px}
+.draftbar button{flex:1;min-height:38px;border-radius:var(--r1);border:1px solid var(--line3);background:var(--panel2);color:var(--ink);font-family:var(--mono);font-weight:700;font-size:10.5px;cursor:pointer}
+.draftbar button.ok{border-color:var(--green);color:var(--green)}
+.jinput{width:100%;background:var(--panel2);border:1px solid var(--line3);color:var(--ink);border-radius:var(--r2);padding:10px;font-family:var(--mono);font-size:11.5px;margin-bottom:9px}
+.jfil{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.jfil-lab{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber-d)}
+.chiprow{display:flex;flex-wrap:wrap;gap:4px}
+.chip{border:1px solid var(--line2);border-radius:20px;background:var(--panel2);color:var(--ink-d);font-family:var(--mono);font-size:9px;padding:4px 9px;cursor:pointer}
+.chip.on{border-color:var(--amber);color:var(--amber);background:rgba(255,180,84,.08)}
+.jfil-row{display:flex;align-items:center;gap:8px;font-size:9px;color:var(--ink-d)}
+.jfil-row select{flex:1;min-height:34px;padding:6px 8px}
+.jlist{display:flex;flex-direction:column;gap:11px}
+.jgroup-t{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber-d);margin:2px 1px 6px;display:flex;justify-content:space-between}
+.jitem{display:flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:var(--r2);background:var(--panel2);padding:8px 9px;cursor:pointer;transition:.12s}
+.jitem+.jitem{margin-top:5px}
+.jitem:hover{border-color:var(--ink-d)}
+.jitem.sel{border-color:var(--amber);box-shadow:0 0 0 1px rgba(255,180,84,.25)}
+.jitem .ic{width:18px;text-align:center;font-size:14px;flex:none;font-family:var(--glyph)}
+.jitem .nm{flex:1;font-size:11px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jitem .nm .sub{font-size:8.5px;color:var(--ink-dd)}
+.jitem .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.jitem .vis{color:var(--ink-dd);cursor:pointer;font-size:12px;width:18px;text-align:center;flex:none}
+.jbadge{font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;padding:2px 5px;border-radius:3px;border:1px solid currentColor;flex:none}
+.gbtn{width:100%;min-height:40px;margin-top:9px;border:1px solid var(--line3);border-radius:var(--r2);background:var(--panel2);color:var(--ink);font-family:var(--mono);font-weight:700;font-size:10.5px;letter-spacing:.05em;cursor:pointer}
+.gbtn.danger{border-color:#5a2020;color:var(--threat)}
+.objcard{position:absolute;inset:0;z-index:10;background:rgba(8,12,18,.99);display:flex;flex-direction:column;overflow:hidden}
+.oc-head{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--line2);flex:none}
+.oc-head .oc-ic{font-size:16px;font-family:var(--glyph)}
+.oc-head .oc-t{flex:1;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--amber);text-transform:uppercase}
+.oc-head .oc-x{color:var(--ink-d);cursor:pointer;font-size:15px}
+.oc-body{padding:12px 13px;display:flex;flex-direction:column;gap:11px;overflow-y:auto}
+.fld label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-d);display:block;margin-bottom:4px}
+.fld input,.fld textarea,.fld select{width:100%;background:var(--panel2);border:1px solid var(--line3);color:var(--ink);border-radius:var(--r2);padding:9px 10px;font-family:var(--mono);font-size:11.5px}
+.fld textarea{resize:vertical;min-height:54px;line-height:1.5}
+.fld2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-d);padding:4px 0;border-bottom:1px dotted var(--line2)}
+.metric b{color:var(--ink);font-weight:700}
+.ocbtns{display:flex;gap:6px;flex-wrap:wrap}
+.ocbtns button{flex:1;min-height:40px;min-width:72px;border:1px solid var(--line3);border-radius:var(--r2);background:var(--panel2);color:var(--ink);font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.04em;cursor:pointer}
+.ocbtns .del{border-color:#5a2020;color:var(--threat)}
+.ocbtns .go{border-color:var(--green);color:var(--green)}
+.ocbtns .edit.on{border-color:var(--amber);color:var(--amber);background:rgba(255,180,84,.08)}
+.satbox{border:1px solid #2a6f8a;border-radius:var(--r2);background:rgba(63,182,217,.07);padding:10px;font-size:10.5px;color:#8fd4e6;line-height:1.5}
+.satbox .sbtn{width:100%;min-height:38px;margin-top:8px;border:1px solid #3fb6d9;border-radius:var(--r2);background:rgba(63,182,217,.12);color:#bfeaf6;font-family:var(--mono);font-weight:700;font-size:10.5px;cursor:pointer}
+.rellist{display:flex;flex-direction:column;gap:4px}
+.relitem{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--ink-d);cursor:pointer;padding:3px 0}
+.relitem:hover{color:var(--amber)}
+.tagrow{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.tagchip{font-size:9px;color:var(--ink-d);border:1px solid var(--line2);border-radius:12px;padding:2px 8px}
+
+/* ---------- header ---------- */
+#head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 12px}
+.brand{font-weight:700;color:var(--amber);letter-spacing:.12em;font-size:15px;line-height:1;white-space:nowrap;display:flex;flex-direction:column;gap:3px}
+.brand b{text-shadow:0 0 14px rgba(255,180,84,.35)}
+.brand small{font-size:7.5px;letter-spacing:.28em;color:var(--ink-d);font-weight:500}
+.hdiv{width:1px;height:26px;background:var(--line3);flex:none}
+#phases{display:flex;align-items:center;gap:0}
+.ps{position:relative;display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-dd);padding:5px 12px 5px 8px;cursor:default;white-space:nowrap;transition:color .2s}
+.ps i{font-style:normal;width:18px;height:18px;border:1px solid var(--line3);border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;color:var(--ink-dd);transition:.2s;flex:none}
+.ps+.ps::before{content:"";position:absolute;left:-6px;width:12px;height:1px;background:var(--line3)}
+.ps.on{color:var(--amber)}
+.ps.on i{border-color:var(--amber);color:var(--amber);background:rgba(255,180,84,.1);box-shadow:0 0 10px rgba(255,180,84,.25)}
+body[data-phase="run"] .ps[data-ph="setup"] i,body[data-phase="report"] .ps[data-ph="setup"] i,body[data-phase="report"] .ps[data-ph="run"] i{border-color:var(--green-dd);color:var(--green-d)}
+.ps[data-ph="setup"]{cursor:pointer}body[data-phase="report"] .ps[data-ph="run"]{cursor:pointer}
+
+#hud{display:flex;align-items:stretch;gap:7px;overflow-x:auto;scrollbar-width:none;flex-basis:100%;order:5;padding-top:3px;margin-top:1px;border-top:1px solid var(--line2)}
+#hud::-webkit-scrollbar{display:none}
+.hud-grp{display:flex;gap:6px}
+.hud-lab{writing-mode:vertical-rl;transform:rotate(180deg);font-size:6.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dd);align-self:center;padding:0 1px}
+.stat{flex:1 0 auto;min-width:58px;border:1px solid var(--line2);border-radius:var(--r1);padding:4px 9px 5px;background:var(--panel2);position:relative;overflow:hidden}
+.stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:currentColor;opacity:.6}
+.stat .n{font-weight:700;font-size:16px;line-height:1}
+.stat .l{font-size:7px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-d);margin-top:3px;white-space:nowrap}
+.stat.dr{color:var(--drone)}.stat.cr{color:var(--cruise)}.stat.ba{color:var(--ballistic)}.stat.hy{color:var(--hyper)}.stat.in{color:var(--int)}.stat.im{color:var(--threat)}
+.stat .n{color:currentColor}
+.hud-sep{width:1px;background:var(--line3);margin:2px 1px}
+#clkwrap{margin-left:auto;display:flex;align-items:center;gap:9px}
+#clk{font-weight:700;font-size:16px;color:var(--green);letter-spacing:.04em;text-shadow:0 0 12px rgba(77,255,166,.3);white-space:nowrap}
+.hbtn{width:28px;height:28px;border-radius:50%;border:1px solid var(--line3);background:var(--panel2);color:var(--ink-d);font-weight:700;font-size:13px;cursor:pointer;flex:none;display:grid;place-items:center}
+.hbtn:hover{border-color:var(--amber-d);color:var(--amber)}
+
+/* ---------- stage ---------- */
+#stage{position:absolute;inset:0;overflow:hidden;background:#020304;z-index:1}
+#map{position:absolute;inset:0}
+.maplibregl-ctrl-attrib,.maplibregl-ctrl-bottom-right,.maplibregl-ctrl-bottom-left{opacity:.28}
+#plats{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden}
+.plat{position:absolute;transform:translate(-50%,-50%);font-family:var(--glyph);font-size:16px;line-height:1;text-shadow:0 0 4px #000,0 0 2px #000;will-change:left,top}
+#hint{position:absolute;left:10px;top:calc(var(--topoff) + 46px);z-index:5;max-width:min(64%,520px);font-size:10.5px;color:var(--ink-d);letter-spacing:.02em;pointer-events:none;background:linear-gradient(90deg,rgba(4,6,10,.86),rgba(4,6,10,.2) 82%,transparent);padding:6px 12px 6px 9px;border-radius:var(--r2);border-left:2px solid var(--amber-dd);line-height:1.5}
+#hint b{color:var(--amber);font-weight:700}
+#stools{position:absolute;right:10px;top:50%;transform:translateY(-50%);z-index:28;display:flex;flex-direction:column;gap:6px}
+.tb{width:40px;height:40px;border-radius:var(--r2);border:1px solid var(--line3);background:rgba(8,13,18,.86);color:var(--ink-d);display:grid;place-items:center;cursor:pointer;font-size:15px;font-family:var(--glyph);backdrop-filter:blur(6px);transition:.15s}
+.tb:hover{border-color:var(--amber-d);color:var(--amber)}
+.tb.on{border-color:var(--green);color:var(--green);background:rgba(77,255,166,.09);box-shadow:0 0 0 1px rgba(77,255,166,.15)}
+#legend{position:absolute;left:10px;bottom:10px;z-index:6;display:flex;flex-wrap:wrap;gap:5px 12px;font-size:9px;letter-spacing:.04em;color:var(--ink-d);background:rgba(4,6,10,.72);padding:6px 10px;border-radius:var(--r2);max-width:min(440px,calc(100% - 20px));border:1px solid var(--line2);backdrop-filter:blur(6px)}
+body[data-phase="run"] #legend,body[data-phase="report"] #legend{display:none}
+#legend i{font-style:normal;font-weight:700}
+#loading{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;color:var(--ink-d);font-size:11px;letter-spacing:.14em;text-transform:uppercase;background:#020304}
+#loading.hide{display:none}
+.spin{width:26px;height:26px;border:2px solid var(--line3);border-top-color:var(--amber);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* right scaffold panel (slide-over for dir1/dir2) */
+#rpanel{position:absolute;top:var(--topoff);right:10px;bottom:12px;width:300px;max-width:88%;z-index:40;background:rgba(8,12,18,.98);backdrop-filter:blur(14px);
+  border:1px solid var(--line3);border-radius:var(--r3);transform:translateX(calc(100% + 20px));transition:transform .28s cubic-bezier(.22,.61,.36,1);
+  display:flex;flex-direction:column;box-shadow:-12px 0 36px rgba(0,0,0,.55)}
+#rpanel.open{transform:translateX(0)}
+.rhead{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--line2)}
+.rhead .t{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);font-weight:700}
+.rhead .rx{margin-left:auto;color:var(--ink-d);cursor:pointer;font-size:15px;width:24px;height:24px;display:grid;place-items:center;border-radius:var(--r1)}
+.rhead .rx:hover{color:var(--amber);background:var(--panel2)}
+.rbody{overflow-y:auto;padding:12px 13px;display:flex;flex-direction:column;gap:16px}
+.rsec .rt{font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber-d);margin-bottom:8px}
+.rtools{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.rtool{min-height:46px;border:1px solid var(--line2);border-radius:var(--r2);background:var(--panel2);color:var(--ink-d);font-family:var(--mono);
+  font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:not-allowed;opacity:.8}
+.rtool .g{font-family:var(--glyph);font-size:16px;color:var(--ink)}
+.rtool .soon{font-size:6.5px;letter-spacing:.14em;color:var(--ink-dd)}
+.rjournal{border:1px dashed var(--line3);border-radius:var(--r2);padding:16px 10px;text-align:center;color:var(--ink-dd);font-size:10px}
+.rnote{font-size:8.5px;color:var(--ink-dd);line-height:1.6;margin-top:2px}
+
+/* selection card */
+#card{position:absolute;z-index:29;right:10px;bottom:64px;width:min(280px,calc(100% - 20px));border:1px solid var(--amber-dd);background:rgba(9,14,20,.97);border-radius:var(--r3);padding:12px 13px;display:none;box-shadow:0 10px 34px rgba(0,0,0,.6);backdrop-filter:blur(8px)}
+#card.show{display:block;animation:cardin .18s ease}
+@keyframes cardin{from{opacity:0;transform:translateY(6px)}}
+#card .cx{position:absolute;top:8px;right:9px;color:var(--ink-d);cursor:pointer;font-size:13px;width:22px;height:22px;display:grid;place-items:center;border-radius:var(--r1)}
+#card .cx:hover{color:var(--amber);background:var(--panel2)}
+#card .ct{font-weight:700;font-size:13px;padding-right:20px;line-height:1.3}
+#card .cd{font-size:9.5px;color:var(--ink-d);line-height:1.55;margin:6px 0 9px}
+#card .cr{display:flex;justify-content:space-between;gap:10px;font-size:11px;margin:4px 0;padding-bottom:3px;border-bottom:1px dotted var(--line2)}
+#card .cr:last-child{border-bottom:0}
+#card .cr s{color:var(--ink-d);text-decoration:none}#card .cr b{font-weight:700;text-align:right}
+
+/* ---------- timeline ---------- */
+#tl{padding:7px 11px 8px;display:none}
+body[data-phase="run"] #tl,body[data-phase="report"] #tl{display:block}
+.tlhead{display:flex;justify-content:space-between;align-items:center;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-d);padding:0 2px 5px}
+.tlhead .lk{color:var(--amber-d);display:flex;align-items:center;gap:6px}
+#tlnow{color:var(--green);font-weight:700}
+#tlc{width:100%;height:40px;display:block;touch-action:none;cursor:pointer}
+
+/* ---------- controls ---------- */
+#controls{position:absolute;left:10px;top:var(--topoff);bottom:12px;width:344px;max-width:88%;z-index:40;padding:12px 12px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:12px;background:rgba(8,12,18,.98);backdrop-filter:blur(14px);border:1px solid var(--line3);border-radius:var(--r3);box-shadow:12px 0 36px rgba(0,0,0,.55);transform:translateX(calc(-100% - 20px));transition:transform .28s cubic-bezier(.22,.61,.36,1)}
+#controls.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;margin:-2px 0 2px}
+.drawer-head .dt{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);font-weight:700}
+.drawer-head .dx{width:26px;height:26px;display:grid;place-items:center;border-radius:var(--r1);color:var(--ink-d);cursor:pointer;font-size:14px}
+.drawer-head .dx:hover{color:var(--amber);background:var(--panel2)}
+.sec{display:flex;flex-direction:column;gap:7px}
+.sec+.sec{border-top:1px solid var(--line2);padding-top:11px}
+.simsec{margin-top:auto}
+.subhint{font-size:9.5px;color:var(--ink-dd);letter-spacing:.02em;line-height:1.5}
+.subhint b{color:var(--amber-d)}
+select{width:100%;appearance:none;background:var(--panel2);border:1px solid var(--line3);color:var(--ink);border-radius:var(--r2);padding:12px 30px 12px 12px;cursor:pointer;font-size:12.5px;min-height:46px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--amber-d) 50%),linear-gradient(135deg,var(--amber-d) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 21px,calc(100% - 11px) 21px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;transition:border-color .15s}
+select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 1px rgba(255,180,84,.2)}
+optgroup{background:#0a0f14;color:var(--amber-d);font-style:normal}option{background:#0a0f14;color:var(--ink)}
+.statline{font-size:10.5px;color:var(--ink-d);line-height:1.5;min-height:16px;padding:2px 1px}
+.statline b{color:var(--amber);font-weight:700}
+.brow{display:flex;gap:7px}
+.btn{flex:1;min-height:48px;border:1px solid var(--line3);background:var(--panel2);color:var(--ink);border-radius:var(--r2);cursor:pointer;font-weight:700;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;padding:0 10px;transition:.12s}
+.btn:hover{border-color:var(--ink-d)}
+.btn:active{transform:translateY(1px)}
+.btn.ok{border-color:var(--green-dd);color:var(--green)}
+.btn.go{border-color:var(--green);color:#03130c;background:var(--green);font-size:13px;box-shadow:0 0 16px rgba(77,255,166,.25)}
+.btn.go:hover{background:#63ffb2}
+.btn.dng{border-color:#5a2020;color:var(--threat)}.btn.dng:hover{border-color:#7a2b2b}
+.btn.play{border-color:var(--amber);color:var(--amber)}
+.btn.mini{min-height:40px;font-size:10.5px}
+.speed{display:flex;gap:6px}
+.speed button{flex:1;min-height:44px;border:1px solid var(--line3);background:var(--panel2);color:var(--ink-d);border-radius:var(--r2);cursor:pointer;font-weight:700;font-size:12.5px;transition:.12s}
+.speed button:hover{border-color:var(--ink-d);color:var(--ink)}
+.speed button.on{border-color:var(--green);color:var(--green);background:rgba(77,255,166,.09)}
+.slabel{font-size:9.5px;letter-spacing:.05em;color:var(--ink-d);text-transform:uppercase}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;left:50%;top:16px;transform:translateX(-50%) translateY(-24px);z-index:80;background:rgba(9,14,20,.98);border:1px solid var(--amber-dd);color:var(--amber);padding:9px 16px;border-radius:var(--r2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:0;transition:.2s;pointer-events:none;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 26px rgba(0,0,0,.5)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- report ---------- */
+#report{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(3,5,8,.9);backdrop-filter:blur(3px)}
+#report.show{display:flex}
+.rcard{width:min(460px,100%);max-height:100%;overflow-y:auto;border:1px solid var(--amber-dd);background:#070b10;border-radius:var(--r4);padding:20px 20px 16px;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+.rcard h3{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);font-weight:700;display:flex;align-items:center;gap:8px}
+.rcard h3::before{content:"◱";font-size:15px}
+.rcard .sub{font-size:9px;color:var(--ink-d);letter-spacing:.1em;text-transform:uppercase;margin-top:5px}
+.rbig{display:flex;gap:9px;margin:18px 0 8px}
+.rb{flex:1;border:1px solid var(--line2);border-radius:var(--r2);padding:13px 6px;text-align:center;background:var(--panel2);position:relative;overflow:hidden}
+.rb::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:currentColor;opacity:.5}
+.rb .v{font-size:30px;font-weight:700;line-height:1}.rb .k{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-d);margin-top:6px}
+.rb.in{color:var(--int)}.rb.im{color:var(--threat)}.rb.ef{color:var(--amber)}.rb .v{color:currentColor}
+.rsub{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber-d);margin:16px 0 9px}
+.rrow{display:flex;align-items:center;gap:9px;font-size:10.5px;margin:9px 0}
+.rrow .lab{min-width:78px;font-weight:700}
+.rrow .bar{flex:1;height:9px;border-radius:5px;background:var(--panel2);overflow:hidden;border:1px solid var(--line2)}
+.rrow .bar i{display:block;height:100%;border-radius:5px;transition:width .5s ease}
+.rrow .pc{min-width:82px;text-align:right;color:var(--ink-d);font-size:9.5px}
+.rbtns{display:flex;gap:8px;margin-top:18px}
+.rbtns button{flex:1;min-height:48px;border:1px solid var(--line3);background:var(--panel2);color:var(--ink);border-radius:var(--r2);cursor:pointer;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;transition:.12s}
+.rbtns button:hover{border-color:var(--ink-d)}
+.rbtns .pri{border-color:var(--green);color:var(--green)}.rbtns .pri:hover{background:rgba(77,255,166,.08)}
+
+/* ---------- onboarding ---------- */
+#onboard{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,5,8,.86);backdrop-filter:blur(4px)}
+#onboard.show{display:flex;animation:cardin .2s ease}
+.obcard{width:min(480px,100%);border:1px solid var(--amber-dd);background:#080d13;border-radius:var(--r4);padding:22px 22px 18px;box-shadow:0 24px 70px rgba(0,0,0,.7);position:relative}
+.obcard .ob-x{position:absolute;top:12px;right:14px;color:var(--ink-d);cursor:pointer;font-size:15px}
+.obbrand{font-size:18px;font-weight:700;color:var(--amber);letter-spacing:.1em;text-shadow:0 0 16px rgba(255,180,84,.35)}
+.obsub{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-d);margin-top:6px}
+.obsteps{display:flex;flex-direction:column;gap:11px;margin:20px 0}
+.obstep{display:flex;gap:12px;align-items:flex-start}
+.obstep .num{width:26px;height:26px;flex:none;border:1px solid var(--amber-dd);border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--amber)}
+.obstep .tt{font-size:11.5px;font-weight:700;color:var(--ink);letter-spacing:.04em;text-transform:uppercase}
+.obstep .dd{font-size:10.5px;color:var(--ink-d);line-height:1.5;margin-top:2px}
+.obbtns{display:flex;gap:9px;margin-top:6px}
+.obbtns button{flex:1;min-height:48px;border-radius:var(--r2);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;border:1px solid var(--line3);background:var(--panel2);color:var(--ink);transition:.12s}
+.obbtns .pri{border-color:var(--amber);color:#160f04;background:var(--amber)}
+.obbtns .pri:hover{background:#ffc06e}.obbtns button:not(.pri):hover{border-color:var(--ink-d)}
+.obfoot{font-size:9px;color:var(--ink-dd);text-align:center;margin-top:12px;line-height:1.6}
+
+/* ================= DESKTOP ≥900 ================= */
+@media(min-width:900px){
+  #hud{flex-basis:auto;order:0;flex:1 1 auto;justify-content:center;padding-top:0;margin-top:0;border-top:0}
+  .stat{min-width:0}
+}
+/* ================= MOBILE < 900 ================= */
+@media(max-width:899px){
+  :root{--topoff:118px}
+  .brand{font-size:14px}
+  #phases .ps{padding:5px 9px 5px 7px;font-size:8.5px}
+  #b-ctrl .lbl{display:none}
+}
+
+.gbar{display:flex;gap:6px;margin-bottom:11px}
+.gbar button{flex:1;min-height:34px;border:1px solid var(--line3);border-radius:var(--r2);background:var(--panel2);color:var(--ink-d);font-family:var(--mono);font-weight:700;font-size:10.5px;cursor:pointer}
+.gbar button:disabled{opacity:.38;cursor:default}
+.gtpl{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.tplbtn{border:1px solid var(--line2);border-radius:var(--r2);background:var(--panel2);color:var(--ink);font-family:var(--mono);font-size:9.5px;padding:6px 9px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.tplbtn .d{width:8px;height:8px;border-radius:50%;flex:none}
+.tplbtn:hover{border-color:var(--ink-d)}
+.oc-savebar{display:flex;align-items:center;gap:8px;padding:9px 13px;border-top:1px solid var(--line2);background:rgba(8,12,18,.99);flex:none}
+.oc-savebar .dirty{font-size:9px;color:var(--amber);display:none;letter-spacing:.06em}
+.oc-savebar button{min-height:38px;padding:0 14px;border-radius:var(--r2);border:1px solid var(--line3);background:var(--panel2);color:var(--ink);font-family:var(--mono);font-weight:700;font-size:10.5px;cursor:pointer}
+.oc-savebar .sv{border-color:var(--green);color:var(--green);flex:1}
+.oc-savebar .sv:disabled{opacity:.4;border-color:var(--line3);color:var(--ink-dd)}
+.swatches{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.swatch{width:24px;height:24px;border-radius:5px;cursor:pointer;border:2px solid transparent;box-shadow:0 0 0 1px var(--line3)}
+.swatch.on{border-color:#fff}
+.swatch.auto{width:auto;height:24px;padding:0 9px;display:flex;align-items:center;font-size:9px;color:var(--ink-d);background:var(--panel2);box-shadow:none;border:1px solid var(--line3);border-radius:var(--r2)}
+.swatch.auto.on{border-color:var(--amber);color:var(--amber)}
+.jcheck{width:16px;height:16px;flex:none;border:1px solid var(--line3);border-radius:3px;display:grid;place-items:center;cursor:pointer;font-size:11px;color:var(--green);font-weight:700}
+#jbatch{border:1px solid var(--amber-dd);border-radius:var(--r2);background:rgba(255,180,84,.06);padding:9px;margin-bottom:10px;font-size:10.5px;color:var(--amber);display:none}
+#jbatch .brow{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+#jbatch select,#jbatch input,#jbatch button{min-height:32px;border:1px solid var(--line3);border-radius:var(--r1);background:var(--panel2);color:var(--ink);font-family:var(--mono);font-size:10px;padding:4px 7px;cursor:pointer}
+#jbatch input{flex:1;min-width:64px;cursor:text}
+#jbatch .del{border-color:#5a2020;color:var(--threat)}
+.oc-modes{display:flex;gap:6px}
+.oc-modes button{flex:1;min-height:36px;border:1px solid var(--line3);border-radius:var(--r2);background:var(--panel2);color:var(--ink);font-family:var(--mono);font-weight:700;font-size:10px;cursor:pointer}
+.oc-modes button.on{border-color:var(--amber);color:var(--amber);background:rgba(255,180,84,.08)}
+</style>
+</head>
+<body data-phase="setup">
+<div class="scan"></div><div class="vig"></div>
+
+<div id="app">
+  <div id="head" class="pnl">
+    <div class="brand"><b>Δ⁹ DELTA⁹</b><small>ППО · 3D СИМУЛЯТОР</small></div>
+    <div class="hdiv"></div>
+    <div id="phases">
+      <span class="ps" data-ph="setup"><i>1</i>Підготовка</span>
+      <span class="ps" data-ph="run"><i>2</i>Прогон</span>
+      <span class="ps" data-ph="report"><i>3</i>Звіт</span>
+    </div>
+    <div id="clkwrap">
+      <div id="clk">00:00:00</div>
+      <button class="hbtn" id="b-help" title="Довідка / як користуватись">?</button>
+    </div>
+    <div id="hud">
+      <div class="hud-grp">
+        <div class="stat dr"><div class="n" id="c-dr">0</div><div class="l">Дрони</div></div>
+        <div class="stat cr"><div class="n" id="c-cr">0</div><div class="l">Крилаті</div></div>
+        <div class="stat ba"><div class="n" id="c-ba">0</div><div class="l">Балістика</div></div>
+        <div class="stat hy"><div class="n" id="c-hy">0</div><div class="l">Гіперзв.</div></div>
+      </div>
+      <div class="hud-sep"></div>
+      <div class="hud-grp">
+        <div class="stat in"><div class="n" id="c-in">0</div><div class="l">Збито</div></div>
+        <div class="stat im"><div class="n" id="c-im">0</div><div class="l">Прильоти</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div id="map"></div>
+    <div id="plats"></div>
+    <div id="loading"><div class="spin"></div>Завантаження карти…</div>
+    <div id="hint"></div>
+    <div id="stools">
+      <div class="tb on" id="t-front" title="ЛБЗ / окуповано (DeepStateMap)">▧</div>
+      <div class="tb" id="t-3d" title="3D-нахил камери">◎</div>
+      <div class="tb" id="t-panel" title="Гео-інструменти">▤</div>
+    </div>
+    <div id="legend"></div>
+    <div id="rpanel">
+      <div class="rhead"><span class="t">Гео-інструменти</span><span class="rx" id="rpanel-x">✕</span></div>
+      <div class="rtabs">
+        <button class="rtab on" data-gtab="draw">✎ Малювання</button>
+        <button class="rtab" data-gtab="journal">▤ Журнал · <b id="jcount">0</b></button>
+      </div>
+      <div class="rbody">
+        <div id="gp-draw">
+          <div class="rt">Інструменти</div>
+          <div id="geo-tools" class="gtools"></div>
+          <div class="rt" style="margin-top:13px">Приналежність нового обʼєкта</div>
+          <div id="geo-aff" class="affrow"></div>
+          <div id="geo-draft" class="draftbar" style="display:none"></div>
+          <div class="rnote" id="geo-hint">Оберіть інструмент і клікайте по карті. Лінія / полігон / стрілка — «Завершити» або подвійний клік.</div>
+        </div>
+        <div id="gp-journal" style="display:none">
+          <input id="jsearch" class="jinput" placeholder="Пошук за назвою / тегом…"/>
+          <div class="jfil">
+            <div class="jfil-lab">Тип</div><div id="jf-type" class="chiprow"></div>
+            <div class="jfil-lab">Сторона</div><div id="jf-aff" class="chiprow"></div>
+            <div class="jfil-row"><label>Сорт.</label><select id="jsort"><option value="new">новіші</option><option value="old">старіші</option><option value="name">за назвою</option></select></div>
+          </div>
+          <div id="jlist" class="jlist"></div>
+          <button id="geo-export" class="gbtn">⤓ Експорт GeoJSON</button>
+          <button id="geo-clear" class="gbtn danger">Очистити всі обʼєкти</button>
+        </div>
+      </div>
+      <div id="obj-card" class="objcard" style="display:none"></div>
+    </div>
+    <div id="card">
+      <span class="cx" id="card-x">✕</span>
+      <div class="ct" id="card-t"></div><div class="cd" id="card-d"></div><div id="card-rows"></div>
+    </div>
+    <div id="report">
+      <div class="rcard">
+        <h3>Підсумок прогону</h3><div class="sub">After-action · синтетичні дані</div>
+        <div class="rbig">
+          <div class="rb in"><div class="v" id="r-int">0</div><div class="k">Збито</div></div>
+          <div class="rb im"><div class="v" id="r-imp">0</div><div class="k">Прильоти</div></div>
+          <div class="rb ef"><div class="v" id="r-eff">0%</div><div class="k">Ефективність</div></div>
+        </div>
+        <div class="rsub">Розподіл за класами цілей</div>
+        <div id="r-types"></div>
+        <div class="rbtns">
+          <button id="r-again">↻ Цей сценарій</button>
+          <button id="r-new" class="pri">⊕ Новий прогін</button>
+          <button id="r-setup">⚙ Підготовка</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button id="b-ctrl" title="Керування (ППО / Цілі)">☰</button>
+  <div id="tl" class="pnl">
+    <div class="tlhead"><span class="lk">◷ Таймлайн · <span id="tlnow">0:00</span></span><span id="tlend">/ 0:00</span></div>
+    <canvas id="tlc"></canvas>
+  </div>
+
+  <div id="controls" class="pnl">
+    <div class="drawer-head"><span class="dt">▊ Керування</span><span class="dx" id="ctrl-x">✕</span></div>
+    <div class="sec">
+      <div class="ttl">Засоби ППО</div>
+      <div><select id="sel-pvo"><option value="">— оберіть засіб ППО —</option></select></div>
+      <div class="subhint">Оберіть засіб, потім <b>тап по суші</b> для розстановки.</div>
+      <div class="statline" id="pvo-stat"></div>
+    </div>
+    <div class="sec">
+      <div class="ttl">Цілі / зброя</div>
+      <div><select id="sel-threat"><option value="">— оберіть зброю —</option></select></div>
+      <div class="subhint">Тапайте точки траєкторії на карті, тоді <b>«Підтвердити»</b>.</div>
+      <div class="statline" id="armed"></div>
+      <button class="btn ok mini" id="b-demo">⤓ Завантажити демо-сценарій</button>
+    </div>
+    <div class="sec simsec">
+      <div class="ttl">Симуляція</div>
+      <div class="brow">
+        <button class="btn go" id="b-launch">▶ Пуск</button>
+        <button class="btn dng" id="b-reset" title="тап — скасувати крок · утримати — очистити все">⟲ Скинути</button>
+      </div>
+      <div class="slabel">Швидкість відтворення</div>
+      <div class="speed" id="speeds"></div>
+    </div>
+  </div>
+
+  <div id="rpanel-dock" class="pnl">
+    <div class="rhead"><span class="t">Гео-інструменти</span></div>
+    <div class="rbody">
+      <div class="rsec">
+        <div class="rt">Малювання</div>
+        <div class="rtools">
+          <button class="rtool"><span class="g">⌖</span>Маркер<span class="soon">скоро</span></button>
+          <button class="rtool"><span class="g">╱</span>Лінія<span class="soon">скоро</span></button>
+          <button class="rtool"><span class="g">▱</span>Полігон<span class="soon">скоро</span></button>
+          <button class="rtool"><span class="g">◌</span>Радіус<span class="soon">скоро</span></button>
+        </div>
+      </div>
+      <div class="rsec">
+        <div class="rt">Журнал гео-об'єктів</div>
+        <div class="rjournal">поки порожньо<div class="rnote">намальовані об'єкти зʼявлятимуться тут</div></div>
+        <button class="rtool" style="margin-top:9px;width:100%;flex-direction:row;gap:7px"><span class="g">⤓</span>Експорт GeoJSON<span class="soon">скоро</span></button>
+      </div>
+      <div class="rnote">Каркас на майбутнє — інструменти малювання та журнал зʼявляться згодом.</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="onboard">
+  <div class="obcard">
+    <span class="ob-x" id="ob-x">✕</span>
+    <div class="obbrand">Δ⁹ DELTA⁹</div>
+    <div class="obsub">Симулятор протиповітряної оборони · навчальний · синтетичні дані</div>
+    <div class="obsteps">
+      <div class="obstep"><div class="num">1</div><div><div class="tt">Підготовка</div><div class="dd">Оберіть засіб ППО зі списку та тапніть по суші, щоб розставити. Оберіть зброю противника й намалюйте траєкторію (2+ точки).</div></div></div>
+      <div class="obstep"><div class="num">2</div><div><div class="tt">Прогон</div><div class="dd">Натисніть «Пуск». Стежте за перехопленнями в реальному часі, керуйте швидкістю та таймлайном.</div></div></div>
+      <div class="obstep"><div class="num">3</div><div><div class="tt">Звіт</div><div class="dd">Отримайте розбір ефективності: скільки збито, скільки прильотів, розподіл за класами цілей.</div></div></div>
+    </div>
+    <div class="obbtns">
+      <button id="ob-demo">▶ Демо-сценарій</button>
+      <button id="ob-start" class="pri">Почати з нуля →</button>
+    </div>
+    <div class="obfoot">Панель гео-журналу — праворуч. Кнопки на карті: супутник, ЛБЗ, 3D-нахил.</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ===== data ===== */
+const WP={
+ shahed:{uk:"Shahed-136/131",cat:"drone",speed:185,apo:1500,profile:"low",plat:"ground",maxRange:1500,strike:1,cheap:1,alt:"~1–2 км"},
+ gerbera:{uk:"Гербера (приманка)",cat:"drone",speed:160,apo:1400,profile:"low",plat:"ground",maxRange:800,strike:0,decoy:1,cheap:1,alt:"~1–2 км"},
+ shahed238:{uk:"Shahed-238 (реактивний)",cat:"drone",speed:550,apo:2600,profile:"low",plat:"ground",maxRange:1000,strike:1,cheap:1,alt:"~2–3 км"},
+ recon:{uk:"БпЛА-розвідник",cat:"drone",speed:130,apo:3200,profile:"low",plat:"ground",maxRange:300,strike:0,cheap:1,alt:"~1.5–4 км"},
+ kh101:{uk:"КР Х-101",cat:"cruise",speed:720,apo:900,profile:"low",plat:"air",maxRange:2800,strike:1,alt:"~50–6000 м"},
+ kh55:{uk:"КР Х-55СМ",cat:"cruise",speed:830,apo:900,profile:"low",plat:"air",maxRange:2500,strike:1,alt:"~50–500 м"},
+ kalibr:{uk:"КР «Калібр»",cat:"cruise",speed:890,apo:500,profile:"low",plat:"sea",maxRange:1500,strike:1,alt:"~50–150 м"},
+ x59:{uk:"КР Х-59МК2",cat:"cruise",speed:1050,apo:700,profile:"low",plat:"air",maxRange:290,strike:1,alt:"~100–200 м"},
+ x69:{uk:"КР Х-69 (стелс)",cat:"cruise",speed:1000,apo:400,profile:"low",plat:"air",maxRange:400,strike:1,alt:"~20–100 м"},
+ x31p:{uk:"Х-31П (протирадарна)",cat:"cruise",speed:3200,apo:9000,profile:"low",plat:"air",maxRange:110,strike:1,alt:"М~3"},
+ oniks:{uk:"П-800 «Оникс»",cat:"cruise",speed:2700,apo:14000,profile:"low",plat:"coast",maxRange:600,strike:1,alt:"М~2.5"},
+ x22:{uk:"Х-22 «Буря»",cat:"cruise",speed:4000,apo:24000,profile:"arc",plat:"air",maxRange:600,strike:1,alt:"апогей ~22–25 км"},
+ kab:{uk:"КАБ/ФАБ з УМПК",cat:"cruise",speed:700,apo:9000,profile:"low",plat:"air",maxRange:80,strike:1,alt:"планує з ~10 км"},
+ tochka:{uk:"БР «Точка-У»",cat:"ballistic",speed:5300,apo:26000,profile:"arc",plat:"ground",maxRange:120,strike:1,alt:"апогей ~26 км"},
+ iskm:{uk:"БР Іскандер-М",cat:"ballistic",speed:6800,apo:50000,profile:"arc",plat:"ground",maxRange:500,strike:1,alt:"апогей ~50 км"},
+ kn23:{uk:"БР KN-23",cat:"ballistic",speed:6200,apo:50000,profile:"arc",plat:"ground",maxRange:450,strike:1,alt:"апогей ~50 км"},
+ zircon:{uk:"ГЗР «Циркон»",cat:"hyper",speed:9500,apo:35000,profile:"arc",plat:"coast",maxRange:800,strike:1,alt:"~28–40 км · М~8–9"},
+ kinzhal:{uk:"ГЗР «Кинджал»",cat:"hyper",speed:11500,apo:50000,profile:"arc",plat:"mig",maxRange:1500,strike:1,alt:"аероб. ~50 км"},
+ oreshnik:{uk:"БРСД «Орешник»",cat:"hyper",speed:12300,apo:120000,profile:"arc",plat:"ground",maxRange:5000,strike:1,alt:"апогей >100 км"},
+};
+const DESC={
+ shahed:"Ударний баражувальний БпЛА (Герань-2). Дешевий, масовий, мала висота.",
+ gerbera:"Дрон-приманка/розвідки: імітує Shahed, відвертає й виснажує ППО.",
+ shahed238:"Реактивна версія Shahed — помітно швидша.",recon:"Розвідувальний БпЛА: коригує удари, без БЧ.",
+ kh101:"Стратегічна КР повітряного базування, малі висоти.",kh55:"Стратегічна КР, попередник Х-101.",
+ kalibr:"Морська КР, політ над морем (sea-skim).",x59:"Тактична КР зі супутниковою корекцією.",
+ x69:"Мала малопомітна КР, дуже низька висота.",x31p:"Надзвукова протирадарна ракета.",
+ oniks:"Надзвукова КР (берег. «Бастіон»).",x22:"Важка надзвукова ракета, високий профіль із крутим пікіруванням.",
+ kab:"Авіабомба з модулем УМПК — планує з висоти.",tochka:"Тактична балістична ракета, апогей ~26 км.",
+ iskm:"ОТРК Іскандер-М, квазібалістика, апогей ~50 км.",kn23:"Балістична ракета типу Іскандер (KN-23).",
+ zircon:"Гіперзвукова ракета.",kinzhal:"Аеробалістична гіперзвукова ракета (МіГ-31К).",oreshnik:"БРСД з розділюваною БЧ; апогей >100 км.",
+};
+const PVO={
+ patriot:{name:"Patriot (PAC-3 + PAC-2)",r:160,mSpeed:6100,ammo:16,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
+ samp:{name:"SAMP/T",r:100,mSpeed:5400,ammo:16,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
+ s300:{name:"С-300ПС",r:75,mSpeed:6000,ammo:24,cr:1,bal:1,dr:0,ignoreCheap:1,grp:"Далекої дії / ПРО"},
+ hawk:{name:"MIM-23 Hawk",r:40,mSpeed:3000,ammo:18,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ buk:{name:"Бук-М1",r:35,mSpeed:3000,ammo:12,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ iris:{name:"IRIS-T SLM",r:40,mSpeed:3700,ammo:24,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ s125:{name:"С-125 «Нева»",r:25,mSpeed:3000,ammo:8,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ nasams:{name:"NASAMS",r:25,mSpeed:3600,ammo:18,cr:1,bal:0,dr:1,grp:"Середньої дії"},
+ irisls:{name:"IRIS-T SLS",r:12,mSpeed:3000,ammo:12,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
+ crotale:{name:"Crotale",r:11,mSpeed:2900,ammo:8,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
+ osa:{name:"Оса-АКМ",r:10,mSpeed:3000,ammo:6,cr:1,bal:0,dr:1,grp:"Ближньої дії"},
+ gepard:{name:"Gepard (35мм)",r:4,mSpeed:3600,ammo:40,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
+ skynex:{name:"Skynex (35мм)",r:4,mSpeed:3600,ammo:40,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
+ manpad:{name:"ПЗРК (Stinger/Igla)",r:5,mSpeed:2600,ammo:4,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
+ zu23:{name:"ЗУ-23 / Шилка",r:2.5,mSpeed:3000,ammo:60,cr:0,bal:0,dr:1,grp:"Анти-БпЛА / гармати"},
+};
+const CITIES=[
+ ["Київ",30.52,50.45,4],["Харків",36.23,49.99,3],["Одеса",30.74,46.48,3],["Дніпро",35.04,48.46,3],
+ ["Львів",24.03,49.84,2],["Запоріжжя",35.14,47.84,2],["Миколаїв",31.99,46.97,2],["Кривий Ріг",33.39,47.91,2],
+ ["Вінниця",28.48,49.23,1],["Полтава",34.55,49.59,1],["Суми",34.80,50.91,1],["Чернігів",31.29,51.49,1],
+ ["Черкаси",32.06,49.44,1],["Кропивницький",32.26,48.51,1],["Ів.-Франківськ",24.71,48.92,1],
+];
+const CLSNAME={drone:"БпЛА",cruise:"крилата / КР",ballistic:"балістична",hyper:"гіперзвук"};
+const CATUK={drone:"БпЛА / дрони",cruise:"Крилаті / КР",ballistic:"Балістичні",hyper:"Гіперзвук"};
+const PLAT_UK={ground:"наземна ПУ",coast:"берег. «Бастіон»",sea:"корабель ЧФ",air:"літак-носій",mig:"МіГ-31К"};
+const CATCOL={drone:"#ffb000",cruise:"#ff6a3c",ballistic:"#ff4fa3",hyper:"#c58cff"};
+const GLYPH={drone:"▲",cruise:"➤",ballistic:"◆",hyper:"✦"};
+const PLANE="✈︎",TRUCK="⛟︎",SHIP="⛴︎",DEPOT="⌂︎";
+function platGlyph(w){if(w.cat==="drone")return DEPOT;switch(w.plat){case "air":case "mig":return PLANE;case "sea":case "coast":return SHIP;default:return TRUCK;}}
+const MICON={shahed:"▲",gerbera:"▽",shahed238:"◭",recon:"⊙",kh101:"➤",kh55:"➣",kalibr:"➢",x59:"➞",x69:"▷",x31p:"✳",oniks:"⬧",x22:"►",kab:"▾",tochka:"◆",iskm:"◈",kn23:"⬥",zircon:"✦",kinzhal:"✧",oreshnik:"✺"};
+function threatIcon(model){return MICON[model]||GLYPH[WP[model].cat];}
+const PVO_ICON={"Далекої дії / ПРО":"◈","Середньої дії":"⊕","Ближньої дії":"⊗","Анти-БпЛА / гармати":"⊛"};
+const PVO_CEIL={"Далекої дії / ПРО":120000,"Середньої дії":20000,"Ближньої дії":10000,"Анти-БпЛА / гармати":4500};
+const AGILE={shahed238:0.05,kalibr:0.1,x59:0.15,x69:0.2,x31p:0.25,oniks:0.3,x22:0.3,kab:0.05,tochka:0.1,iskm:0.2,kn23:0.25,zircon:0.5,kinzhal:0.45,oreshnik:0.75};
+const AGILE_UK=a=>a>=0.4?"висока":a>=0.15?"середня":"низька";
+function speedAt(w,p){if(w.profile==="arc")return Math.round(w.speed*(0.55+0.75*Math.min(1,p*1.1)));return Math.round(w.speed*(0.9+0.2*p));}
+const CAP=60,DT=2,SP=[1,5,10,30],AUTO_VEX=4;
+const UA=[[23.6,51.5],[27.2,51.8],[30.5,51.6],[33.6,52.3],[35.4,50.9],[38.2,50.0],[40.2,49.2],
+[39.7,47.8],[38.0,47.1],[35.1,46.6],[36.6,45.4],[35.4,45.0],[33.4,44.4],[32.5,45.3],[33.6,46.2],
+[31.5,46.6],[30.7,46.4],[30.1,45.4],[28.2,45.5],[28.6,46.4],[26.6,48.3],[24.9,47.7],[22.9,47.9],
+[22.1,48.4],[22.6,49.1],[23.7,50.4]];
+
+/* embedded approximate DeepStateMap fallback (schematic / unofficial) */
+const DSM_FALLBACK={type:"FeatureCollection",features:[
+ {type:"Feature",properties:{name:"Орієнтовно окуповано (схематично)",fill:"#c62828",stroke:"#e53935"},
+  geometry:{type:"Polygon",coordinates:[[[33.4,44.4],[33.6,45.9],[34.8,46.05],[35.9,45.4],[36.6,45.3],[36.5,45.0],[35.4,44.85],[34.6,44.4],[33.4,44.4]]]}},
+ {type:"Feature",properties:{name:"Орієнтовно окуповано (схематично)",fill:"#c62828",stroke:"#e53935"},
+  geometry:{type:"Polygon",coordinates:[[[38.25,50.05],[40.2,49.2],[39.7,47.8],[38.0,47.1],[36.5,46.6],[35.0,46.55],[33.4,46.5],[32.5,46.35],[33.1,47.25],[34.6,47.65],[36.5,48.05],[37.7,48.65],[38.05,49.35],[38.25,50.05]]]}},
+ {type:"Feature",properties:{name:"ЛБЗ (орієнтовно)",stroke:"#ff5252"},
+  geometry:{type:"LineString",coordinates:[[38.25,50.05],[37.6,49.25],[37.7,48.65],[36.5,48.05],[34.6,47.65],[33.1,47.25],[32.5,46.35]]}}
+]};
+
+/* ===== geo ===== */
+const R2=Math.PI/180;
+function hav(a,b){const dLat=(b[1]-a[1])*R2,dLng=(b[0]-a[0])*R2,s=Math.sin(dLat/2)**2+Math.cos(a[1]*R2)*Math.cos(b[1]*R2)*Math.sin(dLng/2)**2;return 6371*2*Math.asin(Math.min(1,Math.sqrt(s)));}
+function bearing(a,b){const y=Math.sin((b[0]-a[0])*R2)*Math.cos(b[1]*R2),x=Math.cos(a[1]*R2)*Math.sin(b[1]*R2)-Math.sin(a[1]*R2)*Math.cos(b[1]*R2)*Math.cos((b[0]-a[0])*R2);return (Math.atan2(y,x)/R2+360)%360;}
+function pathLen(p){let d=0;for(let i=1;i<p.length;i++)d+=hav(p[i-1],p[i]);return d;}
+function posOnPath(p,total,fr){fr=Math.max(0,Math.min(0.999,fr));let d=fr*total;
+ for(let i=1;i<p.length;i++){const seg=hav(p[i-1],p[i]);if(d<=seg||i===p.length-1){const f=seg?d/seg:0;
+   return {pos:[p[i-1][0]+(p[i][0]-p[i-1][0])*f,p[i-1][1]+(p[i][1]-p[i-1][1])*f],hdg:bearing(p[i-1],p[i])};}d-=seg;}
+ return {pos:p[p.length-1].slice(),hdg:bearing(p[0],p[p.length-1])};}
+function altAt(profile,apo,p){p=Math.max(0,Math.min(0.999,p));
+ if(profile==="arc")return apo*Math.pow(Math.sin(Math.PI*p),0.72)+600;
+ let a=apo*Math.min(1,p/0.07);if(p>0.93)a*=1-(p-0.93)/0.07*0.8;return Math.max(a,40);}
+function nearestCity(pt){let best=CITIES[0][0],bd=1e9;for(const c of CITIES){const d=hav(pt,[c[1],c[2]]);if(d<bd){bd=d;best=c[0];}}return best;}
+function pointInPoly(pt,poly){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+ if(((yi>pt[1])!==(yj>pt[1]))&&(pt[0]<(xj-xi)*(pt[1]-yi)/(yj-yi)+xi))inside=!inside;}return inside;}
+const isLand=(lng,lat)=>pointInPoly([lng,lat],UA);
+function leadSolve(sPos,tPos,tSpdKmh,hdg,mSpdKmh){
+ const lat0=sPos[1],kx=111.32*Math.cos(lat0*R2),ky=110.57;
+ const rx=(tPos[0]-sPos[0])*kx,ry=(tPos[1]-sPos[1])*ky;
+ const v=tSpdKmh/3600,vx=Math.sin(hdg*R2)*v,vy=Math.cos(hdg*R2)*v,vi=mSpdKmh/3600;
+ const a=vx*vx+vy*vy-vi*vi,b=2*(rx*vx+ry*vy),c=rx*rx+ry*ry;let tau=null;
+ if(Math.abs(a)<1e-6){if(Math.abs(b)>1e-9){const t=-c/b;if(t>0.4)tau=t;}}
+ else{const disc=b*b-4*a*c;if(disc>=0){const sq=Math.sqrt(disc),t1=(-b-sq)/(2*a),t2=(-b+sq)/(2*a);
+  for(const t of [t1,t2].filter(x=>x>0.4).sort((p,q)=>p-q)){tau=t;break;}}}
+ if(tau==null||tau>900)return null;return tau;}
+function roleOK(s,cat){if(cat==="drone")return s.dr&&!s.ignoreCheap;if(cat==="cruise")return !!s.cr;return !!s.bal;}
+function pkOf(s,th){let base;const c=th.cat;
+ if(c==="drone")base=s.gun?0.60:0.85;else if(c==="cruise")base=0.80;else if(c==="ballistic")base=0.65;else base=0.30;
+ if(th.model==="oreshnik")return 0.02;
+ const ag=AGILE[th.model]||0;base*=(1-0.55*ag);return Math.max(0.03,base);}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function lerp(a,b,f){return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];}
+
+/* ===== engine ===== */
+function buildRun(seed){
+ const RND=mulberry32(seed>>>0);const threats=[];
+ for(const st of SETUP.threats.slice(0,CAP)){const w=WP[st.model];if(!w)continue;const total=pathLen(st.path);
+  if(st.path.length<2||total<2)continue;
+  threats.push({id:st.id,model:st.model,w,cat:w.cat,path:st.path,total,dur:total/w.speed*3600,launchT:0,targetName:nearestCity(st.path[st.path.length-1]),outcome:null});}
+ const sams=SETUP.pvo.map(pv=>{const s=PVO[pv.key];
+  return {id:pv.id,key:pv.key,name:s.name,pos:pv.pos,r:s.r,mSpeed:s.mSpeed,ammo:s.ammo,cr:s.cr,bal:s.bal,dr:s.dr,
+   ignoreCheap:s.ignoreCheap,ceil:PVO_CEIL[s.grp]||1e9,gun:s.r<=5,ammoLeft:s.ammo,engaged:new Set(),pac3:pv.key==="patriot"?6:0,pac2:pv.key==="patriot"?10:0};});
+ const inters=[],events=[];let horizon=0;for(const th of threats)horizon=Math.max(horizon,th.launchT+th.dur);
+ for(let t=0;t<=horizon+4;t+=DT){
+  for(const th of threats){
+   if(th.outcome||t<th.launchT)continue;const p=(t-th.launchT)/th.dur;
+   if(p>=1){th.outcome={kind:"impact",t:th.launchT+th.dur,pos:th.path[th.path.length-1]};continue;}
+   const cur=posOnPath(th.path,th.total,p);
+   for(const s of sams){
+    if(s.engaged.has(th.id)||!roleOK(s,th.cat))continue;
+    const isBal=th.cat==="ballistic"||th.cat==="hyper";const pool=s.key==="patriot"?(isBal?"pac3":"pac2"):"ammoLeft";
+    if(s[pool]<=0)continue;if(hav(s.pos,cur.pos)>s.r)continue;
+    if(altAt(th.w.profile,th.w.apo,p)>s.ceil)continue;
+    const tau=leadSolve(s.pos,cur.pos,th.w.speed,cur.hdg,s.mSpeed);if(tau==null)continue;
+    if(s.mSpeed/3600*tau>s.r*1.3)continue;
+    s.engaged.add(th.id);s[pool]--;
+    const arriveT=t+tau,pp=Math.min(0.999,(arriveT-th.launchT)/th.dur),kp=posOnPath(th.path,th.total,pp),kalt=altAt(th.w.profile,th.w.apo,pp),hit=RND()<pkOf(s,th);
+    inters.push({samId:s.id,from:s.pos,to:kp.pos,launchT:t,arriveT,hit,toAlt:kalt,gun:s.gun});
+    events.push({kind:"samfire",t,pos:s.pos});
+    if(hit){th.outcome={kind:"kill",t:arriveT,pos:kp.pos,samId:s.id};events.push({kind:"kill",t:arriveT,pos:kp.pos,alt:kalt});}
+    break;
+   }
+  }
+ }
+ for(const th of threats){
+  if(!th.outcome)th.outcome={kind:"impact",t:th.launchT+th.dur,pos:th.path[th.path.length-1]};
+  events.push({kind:"launch",t:0,pos:th.path[0]});
+  if(th.outcome.kind==="impact"&&th.w.strike)events.push({kind:"impact",t:th.outcome.t,pos:th.outcome.pos,alt:0});}
+ const total=threats.length,killed=threats.filter(t=>t.outcome.kind==="kill").length,impacted=threats.filter(t=>t.outcome.kind==="impact"&&t.w.strike).length;
+ let endT=6;for(const th of threats)endT=Math.max(endT,th.outcome.t+6);
+ return {seed,threats,sams,inters,events,endT,stat:{total,killed,impacted,eff:total?Math.round(killed/total*100):0}};
+}
+function stateAt(t){
+ const counts={drone:0,cruise:0,ballistic:0,hyper:0};let nK=0,nI=0;const air=[],fly=[],fx=[];
+ for(const th of RUN.threats){const res=th.outcome;
+  if(t>=res.t){if(res.kind==="kill")nK++;else if(res.kind==="impact"&&th.w.strike)nI++;continue;}
+  if(t>=th.launchT){const p=(t-th.launchT)/th.dur;if(p<1){const cur=posOnPath(th.path,th.total,p);counts[th.cat]++;
+    air.push({th,pos:cur.pos,p,hdg:cur.hdg,alt:altAt(th.w.profile,th.w.apo,p)});}}}
+ for(const it of RUN.inters){if(t>=it.launchT&&t<it.arriveT){const f=(it.arriveT-it.launchT)?(t-it.launchT)/(it.arriveT-it.launchT):1;
+  fly.push({from:it.from,cur:lerp(it.from,it.to,f),toAlt:it.toAlt,f,gun:it.gun});}}
+ for(const ev of RUN.events){if((ev.kind==="kill"||ev.kind==="impact")&&Math.abs(t-ev.t)<0.8&&ev.pos)fx.push({kind:ev.kind,pos:ev.pos,a:1-Math.abs(t-ev.t)/0.8,alt:ev.alt||0});}
+ return {counts,nK,nI,air,fly,fx};}
+
+/* ===== state ===== */
+const SETUP={pvo:[],threats:[],tool:null,sel:null,draft:null,pvoSeq:1,thrSeq:1};
+const ENV={phase:"setup",t:0,endT:0,playing:false,speed:1,sel:null,sat:false,front:true,threeD:false};
+const HIST=[];
+let RUN=null,STATE=null,map=null,overlay=null,mapReady=false,DASHEXT=null;
+
+/* ===== 3D helpers ===== */
+const zS=alt=>Math.pow(Math.max(alt,1),0.85)*AUTO_VEX;
+function hexRGB(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function catRGBA(cat,a){const c=hexRGB(CATCOL[cat]);return [c[0],c[1],c[2],a];}
+function shadeRGBA(cat,f,a){const c=hexRGB(CATCOL[cat]);const m=x=>f>=1?Math.round(x+(255-x)*(f-1)):Math.round(x*f);
+ return [Math.min(255,m(c[0])),Math.min(255,m(c[1])),Math.min(255,m(c[2])),a];}
+function subPath(path,model,p0,p1){const w=WP[model],total=pathLen(path),N=16,out=[];
+ if(p1<=p0)return out;for(let i=0;i<=N;i++){const p=p0+(p1-p0)*i/N,c=posOnPath(path,total,p);out.push([c.pos[0],c.pos[1],zS(altAt(w.profile,w.apo,p))]);}return out;}
+const CHARSET=Array.from(new Set((CITIES.map(c=>c[0]).join("")+"▲△▽◭⊙➤➣➢➞▷►▾✳⬧◆◈✦✧✺⬥⊕⊗⊛◉✷※▴ .-0123456789").split("")));
+function dashExt(){if(DASHEXT===null)DASHEXT=(window.deck&&deck.PathStyleExtension)?[new deck.PathStyleExtension({dash:true})]:[];return DASHEXT;}
+const PH=[[0,0.10,1.5],[0.10,0.88,1.0],[0.88,1.0,0.62]];
+function ptAt(center,rkm,theta){const lat=center[1];const dLng=(rkm*Math.cos(theta))/(111.32*Math.cos(lat*R2)),dLat=(rkm*Math.sin(theta))/110.57;return [center[0]+dLng,center[1]+dLat];}
+function phaseDash(items,idp){const out=[],dx=dashExt();
+ PH.forEach((ph,i)=>{const data=items.filter(it=>Math.max(it.start,ph[0])<ph[1])
+   .map(it=>({path:subPath(it.path,it.model,Math.max(it.start,ph[0]),ph[1]),col:shadeRGBA(it.cat,ph[2],210)})).filter(d=>d.path.length>1);
+  if(data.length)out.push(new deck.PathLayer(Object.assign({id:idp+i,data,getPath:d=>d.path,getColor:d=>d.col,getWidth:2,widthUnits:"pixels",capRounded:true},
+   dx.length?{getDashArray:[5,4],dashJustified:true,extensions:dx}:{})));});
+ return out;}
+
+/* ===== deck layers ===== */
+function buildLayers(){
+ if(!window.deck)return [];
+ const {PathLayer,LineLayer,ScatterplotLayer,TextLayer,PolygonLayer}=deck,L=[];
+ const samCol=d=>PVO[d.key].r<=5?[150,180,190]:[77,255,166];
+ const now=performance.now()/1000;
+ L.push(new ScatterplotLayer({id:"ringFill",data:SETUP.pvo,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:d=>PVO[d.key].r*1000,radiusUnits:"meters",filled:true,stroked:false,getFillColor:d=>[...samCol(d),12],parameters:{depthTest:false}}));
+ L.push(new ScatterplotLayer({id:"ringMid",data:SETUP.pvo,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:d=>PVO[d.key].r*1000*0.66,radiusUnits:"meters",filled:true,stroked:false,getFillColor:d=>[...samCol(d),16],parameters:{depthTest:false}}));
+ L.push(new ScatterplotLayer({id:"ringGlow",data:SETUP.pvo,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:d=>PVO[d.key].r*1000*0.34,radiusUnits:"meters",filled:true,stroked:false,getFillColor:d=>[...samCol(d),30],parameters:{depthTest:false}}));
+ {const pulse=(now*0.55)%1;
+  L.push(new ScatterplotLayer({id:"ringPulse",data:SETUP.pvo,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:d=>PVO[d.key].r*1000*(0.12+0.88*pulse),radiusUnits:"meters",filled:false,stroked:true,getLineColor:d=>[...samCol(d),Math.round(130*(1-pulse))],lineWidthUnits:"pixels",getLineWidth:1.6,parameters:{depthTest:false}}));}
+ if(SETUP.pvo.length){
+  const sw=SETUP.pvo.map((pv,idx)=>{const s=PVO[pv.key],th=now*1.4+idx*0.7,D=0.55,arc=[[pv.pos[0],pv.pos[1]]];
+    for(let k=0;k<=10;k++)arc.push(ptAt(pv.pos,s.r,th-D+D*k/10));
+    return {poly:arc,head:ptAt(pv.pos,s.r,th),c:pv.pos,gun:s.r<=5};});
+  L.push(new PolygonLayer({id:"sweep",data:sw,getPolygon:d=>d.poly,filled:true,stroked:false,getFillColor:d=>d.gun?[150,180,190,22]:[77,255,166,26],parameters:{depthTest:false}}));
+  L.push(new LineLayer({id:"sweepLine",data:sw,getSourcePosition:d=>[d.c[0],d.c[1],0],getTargetPosition:d=>[d.head[0],d.head[1],0],getColor:d=>d.gun?[150,180,190,210]:[77,255,166,225],getWidth:1.4}));
+ }
+ L.push(new ScatterplotLayer({id:"ringLine",data:SETUP.pvo,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:d=>PVO[d.key].r*1000,radiusUnits:"meters",filled:false,stroked:true,getLineColor:d=>[...samCol(d),150],lineWidthUnits:"pixels",getLineWidth:1,parameters:{depthTest:false}}));
+ L.push(new ScatterplotLayer({id:"samCore",data:SETUP.pvo,getPosition:d=>[d.pos[0],d.pos[1],0],getRadius:13,radiusUnits:"pixels",filled:true,stroked:true,getFillColor:[8,13,18,235],getLineColor:d=>(ENV.sel&&ENV.sel.type==="sam"&&ENV.sel.id===d.id)?[255,180,84,255]:[...samCol(d),235],lineWidthUnits:"pixels",getLineWidth:1.4,parameters:{depthTest:false}}));
+ L.push(new TextLayer({id:"sams",data:SETUP.pvo,characterSet:CHARSET,getPosition:d=>[d.pos[0],d.pos[1],0],getText:d=>PVO_ICON[PVO[d.key].grp]||"⊕",
+  getColor:d=>(ENV.sel&&ENV.sel.type==="sam"&&ENV.sel.id===d.id)?[255,180,84]:[...samCol(d)],getSize:16,billboard:true,fontFamily:"monospace",parameters:{depthTest:false}}));
+ L.push(new TextLayer({id:"cities",data:CITIES,characterSet:CHARSET,getPosition:c=>[c[1],c[2],0],getText:c=>"◉ "+c[0],getColor:[120,200,160,210],getSize:11,billboard:true,getTextAnchor:"start",fontFamily:"monospace",parameters:{depthTest:false}}));
+ if(ENV.phase==="setup"){
+  L.push(...phaseDash(SETUP.threats.map(t=>({path:t.path,model:t.model,start:0,cat:WP[t.model].cat})),"sp"));
+  if(SETUP.draft&&SETUP.draft.pts.length){
+   L.push(new PathLayer({id:"draft",data:[SETUP.draft.pts],getPath:d=>d.map(p=>[p[0],p[1],0]),getColor:[34,211,238,220],getWidth:2,widthUnits:"pixels"}));
+   L.push(new ScatterplotLayer({id:"draftPts",data:SETUP.draft.pts,getPosition:p=>[p[0],p[1],0],getRadius:4,radiusUnits:"pixels",getFillColor:[34,211,238,255],parameters:{depthTest:false}}));
+  }
+ } else if(STATE){
+  L.push(new PathLayer({id:"trail",data:STATE.air,getPath:a=>subPath(a.th.path,a.th.model,0,Math.max(0.001,a.p)),getColor:a=>catRGBA(a.th.cat,235),getWidth:2.6,widthUnits:"pixels",capRounded:true}));
+  L.push(...phaseDash(STATE.air.map(a=>({path:a.th.path,model:a.th.model,start:a.p,cat:a.th.cat})),"ah"));
+  L.push(new LineLayer({id:"drop",data:STATE.air,getSourcePosition:a=>[a.pos[0],a.pos[1],zS(a.alt)],getTargetPosition:a=>[a.pos[0],a.pos[1],0],getColor:a=>catRGBA(a.th.cat,90),getWidth:1}));
+  L.push(new TextLayer({id:"tgt",data:STATE.air,characterSet:CHARSET,getPosition:a=>[a.pos[0],a.pos[1],zS(a.alt)],getText:a=>threatIcon(a.th.model),
+   getColor:a=>(ENV.sel&&ENV.sel.type==="threat"&&ENV.sel.id===a.th.id)?[255,255,255]:catRGBA(a.th.cat,255),getSize:a=>a.th.w.cheap?15:19,billboard:true,fontFamily:"monospace",parameters:{depthTest:false}}));
+  L.push(new LineLayer({id:"inters",data:STATE.fly,getSourcePosition:d=>[d.from[0],d.from[1],0],getTargetPosition:d=>[d.cur[0],d.cur[1],zS(d.toAlt)*d.f],getColor:d=>d.gun?[160,190,200,200]:[77,255,166,220],getWidth:1.5}));
+  L.push(new ScatterplotLayer({id:"interHead",data:STATE.fly,getPosition:d=>[d.cur[0],d.cur[1],zS(d.toAlt)*d.f],getRadius:3.2,radiusUnits:"pixels",filled:true,stroked:false,getFillColor:d=>d.gun?[210,225,235,255]:[150,255,200,255],parameters:{depthTest:false}}));
+  if(STATE.fx.length)L.push(new TextLayer({id:"fx",data:STATE.fx,characterSet:CHARSET,getPosition:f=>[f.pos[0],f.pos[1],zS(f.alt)],getText:f=>f.kind==="kill"?"✷":"※",
+   getColor:f=>f.kind==="kill"?[77,255,166,Math.round(f.a*255)]:[255,77,77,Math.round(f.a*255)],getSize:20,billboard:true,fontFamily:"monospace",parameters:{depthTest:false}}));
+ }
+ try{if(typeof geoLayers==="function"){const gl=geoLayers();if(gl&&gl.length)L.push(...gl);}}catch(e){}
+ return L;
+}
+
+/* ===== launch installations (glyph DOM markers) ===== */
+const platsBox=document.getElementById("plats");
+function syncPlats(){const list=[];
+ for(const t of SETUP.threats)list.push({o:t.path[0],cat:WP[t.model].cat,g:platGlyph(WP[t.model])});
+ if(SETUP.draft&&SETUP.draft.pts.length)list.push({o:SETUP.draft.pts[0],cat:WP[SETUP.draft.model].cat,g:platGlyph(WP[SETUP.draft.model])});
+ if(platsBox.childElementCount!==list.length)platsBox.innerHTML=list.map(x=>`<span class="plat">${x.g}</span>`).join("");
+ if(!map)return;const kids=platsBox.children;
+ for(let i=0;i<list.length;i++){const p=map.project(list[i].o),el=kids[i];if(!el)continue;el.style.left=p.x+"px";el.style.top=p.y+"px";el.style.color=CATCOL[list[i].cat];}}
+
+/* ===== map ===== */
+function initMap(){
+ try{
+  map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+   center:[31.6,48.7],zoom:5.3,pitch:0,bearing:0,maxPitch:80,attributionControl:false,antialias:true});
+  map.on("load",()=>{
+   try{
+    map.addSource("sat",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:18});
+    map.addLayer({id:"satlayer",type:"raster",source:"sat",layout:{visibility:"none"},paint:{"raster-opacity":0.92}});
+    map.addSource("dsm",{type:"geojson",data:DSM_FALLBACK});
+    map.addLayer({id:"dsm-fill",type:"fill",source:"dsm",paint:{"fill-color":["coalesce",["get","fill"],"#c62828"],"fill-opacity":0.20}});
+    map.addLayer({id:"dsm-line",type:"line",source:"dsm",paint:{"line-color":["coalesce",["get","stroke"],"#ff5252"],"line-width":1.4,"line-dasharray":[2,1.4],"line-opacity":0.85}});
+   }catch(e){}
+   overlay=new deck.MapboxOverlay({interleaved:true,layers:[]});map.addControl(overlay);
+   mapReady=true;document.getElementById("loading").classList.add("hide");
+   map.on("click",onMapClick);
+   loadDSM();
+  });
+  map.on("error",()=>{});
+ }catch(e){document.getElementById("loading").innerHTML="ПОМИЛКА КАРТИ · потрібен інтернет";}
+}
+async function loadDSM(){
+ try{
+  const r=await fetch("https://deepstatemap.live/api/history/last",{mode:"cors"});
+  if(!r.ok)throw 0;const d=await r.json();
+  const fc=(d&&d.map&&d.map.features)?d.map:(d&&d.features?d:null);
+  if(!fc||!fc.features||!fc.features.length)throw 0;
+  if(map&&map.getSource("dsm")){map.getSource("dsm").setData(fc);setLegend("DeepStateMap (live)");toast("ЛБЗ · DeepStateMap live");}
+ }catch(e){setLegend("приблизно (запас)");}
+}
+
+function P(lng,lat){const p=map.project([lng,lat]);return [p.x,p.y];}
+function onMapClick(e){const ll=[e.lngLat.lng,e.lngLat.lat];
+ if(typeof GEO!=="undefined"&&GEO.tool){geoClick(e.lngLat,e.point);return;}
+ if(ENV.phase==="setup"&&SETUP.tool){
+  if(SETUP.tool==="pvo"){if(!isLand(ll[0],ll[1])){toast("НА ВОДІ НЕ МОЖНА · лише суша");return;}
+   SETUP.pvo.push({id:SETUP.pvoSeq++,key:SETUP.sel,pos:ll});HIST.push({t:"pvo",undo:()=>{SETUP.pvo.pop();}});toast("ППО · "+PVO[SETUP.sel].name);updateArmed();syncPlay();return;}
+  if(SETUP.tool==="threat"){SETUP.draft.pts.push(ll);HIST.push({t:"pt",undo:()=>{if(SETUP.draft)SETUP.draft.pts.pop();}});toast("ТОЧКА "+SETUP.draft.pts.length+" · «Підтвердити» коли готово");updateArmed();syncPlay();return;}
+ }
+ if(typeof GEO!=="undefined"&&!SETUP.tool){const gh=geoHitTest(e.point.x,e.point.y);if(gh!=null){selectObj(gh);return;}}
+ const hit=hitTest(e.point.x,e.point.y);if(hit){ENV.sel=hit;fillCard();}else{ENV.sel=null;hideCard();}
+}
+function hitTest(x,y){let best=null,bd=22;
+ if((ENV.phase==="run"||ENV.phase==="report")&&STATE){for(const a of STATE.air){const q=P(a.pos[0],a.pos[1]),d=Math.hypot(q[0]-x,q[1]-y);if(d<bd){bd=d;best={type:"threat",id:a.th.id};}}}
+ else for(const t of SETUP.threats){const q=P(t.path[0][0],t.path[0][1]),d=Math.hypot(q[0]-x,q[1]-y);if(d<bd){bd=d;best={type:"threat",id:t.id};}}
+ for(const pv of SETUP.pvo){const q=P(pv.pos[0],pv.pos[1]),d=Math.hypot(q[0]-x,q[1]-y);if(d<bd){bd=d;best={type:"sam",id:pv.id};}}
+ return best;}
+
+/* ===== timeline ===== */
+const tlc=document.getElementById("tlc"),tctx=tlc.getContext("2d");
+function fitTL(){const w=tlc.clientWidth||300,DPR=Math.min(2,window.devicePixelRatio||1);tlc.width=w*DPR;tlc.height=40*DPR;tctx.setTransform(DPR,0,0,DPR,0,0);}
+function fmt(s){s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60;return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(ss).padStart(2,"0");}
+function fmtShort(s){s=Math.max(0,Math.floor(s));if(s>=3600){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h+":"+String(m).padStart(2,"0");}const m=Math.floor(s/60),ss=s%60;return m+":"+String(ss).padStart(2,"0");}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x))),n=x/p;return (n<1.5?1:n<3?2:n<7?5:10)*p;}
+function drawTL(){const w=tlc.clientWidth,h=40,pad=8,end=ENV.endT||1;tctx.clearRect(0,0,w,h);
+ tctx.strokeStyle="#173026";tctx.lineWidth=1;tctx.beginPath();tctx.moveTo(pad,h-13);tctx.lineTo(w-pad,h-13);tctx.stroke();
+ tctx.font="8px 'IBM Plex Mono',monospace";tctx.fillStyle="#5b8874";tctx.textAlign="center";tctx.textBaseline="top";const step=niceStep(end/6);
+ for(let s=0;s<=end+0.01;s+=step){const x=pad+(w-pad*2)*(s/end);tctx.strokeStyle="#0f2019";tctx.beginPath();tctx.moveTo(x,h-15);tctx.lineTo(x,h-11);tctx.stroke();tctx.fillText(fmtShort(s),x,h-8);}
+ if(RUN)for(const ev of RUN.events){if(ev.kind!=="kill"&&ev.kind!=="impact")continue;const x=pad+(w-pad*2)*(ev.t/end),col=ev.kind==="kill"?"#4dffa6":"#ff5a5a";
+  tctx.strokeStyle=col;tctx.globalAlpha=.85;tctx.beginPath();tctx.moveTo(x,h-14);tctx.lineTo(x,h-14-(ev.kind==="kill"?9:13));tctx.stroke();tctx.globalAlpha=1;}
+ const px=pad+(w-pad*2)*(Math.min(ENV.t,end)/end);tctx.strokeStyle="#4dffa6";tctx.lineWidth=1.5;tctx.beginPath();tctx.moveTo(px,2);tctx.lineTo(px,h-11);tctx.stroke();
+ tctx.fillStyle="#4dffa6";tctx.beginPath();tctx.arc(px,4,3,0,7);tctx.fill();
+ document.getElementById("tlnow").textContent=fmtShort(ENV.t);document.getElementById("tlend").textContent="/ "+fmtShort(end);}
+function tlSeek(cx){const rect=tlc.getBoundingClientRect(),pad=8;let f=(cx-rect.left-pad)/(rect.width-pad*2);f=Math.max(0,Math.min(1,f));ENV.t=f*ENV.endT;ENV.playing=false;syncPlay();hideReport();}
+tlc.addEventListener("pointerdown",e=>{tlc.setPointerCapture(e.pointerId);tlSeek(e.clientX);});
+tlc.addEventListener("pointermove",e=>{if(e.buttons)tlSeek(e.clientX);});
+
+/* ===== HUD ===== */
+function updateHUD(S){document.getElementById("c-dr").textContent=S.counts.drone;document.getElementById("c-cr").textContent=S.counts.cruise;
+ document.getElementById("c-ba").textContent=S.counts.ballistic;document.getElementById("c-hy").textContent=S.counts.hyper;
+ document.getElementById("c-in").textContent=S.nK;document.getElementById("c-im").textContent=S.nI;}
+function resetHUD(){["c-dr","c-cr","c-ba","c-hy","c-in","c-im"].forEach(i=>document.getElementById(i).textContent="0");}
+function setLegend(dsm){document.getElementById("legend").innerHTML=
+ `<span><i style="color:var(--drone)">▲</i> дрон</span><span><i style="color:var(--cruise)">➤</i> крилата</span>`+
+ `<span><i style="color:var(--ballistic)">◆</i> баліст.</span><span><i style="color:var(--hyper)">✦</i> гіперзв.</span>`+
+ `<span><i style="color:var(--green)">⊕</i> ППО</span><span>суцільна=пройдено · пунктир=попереду</span>`+
+ `<span><i style="color:#ff5252">▧</i> ЛБЗ: ${dsm} · © DeepStateMap</span>`;}
+
+/* ===== loop ===== */
+let last=0;
+function loop(ts){const dt=Math.min((ts-last)/1000,0.05);last=ts;
+ if(ENV.phase==="run"&&ENV.playing){ENV.t+=dt*ENV.speed;if(ENV.t>=ENV.endT){ENV.t=ENV.endT;ENV.playing=false;showReport();}}
+ if((ENV.phase==="run"||ENV.phase==="report")&&RUN){STATE=stateAt(ENV.t);updateHUD(STATE);}else STATE=null;
+ document.getElementById("clk").textContent=fmt(ENV.t);
+ if(mapReady&&overlay){overlay.setProps({layers:buildLayers()});syncPlats();if(map)map.triggerRepaint();}
+ if(ENV.phase==="run"||ENV.phase==="report")drawTL();
+ requestAnimationFrame(loop);}
+
+/* ===== phases ===== */
+function setPhase(ph){ENV.phase=ph;document.body.dataset.phase=ph;document.querySelectorAll(".ps").forEach(e=>e.classList.toggle("on",e.dataset.ph===ph));updateArmed();}
+function startRun(seed){RUN=buildRun(seed>>>0);ENV.endT=RUN.endT;ENV.t=0;ENV.playing=true;ENV.sel=null;hideCard();hideReport();setPhase("run");syncPlay();toast("ПУСК · цілей "+RUN.threats.length);}
+function syncPlay(){const b=document.getElementById("b-launch");
+ if(ENV.phase==="setup"){if(SETUP.draft&&SETUP.draft.pts.length>=1){b.textContent="✓ Підтвердити ціль";b.className="btn ok";}else{b.textContent="▶ Пуск";b.className="btn go";}}
+ else{b.className="btn play";b.textContent=ENV.playing?"❚❚ Пауза":(ENV.t>=ENV.endT?"↻ Спочатку":"▶ Далі");}}
+
+/* ===== report ===== */
+function showReport(){if(!RUN)return;setPhase("report");const s=RUN.stat;
+ document.getElementById("r-int").textContent=s.killed;document.getElementById("r-imp").textContent=s.impacted;document.getElementById("r-eff").textContent=s.eff+"%";
+ const byCat={};for(const th of RUN.threats){const c=th.cat;(byCat[c]=byCat[c]||{t:0,k:0});byCat[c].t++;if(th.outcome.kind==="kill")byCat[c].k++;}
+ document.getElementById("r-types").innerHTML=["drone","cruise","ballistic","hyper"].filter(c=>byCat[c]).map(c=>{const d=byCat[c],pct=Math.round(d.k/d.t*100);
+  return `<div class="rrow"><span class="lab" style="color:${CATCOL[c]}">${CATUK[c].split(" / ")[0]}</span><span class="bar"><i style="width:${pct}%;background:${CATCOL[c]}"></i></span><span class="pc">${d.k}/${d.t} · ${pct}%</span></div>`;}).join("");
+ document.getElementById("report").classList.add("show");ENV.playing=false;syncPlay();}
+function hideReport(){document.getElementById("report").classList.remove("show");}
+
+/* ===== card ===== */
+function hideCard(){document.getElementById("card").classList.remove("show");}
+function fillCard(){const sel=ENV.sel;if(!sel){hideCard();return;}const rows=document.getElementById("card-rows");let html="";
+ const row=(a,b)=>`<div class="cr"><s>${a}</s><b>${b}</b></div>`;
+ if(sel.type==="threat"){const st=SETUP.threats.find(x=>x.id===sel.id);if(!st){hideCard();return;}const model=st.model,w=WP[model];
+  document.getElementById("card-t").innerHTML=`<span style="color:${CATCOL[w.cat]}">${w.uk}</span> · #${String(sel.id).padStart(2,"0")}`;
+  document.getElementById("card-d").textContent=DESC[model]||"";
+  html+=row("клас",CLSNAME[w.cat]);html+=row("ціль",nearestCity(st.path[st.path.length-1]));html+=row("пуск",PLAT_UK[w.plat]);html+=row("дальність",w.maxRange+" км");html+=row("профіль",w.profile==="arc"?"балістичний":"низьковисотний");html+=row("макс. висота",w.apo>=1000?(w.apo/1000).toFixed(w.apo>=10000?0:1)+" км":w.apo+" м");html+=row("маневреність",AGILE_UK(AGILE[model]||0));
+  if(RUN){const th=RUN.threats.find(x=>x.id===sel.id);
+   if(th){const res=th.outcome,infl=ENV.t>=th.launchT&&ENV.t<res.t;
+    if(infl){const p=(ENV.t-th.launchT)/th.dur,alt=altAt(w.profile,w.apo,p),rem=th.total*(1-p),eta=rem/w.speed*3600;
+     html+=row("швидкість",speedAt(w,p).toLocaleString("uk")+" км/год");html+=row("висота",alt>=1000?(alt/1000).toFixed(1)+" км":Math.round(alt)+" м");
+     html+=row("до цілі",Math.round(rem)+" км");html+=row("підльотний час",fmtShort(eta));html+=row("у польоті",fmtShort(ENV.t-th.launchT));
+     html+=row("статус",`<span style="color:${CATCOL[w.cat]}">у польоті</span>`);
+    }else if(ENV.t>=res.t){if(res.kind==="kill")html+=row("статус",'<span style="color:var(--int)">ПЕРЕХОПЛЕНО</span>');
+     else if(w.strike)html+=row("статус",'<span style="color:var(--threat)">ПРИЛІТ</span>');else html+=row("статус",'<span style="color:var(--ink-d)">досягла цілі</span>');
+    }else html+=row("статус",'<span style="color:var(--ink-d)">очікує пуску</span>');}
+  }else html+=row("статус",'<span style="color:var(--ink-d)">очікує пуску</span>');
+ }else{const pv=SETUP.pvo.find(x=>x.id===sel.id);if(!pv){hideCard();return;}const s=PVO[pv.key];
+  document.getElementById("card-t").textContent="🛡 "+s.name;document.getElementById("card-d").textContent="Зенітний засіб. Бере цілі за роллю; скінченний боєкомплект.";
+  html+=row("дальність",s.r+" км");html+=row("стеля",Math.round((PVO_CEIL[s.grp]||0)/1000)+" км");
+  if(pv.key==="patriot"){html+=row("PAC-3 (баліст./гіперзв.)","6");html+=row("PAC-2 (літаки / КР)","10");}
+  else{html+=row("швидкість ЗКР",s.mSpeed.toLocaleString("uk")+" км/год");let used=0;if(RUN)used=RUN.inters.filter(it=>it.samId===pv.id&&it.launchT<=ENV.t).length;
+   html+=row("боєкомплект",(s.ammo-used)+" / "+s.ammo);const roles=[];if(s.bal)roles.push("балістика/ПРО");if(s.cr)roles.push("крилаті");if(s.dr&&!s.ignoreCheap)roles.push("дрони");if(s.r<=5)roles.push("гармата");html+=row("цілі",roles.join(", "));}
+ }
+ rows.innerHTML=html;document.getElementById("card").classList.add("show");}
+
+/* ===== controls ===== */
+function fillSelects(){const gp={};for(const k in PVO){(gp[PVO[k].grp]=gp[PVO[k].grp]||[]).push(k);}
+ let h='<option value="">— оберіть засіб ППО —</option>';
+ for(const g in gp)h+=`<optgroup label="${g}">`+gp[g].map(k=>`<option value="${k}">${PVO[k].name} · ${PVO[k].r} км</option>`).join("")+"</optgroup>";
+ document.getElementById("sel-pvo").innerHTML=h;
+ const cg={drone:[],cruise:[],ballistic:[],hyper:[]};for(const k in WP)cg[WP[k].cat].push(k);
+ let t='<option value="">— оберіть зброю —</option>';
+ for(const c of ["drone","cruise","ballistic","hyper"])t+=`<optgroup label="${CATUK[c]}">`+cg[c].map(k=>`<option value="${k}">${WP[k].uk}</option>`).join("")+"</optgroup>";
+ document.getElementById("sel-threat").innerHTML=t;}
+function updateArmed(){
+ document.getElementById("pvo-stat").innerHTML=`Розставлено ППО: <b>${SETUP.pvo.length}</b>`;
+ const el=document.getElementById("armed");
+ if(SETUP.tool==="threat")el.innerHTML=`Малюю: <b>${WP[SETUP.sel].uk}</b> · точок: <b>${SETUP.draft.pts.length}</b>`;
+ else el.innerHTML=`Цілей зафіксовано: <b>${SETUP.threats.length}</b>`;
+ document.getElementById("hint").innerHTML=ENV.phase==="setup"
+  ? "<b>ПІДГОТОВКА.</b> Обери засіб ➜ тап по суші. Ціль: <b>2+ точки</b> траєкторії ➜ «Підтвердити», далі «Пуск». ◎ — 3D-нахил."
+  : "<b>ПРОГОН.</b> Суцільна лінія = пройдено, пунктир = попереду. Тап по цілі — картка з деталями. Тягни таймлайн для перемотки.";}
+document.getElementById("sel-pvo").onchange=e=>{const v=e.target.value;if(v){SETUP.tool="pvo";SETUP.sel=v;document.getElementById("sel-threat").value="";SETUP.draft=null;}else{SETUP.tool=null;SETUP.sel=null;}updateArmed();syncPlay();};
+document.getElementById("sel-threat").onchange=e=>{const v=e.target.value;if(v){SETUP.tool="threat";SETUP.sel=v;document.getElementById("sel-pvo").value="";SETUP.draft={model:v,pts:[]};}else{SETUP.tool=null;SETUP.sel=null;SETUP.draft=null;}updateArmed();syncPlay();};
+function confirmTarget(){if(!SETUP.draft||SETUP.draft.pts.length<2){toast("ПОСТАВ ≥2 ТОЧКИ ТРАЄКТОРІЇ");return;}
+ if(SETUP.threats.length>=CAP){toast("ЛІМІТ ЦІЛЕЙ 60");return;}
+ const city=nearestCity(SETUP.draft.pts[SETUP.draft.pts.length-1]);
+ SETUP.threats.push({id:SETUP.thrSeq++,model:SETUP.draft.model,path:SETUP.draft.pts.slice()});
+ while(HIST.length&&HIST[HIST.length-1].t==="pt")HIST.pop();HIST.push({t:"confirm",undo:()=>{SETUP.threats.pop();}});
+ SETUP.draft.pts=[];toast("ЦІЛЬ ЗАФІКСОВАНО → "+city);updateArmed();syncPlay();}
+document.getElementById("b-launch").onclick=()=>{
+ if(ENV.phase==="setup"){if(SETUP.draft&&SETUP.draft.pts.length>=1){confirmTarget();return;}
+  if(SETUP.threats.length<1){toast("ДОДАЙ ЦІЛЬ: ОБЕРИ ЗБРОЮ Й НАМАЛЮЙ ТРАЄКТОРІЮ");return;}startRun((Math.random()*1e9)>>>0);}
+ else{if(ENV.t>=ENV.endT)ENV.t=0;ENV.playing=!ENV.playing;hideReport();syncPlay();}};
+function resetAction(){if(ENV.phase==="setup"){if(HIST.length){HIST.pop().undo();ENV.sel=null;hideCard();toast("СКАСОВАНО");updateArmed();syncPlay();}else toast("НІЧОГО СКАСОВУВАТИ");}
+ else{RUN=null;ENV.t=0;ENV.endT=0;ENV.playing=false;ENV.sel=null;hideCard();hideReport();resetHUD();setPhase("setup");syncPlay();toast("ДО ПІДГОТОВКИ");}}
+function fullClear(){SETUP.pvo=[];SETUP.threats=[];SETUP.draft=(SETUP.tool==="threat")?{model:SETUP.sel,pts:[]}:null;HIST.length=0;ENV.sel=null;RUN=null;ENV.t=0;ENV.endT=0;ENV.playing=false;hideCard();hideReport();resetHUD();setPhase("setup");syncPlay();toast("ОЧИЩЕНО");}
+(function(){const rb=document.getElementById("b-reset");let rpT=null,rpLong=false;
+ rb.addEventListener("pointerdown",()=>{rpLong=false;rpT=setTimeout(()=>{rpLong=true;fullClear();},600);});
+ rb.addEventListener("pointerup",()=>{clearTimeout(rpT);if(!rpLong)resetAction();});
+ rb.addEventListener("pointerleave",()=>clearTimeout(rpT));rb.addEventListener("pointercancel",()=>clearTimeout(rpT));})();
+function buildSpeeds(){const el=document.getElementById("speeds");el.innerHTML=SP.map(s=>`<button data-s="${s}"${s===ENV.speed?' class="on"':""}>${s}×</button>`).join("");
+ el.querySelectorAll("button").forEach(b=>b.onclick=()=>{ENV.speed=+b.dataset.s;el.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));});}
+document.getElementById("b-demo").onclick=()=>{if(ENV.phase!=="setup"){toast("ЛИШЕ В ПІДГОТОВЦІ");return;}loadDemo();toast("ДЕМО ЗАВАНТАЖЕНО");};
+document.getElementById("card-x").onclick=()=>{ENV.sel=null;hideCard();};
+document.getElementById("r-again").onclick=()=>{startRun(RUN.seed);};
+document.getElementById("r-new").onclick=()=>{startRun((Math.random()*1e9)>>>0);};
+document.getElementById("r-setup").onclick=()=>{hideReport();ENV.t=0;ENV.playing=false;resetHUD();setPhase("setup");syncPlay();};
+document.getElementById("t-front").onclick=function(){ENV.front=!ENV.front;this.classList.toggle("on",ENV.front);const v=ENV.front?"visible":"none";
+ if(map){["dsm-fill","dsm-line"].forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility",v);});}toast(ENV.front?"ЛБЗ УВІМК":"ЛБЗ ВИМК");};
+document.getElementById("t-3d").onclick=function(){ENV.threeD=!ENV.threeD;this.classList.toggle("on",ENV.threeD);if(map)map.easeTo({pitch:ENV.threeD?58:0,bearing:ENV.threeD?-12:0,duration:600});};
+document.getElementById("t-panel").onclick=function(){const p=document.getElementById("rpanel");p.classList.toggle("open");this.classList.toggle("on",p.classList.contains("open"));};
+document.getElementById("rpanel-x").onclick=()=>{document.getElementById("rpanel").classList.remove("open");document.getElementById("t-panel").classList.remove("on");};
+setInterval(()=>{if(ENV.sel&&document.getElementById("card").classList.contains("show"))fillCard();},400);
+
+/* ===== toast ===== */
+let toT;const toEl=document.getElementById("toast");
+function toast(m){toEl.textContent=m;toEl.classList.add("show");clearTimeout(toT);toT=setTimeout(()=>toEl.classList.remove("show"),1600);}
+
+/* ===== demo ===== */
+function loadDemo(){
+ SETUP.pvo=[];SETUP.threats=[];SETUP.draft=null;SETUP.tool=null;SETUP.sel=null;HIST.length=0;
+ document.getElementById("sel-pvo").value="";document.getElementById("sel-threat").value="";
+ const P_=(k,lng,lat)=>SETUP.pvo.push({id:SETUP.pvoSeq++,key:k,pos:[lng,lat]});
+ P_("patriot",30.62,50.42);P_("iris",30.95,50.55);P_("gepard",30.45,50.30);P_("s300",36.05,49.98);P_("buk",35.02,48.47);P_("nasams",30.80,46.52);
+ const T_=(m,pts)=>SETUP.threats.push({id:SETUP.thrSeq++,model:m,path:pts});
+ T_("shahed",[[32.6,50.9],[31.6,50.65],[30.7,50.48]]);T_("shahed",[[32.4,49.9],[31.4,50.15],[30.65,50.4]]);
+ T_("gerbera",[[32.8,50.7],[31.7,50.55],[30.75,50.5]]);T_("kalibr",[[32.9,49.6],[31.6,50.0],[30.7,50.4]]);
+ T_("iskm",[[32.9,50.7],[31.5,50.55],[30.66,50.44]]);T_("kinzhal",[[33.6,50.2],[31.9,50.35],[30.7,50.43]]);
+ T_("kh101",[[38.6,49.6],[37.2,49.8],[36.3,49.98]]);T_("iskm",[[38.9,50.4],[37.4,50.1],[36.28,49.99]]);
+ T_("shahed238",[[36.9,48.2],[35.9,48.35],[35.12,48.47]]);T_("oniks",[[31.3,45.3],[31.0,46.0],[30.82,46.5]]);
+ updateArmed();syncPlay();}
+
+/* ===== UI: onboarding + workflow stepper ===== */
+(function(){
+ const ob=document.getElementById("onboard");
+ function closeOb(remember){ob.classList.remove("show");if(remember){try{localStorage.setItem("delta9_onboard_seen","1");}catch(e){}}}
+ let seen=null;try{seen=localStorage.getItem("delta9_onboard_seen");}catch(e){}
+ if(!seen)ob.classList.add("show");
+ document.getElementById("ob-start").onclick=()=>closeOb(true);
+ document.getElementById("ob-x").onclick=()=>closeOb(true);
+ document.getElementById("ob-demo").onclick=()=>{loadDemo();toast("ДЕМО ЗАВАНТАЖЕНО");closeOb(true);};
+ document.getElementById("b-help").onclick=()=>ob.classList.add("show");
+ document.querySelectorAll(".ps").forEach(el=>el.addEventListener("click",()=>{const ph=el.dataset.ph;
+  if(ph==="setup"&&ENV.phase!=="setup"){hideReport();ENV.t=0;ENV.playing=false;resetHUD();setPhase("setup");syncPlay();}
+  else if(ph==="run"&&ENV.phase==="report"){hideReport();ENV.t=0;ENV.playing=true;setPhase("run");syncPlay();}}));
+ const bc=document.getElementById("b-ctrl"),cx=document.getElementById("ctrl-x"),ctrls=document.getElementById("controls");
+ function toggleCtrl(open){const o=(open===undefined)?!ctrls.classList.contains("open"):open;ctrls.classList.toggle("open",o);if(bc)bc.classList.toggle("on",o);}
+ if(bc)bc.addEventListener("click",()=>toggleCtrl());
+ if(cx)cx.addEventListener("click",()=>toggleCtrl(false));
+ const head=document.getElementById("head");
+ function fitTop(){if(head)document.documentElement.style.setProperty("--topoff",(head.offsetHeight+18)+"px");}
+ fitTop();window.addEventListener("resize",fitTop);
+ if(window.ResizeObserver&&head){try{new ResizeObserver(fitTop).observe(head);}catch(e){}}
+})();
+
+/* ===== GEO: draw + journal ===== */
+const AFF={friend:{uk:"Свій",col:"#4da6ff"},hostile:{uk:"Ворог",col:"#ff5a5a"},neutral:{uk:"Нейтрал",col:"#4dffa6"},unknown:{uk:"Невідомий",col:"#ffd24d"}};
+const GKIND={marker:{uk:"Маркер",g:"⌖",multi:false,n:1},line:{uk:"Лінія",g:"╱",multi:true,min:2},polygon:{uk:"Полігон",g:"⬠",multi:true,min:3},rect:{uk:"Прямокутник",g:"▭",multi:false,n:2},arrow:{uk:"Стрілка",g:"➹",multi:true,min:2},circle:{uk:"Коло",g:"◯",multi:false,n:2},sector:{uk:"Сектор",g:"◔",multi:false,n:3},text:{uk:"Мітка",g:"T",multi:false,n:1}};
+const GORDER=["marker","line","polygon","rect","arrow","circle","sector","text"];
+const GPAL=["#4da6ff","#ff5a5a","#4dffa6","#ffd24d","#c58cff","#ff9f45","#57e0e0","#e8eef2"];
+const GTPL=[{t:"Ворожа позиція",k:"marker",aff:"hostile"},{t:"Свій опорний пункт",k:"marker",aff:"friend"},{t:"Зона ураження",k:"circle",aff:"hostile"},{t:"Район (опис)",k:"polygon",aff:"neutral"},{t:"Напрям удару",k:"arrow",aff:"hostile"},{t:"Маршрут",k:"line",aff:"friend"}];
+const GEO={objs:[],seq:1,tool:null,aff:"friend",draft:null,sel:null,edit:null,mode:null,tab:"draw",sort:"new",filt:{type:new Set(),aff:new Set(),q:""},drag:null,buf:null,dirty:false,multi:new Set(),undo:[],redo:[],tpl:null};
+const GKEY="delta9_geo_v1";
+function gobj(id){return GEO.objs.find(o=>o.id===id);}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function affCol(a){return (AFF[a]||AFF.neutral).col;}
+function objCol(o){return o.color||affCol(o.aff);}
+function objRGB(o){return hexRGB(objCol(o));}
+function ptAtBrg(c,rkm,brg){return ptAt(c,rkm,(90-brg)*R2);}
+function sectorRing(c,r,b0,b1){let d=b1-b0;while(d<0)d+=360;while(d>360)d-=360;if(d<1)d=360;const N=Math.max(8,Math.round(d/5));const out=[[c[0],c[1]]];for(let i=0;i<=N;i++)out.push(ptAtBrg(c,r,b0+d*i/N));out.push([c[0],c[1]]);return out;}
+function ringOf(o){if(o.kind==="polygon")return o.geom;if(o.kind==="rect")return [[o.geom[0][0],o.geom[0][1]],[o.geom[1][0],o.geom[0][1]],[o.geom[1][0],o.geom[1][1]],[o.geom[0][0],o.geom[1][1]],[o.geom[0][0],o.geom[0][1]]];if(o.kind==="sector")return sectorRing(o.geom.center,o.geom.rkm,o.geom.b0,o.geom.b1);return [];}
+function gLen(pts){let d=0;for(let i=1;i<pts.length;i++)d+=hav(pts[i-1],pts[i]);return d;}
+function gArea(ring){if(!ring||ring.length<3)return 0;const lat0=ring.reduce((a,p)=>a+p[1],0)/ring.length,kx=111.32*Math.cos(lat0*R2),ky=110.57;let s=0;for(let i=0,j=ring.length-1;i<ring.length;j=i++)s+=(ring[j][0]*kx*ring[i][1]*ky-ring[i][0]*kx*ring[j][1]*ky);return Math.abs(s/2);}
+function centroid(ring){let x=0,y=0,n=0;for(const p of ring){x+=p[0];y+=p[1];n++;}return n?[x/n,y/n]:[0,0];}
+function labelPos(o){switch(o.kind){case "marker":case "text":return [o.geom[0],o.geom[1],0];case "circle":case "sector":return [o.geom.center[0],o.geom.center[1],0];case "line":case "arrow":{const m=o.geom[Math.floor(o.geom.length/2)];return [m[0],m[1],0];}default:{const c=centroid(ringOf(o));return [c[0],c[1],0];}}}
+function objCenter(o){const l=labelPos(o);return [l[0],l[1]];}
+function fmtLL(p){return p[1].toFixed(4)+", "+p[0].toFixed(4);}
+function measureText(o){if(o.kind==="line"||o.kind==="arrow")return gLen(o.geom).toFixed(1)+" км";if(o.kind==="polygon"||o.kind==="rect"||o.kind==="sector")return gArea(ringOf(o)).toFixed(1)+" км²";if(o.kind==="circle")return "R "+o.geom.rkm.toFixed(1)+" км · "+(Math.PI*o.geom.rkm*o.geom.rkm).toFixed(1)+" км²";return "точка";}
+function handlesOf(o){switch(o.kind){case "marker":case "text":return [o.geom.slice()];case "line":case "arrow":return o.geom.map(p=>p.slice());case "polygon":return o.geom.slice(0,o.geom.length-1).map(p=>p.slice());case "rect":return [o.geom[0].slice(),o.geom[1].slice()];case "circle":return [o.geom.center.slice(),ptAtBrg(o.geom.center,o.geom.rkm,90)];case "sector":return [o.geom.center.slice(),ptAtBrg(o.geom.center,o.geom.rkm,o.geom.b0),ptAtBrg(o.geom.center,o.geom.rkm,o.geom.b1)];}return [];}
+function midsOf(o){if(!GKIND[o.kind].multi)return [];const g=o.geom,out=[],n=g.length-1;for(let i=0;i<n;i++)out.push({m:[(g[i][0]+g[i+1][0])/2,(g[i][1]+g[i+1][1])/2],i:i});return out;}
+function applyHandle(o,i,ll){const c=[ll[0],ll[1]];if(o.kind==="marker"||o.kind==="text")o.geom=c;else if(o.kind==="line"||o.kind==="arrow")o.geom[i]=c;else if(o.kind==="polygon"){o.geom[i]=c;o.geom[o.geom.length-1]=o.geom[0].slice();}else if(o.kind==="rect")o.geom[i]=c;else if(o.kind==="circle"){if(i===0)o.geom.center=c;else o.geom.rkm=Math.max(0.2,hav(o.geom.center,c));}else if(o.kind==="sector"){if(i===0)o.geom.center=c;else if(i===1){o.geom.rkm=Math.max(0.2,hav(o.geom.center,c));o.geom.b0=bearing(o.geom.center,c);}else o.geom.b1=bearing(o.geom.center,c);}}
+function translate(o,dx,dy){const mv=p=>[p[0]+dx,p[1]+dy];if(o.kind==="marker"||o.kind==="text")o.geom=mv(o.geom);else if(o.kind==="circle"||o.kind==="sector")o.geom.center=mv(o.geom.center);else if(o.kind==="rect")o.geom=[mv(o.geom[0]),mv(o.geom[1])];else o.geom=o.geom.map(mv);}
+/* persistence + undo */
+function geoSerial(){return JSON.stringify({seq:GEO.seq,objs:GEO.objs.map(o=>Object.assign({},o,{created:(o.created instanceof Date)?o.created.toISOString():o.created}))});}
+function geoSave(){try{localStorage.setItem(GKEY,geoSerial());}catch(e){}}
+function geoLoad(){try{const s=localStorage.getItem(GKEY);if(!s)return;const d=JSON.parse(s);if(d&&d.objs){GEO.objs=d.objs.map(o=>Object.assign(o,{created:new Date(o.created||Date.now())}));GEO.seq=d.seq||(GEO.objs.reduce((m,o)=>Math.max(m,o.id),0)+1);}}catch(e){}}
+function pushUndo(){GEO.undo.push(geoSerial());if(GEO.undo.length>60)GEO.undo.shift();GEO.redo.length=0;updateUndoUI();}
+function restoreState(s){const d=JSON.parse(s);GEO.objs=(d.objs||[]).map(o=>Object.assign(o,{created:new Date(o.created||Date.now())}));GEO.seq=d.seq||1;GEO.sel=null;GEO.edit=null;GEO.mode=null;GEO.multi.clear();const el=document.getElementById("obj-card");if(el)el.style.display="none";renderJournal();updateUndoUI();}
+function undo(){if(!GEO.undo.length){toast("нема що відміняти");return;}GEO.redo.push(geoSerial());restoreState(GEO.undo.pop());toast("Відмінено");}
+function redo(){if(!GEO.redo.length)return;GEO.undo.push(geoSerial());restoreState(GEO.redo.pop());toast("Повторено");}
+function updateUndoUI(){const u=document.getElementById("g-undo"),r=document.getElementById("g-redo");if(u)u.disabled=!GEO.undo.length;if(r)r.disabled=!GEO.redo.length;}
+/* render */
+function geoLayers(){
+ if(!window.deck)return [];
+ const {PathLayer,ScatterplotLayer,TextLayer,PolygonLayer}=deck,G=[];
+ const vis=GEO.objs.filter(o=>o.visible!==false),selId=GEO.sel;
+ const satR=vis.filter(o=>(o.kind==="polygon"||o.kind==="rect")&&o.polyKind==="satellite"&&o.satStatus==="ready");
+ if(satR.length&&deck.TileLayer&&deck.BitmapLayer&&deck.MaskExtension){
+  G.push(new deck.SolidPolygonLayer({id:"geo-satmask",data:satR,getPolygon:o=>ringOf(o),operation:"mask"}));
+  G.push(new deck.TileLayer({id:"geo-sattiles",data:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",minZoom:0,maxZoom:17,tileSize:256,maxRequests:6,renderSubLayers:props=>{const b=props.tile.bbox;return new deck.BitmapLayer(props,{data:null,image:props.data,bounds:[b.west,b.south,b.east,b.north]});},extensions:[new deck.MaskExtension()],maskId:"geo-satmask"}));
+ }
+ const mset=GEO.multi;
+ const isHi=o=>o.id===selId||mset.has(o.id);
+ const polys=vis.filter(o=>o.kind==="polygon"||o.kind==="rect"||o.kind==="sector");
+ if(polys.length)G.push(new PolygonLayer({id:"geo-poly",data:polys,getPolygon:o=>ringOf(o),stroked:true,filled:true,getFillColor:o=>o.polyKind==="satellite"?[63,182,217,o.satStatus==="ready"?6:22]:[...objRGB(o),isHi(o)?42:20],getLineColor:o=>o.polyKind==="satellite"?[63,182,217,240]:[...objRGB(o),isHi(o)?255:205],lineWidthUnits:"pixels",getLineWidth:o=>isHi(o)?2.6:1.6,parameters:{depthTest:false},updateTriggers:{getLineColor:[selId,[...mset].join()],getFillColor:[selId,[...mset].join()]}}));
+ const lines=vis.filter(o=>o.kind==="line"||o.kind==="arrow");
+ if(lines.length)G.push(new PathLayer({id:"geo-line",data:lines,getPath:o=>o.geom.map(p=>[p[0],p[1],0]),getColor:o=>[...objRGB(o),isHi(o)?255:225],widthUnits:"pixels",getWidth:o=>isHi(o)?3.4:2.4,capRounded:true,jointRounded:true,parameters:{depthTest:false},updateTriggers:{getColor:[selId,[...mset].join()],getWidth:[selId,[...mset].join()]}}));
+ const arrows=vis.filter(o=>o.kind==="arrow"&&o.geom.length>=2);
+ if(arrows.length)G.push(new TextLayer({id:"geo-ah",data:arrows,characterSet:"auto",getPosition:o=>[o.geom[o.geom.length-1][0],o.geom[o.geom.length-1][1],0],getText:()=>"▶",getColor:o=>[...objRGB(o),255],getSize:22,billboard:true,getAngle:o=>{const g=o.geom;return 90-bearing(g[g.length-2],g[g.length-1]);},fontFamily:"monospace",parameters:{depthTest:false}}));
+ const circ=vis.filter(o=>o.kind==="circle");
+ if(circ.length)G.push(new ScatterplotLayer({id:"geo-circ",data:circ,getPosition:o=>[o.geom.center[0],o.geom.center[1],0],getRadius:o=>o.geom.rkm*1000,radiusUnits:"meters",filled:true,stroked:true,getFillColor:o=>[...objRGB(o),16],getLineColor:o=>[...objRGB(o),isHi(o)?255:205],lineWidthUnits:"pixels",getLineWidth:o=>isHi(o)?2.6:1.6,parameters:{depthTest:false},updateTriggers:{getLineColor:[selId,[...mset].join()]}}));
+ const mks=vis.filter(o=>o.kind==="marker");
+ if(mks.length)G.push(new ScatterplotLayer({id:"geo-mk",data:mks,getPosition:o=>[o.geom[0],o.geom[1],0],getRadius:6.5,radiusUnits:"pixels",filled:true,stroked:true,getFillColor:o=>[...objRGB(o),240],getLineColor:o=>isHi(o)?[255,255,255,255]:[6,10,14,230],lineWidthUnits:"pixels",getLineWidth:2,parameters:{depthTest:false},updateTriggers:{getLineColor:[selId,[...mset].join()]}}));
+ const txts=vis.filter(o=>o.kind==="text");
+ if(txts.length)G.push(new TextLayer({id:"geo-txt",data:txts,characterSet:"auto",getPosition:o=>[o.geom[0],o.geom[1],0],getText:o=>o.text||o.name||"мітка",getColor:o=>[...objRGB(o),245],getSize:14,billboard:true,fontFamily:"monospace",parameters:{depthTest:false}}));
+ const named=vis.filter(o=>o.name&&o.kind!=="text");
+ if(named.length)G.push(new TextLayer({id:"geo-lbl",data:named,characterSet:"auto",getPosition:o=>labelPos(o),getText:o=>o.name+(o.polyKind==="satellite"?(o.satStatus==="ready"?" · знімок":" · замовлено…"):""),getColor:o=>[...objRGB(o),235],getSize:10.5,billboard:true,getPixelOffset:o=>[0,o.kind==="marker"?-14:0],fontFamily:"monospace",parameters:{depthTest:false}}));
+ if(GEO.draft&&GEO.draft.pts.length){const pts=GEO.draft.pts;if(pts.length>1)G.push(new PathLayer({id:"geo-dl",data:[pts],getPath:p=>p.map(q=>[q[0],q[1],0]),getColor:[34,211,238,230],getWidth:2,widthUnits:"pixels"}));G.push(new ScatterplotLayer({id:"geo-dp",data:pts,getPosition:p=>[p[0],p[1],0],getRadius:4,radiusUnits:"pixels",getFillColor:[34,211,238,255],parameters:{depthTest:false}}));}
+ if(GEO.edit!=null){const o=gobj(GEO.edit);if(o){
+  if(GEO.mode==="vertex"){
+   const mids=midsOf(o);
+   if(mids.length){G.push(new ScatterplotLayer({id:"geo-mid",data:mids,getPosition:d=>[d.m[0],d.m[1],0],getRadius:5,radiusUnits:"pixels",filled:true,stroked:true,getFillColor:[34,211,238,220],getLineColor:[6,10,14,255],lineWidthUnits:"pixels",getLineWidth:1,parameters:{depthTest:false}}));
+    G.push(new TextLayer({id:"geo-midp",data:mids,characterSet:"auto",getPosition:d=>[d.m[0],d.m[1],0],getText:()=>"＋",getColor:[6,10,14,255],getSize:11,billboard:true,fontFamily:"monospace",parameters:{depthTest:false}}));}
+   G.push(new ScatterplotLayer({id:"geo-h",data:handlesOf(o).map((h,i)=>({h,i})),getPosition:d=>[d.h[0],d.h[1],0],getRadius:6.5,radiusUnits:"pixels",filled:true,stroked:true,getFillColor:[255,180,84,255],getLineColor:[10,15,20,255],lineWidthUnits:"pixels",getLineWidth:1.5,parameters:{depthTest:false}}));
+  } else if(GEO.mode==="move"){
+   const c=objCenter(o);
+   G.push(new ScatterplotLayer({id:"geo-mv",data:[c],getPosition:d=>[d[0],d[1],0],getRadius:12,radiusUnits:"pixels",filled:false,stroked:true,getLineColor:[255,180,84,255],lineWidthUnits:"pixels",getLineWidth:1.5,parameters:{depthTest:false}}));
+   G.push(new TextLayer({id:"geo-mvi",data:[c],characterSet:"auto",getPosition:d=>[d[0],d[1],0],getText:()=>"✥",getColor:[255,180,84,255],getSize:14,billboard:true,fontFamily:"monospace",parameters:{depthTest:false}}));
+  }
+ }}
+ return G;
+}
+function geoHitTest(x,y){if(!map)return null;let best=null,bd=14;
+ for(const o of GEO.objs){if(o.visible===false)continue;let pts=[];if(o.kind==="marker"||o.kind==="text")pts=[o.geom];else if(o.kind==="circle"||o.kind==="sector")pts=[o.geom.center];else if(o.kind==="rect")pts=ringOf(o);else pts=o.geom;for(const p of pts){const q=map.project(p);const d=Math.hypot(q.x-x,q.y-y);if(d<bd){bd=d;best=o.id;}}}
+ if(best==null&&ENV.phase==="setup"){const ll=map.unproject([x,y]);let ba=1e18;for(const o of GEO.objs){if(o.visible===false)continue;if(o.kind==="polygon"||o.kind==="rect"||o.kind==="sector"){const r=ringOf(o);if(pointInPoly([ll.lng,ll.lat],r)){const a=gArea(r);if(a<ba){ba=a;best=o.id;}}}}}
+ return best;}
+function geoClick(ll){const t=GEO.tool,k=GKIND[t];if(!k)return;if(!GEO.draft)GEO.draft={kind:t,pts:[]};GEO.draft.pts.push([ll.lng,ll.lat]);if(!k.multi&&GEO.draft.pts.length>=k.n){finishDraft();return;}updateDraftBar();}
+function updateDraftBar(){const dc=document.getElementById("dcount");if(dc&&GEO.draft)dc.textContent="точок: "+GEO.draft.pts.length;}
+function draftBarHTML(t){const k=GKIND[t];return "Малюю: <b>"+k.uk+"</b>"+(GEO.tpl?" · <b>"+esc(GEO.tpl.name)+"</b>":"")+"<div id='dcount'>точок: 0</div>"+(k.multi?"<div class='dbtns'><button class='ok' id='d-fin'>✓ Завершити</button><button id='d-can'>✕ Скасувати</button></div>":"<div class='dbtns'><button id='d-can'>✕ Скасувати</button></div>");}
+function setTool(t){GEO.tool=t;GEO.draft=null;if(!t)GEO.tpl=null;const gt=document.getElementById("geo-tools");if(gt)gt.querySelectorAll(".gtool").forEach(b=>b.classList.toggle("on",b.dataset.k===t));const dp=document.getElementById("geo-draft");if(!dp)return;
+ if(t){GEO.edit=null;GEO.mode=null;dp.style.display="block";dp.innerHTML=draftBarHTML(t);const f=document.getElementById("d-fin"),cn=document.getElementById("d-can");if(f)f.onclick=finishDraft;if(cn)cn.onclick=()=>setTool(null);if(map){try{map.doubleClickZoom.disable();}catch(e){}map.getCanvas().style.cursor="crosshair";}}
+ else{dp.style.display="none";if(map){try{map.doubleClickZoom.enable();}catch(e){}map.getCanvas().style.cursor="";}}}
+function finishDraft(){const d=GEO.draft;if(!d){setTool(null);return;}const k=GKIND[d.kind];if(k.multi&&d.pts.length<k.min){toast("замало точок ("+k.min+"+)");return;}if(!k.multi&&d.pts.length<k.n)return;
+ let geom;if(d.kind==="marker"||d.kind==="text")geom=d.pts[0].slice();else if(d.kind==="line"||d.kind==="arrow")geom=d.pts.map(p=>p.slice());else if(d.kind==="polygon"){geom=d.pts.map(p=>p.slice());geom.push(geom[0].slice());}else if(d.kind==="rect")geom=[d.pts[0].slice(),d.pts[1].slice()];else if(d.kind==="circle")geom={center:d.pts[0].slice(),rkm:Math.max(0.3,hav(d.pts[0],d.pts[1]))};else if(d.kind==="sector"){const c=d.pts[0];geom={center:c.slice(),rkm:Math.max(0.3,hav(c,d.pts[1])),b0:bearing(c,d.pts[1]),b1:bearing(c,d.pts[2])};}
+ pushUndo();const id=GEO.seq++,nm=GEO.tpl?GEO.tpl.name+" "+id:GKIND[d.kind].uk+" "+id;
+ const o={id,kind:d.kind,geom,name:nm,text:"",desc:"",group:"",aff:GEO.aff,tags:[],priority:"med",status:"active",created:new Date(),parent:null,children:[],visible:true,color:null};
+ if(d.kind==="polygon"||d.kind==="rect"){o.polyKind="describe";o.satStatus=null;}
+ GEO.objs.push(o);autoParent(o);GEO.draft=null;const rep=(d.kind);const tpl=GEO.tpl;setTool(null);GEO.tool=null;renderJournal();selectObj(id);toast(GKIND[rep].uk+" створено");}
+function autoParent(o){if(o.kind==="marker"||o.kind==="text"||o.kind==="circle"){const pt=o.kind==="circle"?o.geom.center:o.geom;let best=null,ba=1e18;for(const p of GEO.objs){if(p.id===o.id)continue;if(p.kind==="polygon"||p.kind==="rect"){const r=ringOf(p);if(pointInPoly(pt,r)){const a=gArea(r);if(a<ba){ba=a;best=p;}}}}if(best)setParent(o,best.id);}else if(o.kind==="polygon"||o.kind==="rect"){const r=ringOf(o);for(const p of GEO.objs){if(p.id===o.id||p.parent)continue;if(p.kind==="marker"||p.kind==="text"){if(pointInPoly(p.geom,r))setParent(p,o.id);}}}}
+function setParent(o,pid){if(o.parent){const op=gobj(o.parent);if(op)op.children=(op.children||[]).filter(x=>x!==o.id);}o.parent=pid;if(pid){const np=gobj(pid);if(np){np.children=np.children||[];if(!np.children.includes(o.id))np.children.push(o.id);}}}
+function delObj(id){const o=gobj(id);if(!o)return;pushUndo();if(o.parent){const p=gobj(o.parent);if(p)p.children=(p.children||[]).filter(x=>x!==id);}(o.children||[]).forEach(cid=>{const c=gobj(cid);if(c)c.parent=null;});GEO.objs=GEO.objs.filter(x=>x.id!==id);GEO.multi.delete(id);if(GEO.sel===id)closeCard();if(GEO.edit===id){GEO.edit=null;GEO.mode=null;}renderJournal();toast("Видалено");}
+function orderSat(o){pushUndo();o.polyKind="satellite";o.satStatus="ordered";renderCard();renderJournal();toast("Знімок замовлено…");setTimeout(()=>{const x=gobj(o.id);if(x&&x.satStatus==="ordered"){x.satStatus="ready";if(GEO.sel===x.id)renderCard();renderJournal();toast("Супутниковий знімок отримано");}},2600);}
+function flyTo(id){const o=gobj(id);if(o&&map)map.easeTo({center:objCenter(o),duration:500});}
+function selectObj(id){if(GEO.edit!=null&&id===GEO.edit){openCard(id);return;}GEO.sel=id;GEO.edit=null;GEO.mode=null;const rp=document.getElementById("rpanel");if(rp)rp.classList.add("open");const tp=document.getElementById("t-panel");if(tp)tp.classList.add("on");openCard(id);renderJournal();}
+function closeCard(){GEO.sel=null;GEO.edit=null;GEO.mode=null;GEO.buf=null;GEO.dirty=false;const c=document.getElementById("obj-card");if(c)c.style.display="none";renderJournal();}
+function editable(o){return {name:o.name,text:o.text||"",desc:o.desc||"",group:o.group||"",aff:o.aff,priority:o.priority,status:o.status,tags:(o.tags||[]).slice(),color:o.color||null,parent:o.parent};}
+function openCard(id){GEO.sel=id;const o=gobj(id);GEO.buf=o?editable(o):null;GEO.dirty=false;renderCard(id);const el=document.getElementById("obj-card");if(el)el.style.display="flex";}
+function markDirty(){GEO.dirty=true;const d=document.getElementById("oc-dirty");if(d)d.style.display="inline";const s=document.getElementById("oc-save");if(s)s.disabled=false;}
+function saveCard(){const o=gobj(GEO.sel),b=GEO.buf;if(!o||!b)return;pushUndo();o.name=b.name;o.text=b.text;o.desc=b.desc;o.group=b.group;o.aff=b.aff;o.priority=b.priority;o.status=b.status;o.tags=b.tags.slice();o.color=b.color;if(b.parent!==o.parent)setParent(o,b.parent);GEO.dirty=false;renderJournal();renderCard();toast("Збережено");}
+function cancelCard(){const o=gobj(GEO.sel);if(o)GEO.buf=editable(o);GEO.dirty=false;renderCard();}
+function renderCard(id){id=id==null?GEO.sel:id;const o=gobj(id),el=document.getElementById("obj-card");if(!el)return;if(!o){el.style.display="none";return;}const b=GEO.buf||editable(o);
+ const opt=(arr,v)=>arr.map(p=>"<option value='"+p[0]+"'"+(v===p[0]?" selected":"")+">"+p[1]+"</option>").join("");
+ const parents=GEO.objs.filter(p=>p.id!==o.id&&(p.kind==="polygon"||p.kind==="rect"));
+ const parOpts="<option value=''>— немає —</option>"+parents.map(p=>"<option value='"+p.id+"'"+(b.parent===p.id?" selected":"")+">"+esc(p.name)+"</option>").join("");
+ const kids=(o.children||[]).map(c=>gobj(c)).filter(Boolean);
+ const sw=GPAL.map(c=>"<span class='swatch"+(b.color===c?" on":"")+"' data-c='"+c+"' style='background:"+c+"'></span>").join("")+"<span class='swatch auto"+(b.color?"":" on")+"' data-c=''>за стороною</span>";
+ let sat="";if(o.kind==="polygon"||o.kind==="rect"){if(o.polyKind==="satellite"){sat="<div class='satbox'>📡 Супутниковий полігон — статус: <b>"+(o.satStatus==="ready"?"знімок отримано":"замовлено, очікування…")+"</b>"+(o.satStatus==="ready"?"<button class='sbtn' id='sat-cancel'>Скасувати знімок (зробити описовим)</button>":"")+"</div>";}else sat="<div class='satbox'>Полігон опису території. Можна замовити супутниковий знімок цієї ділянки.<button class='sbtn' id='sat-order'>📡 Замовити супутниковий знімок</button></div>";}
+ el.innerHTML="<div class='oc-head'><span class='oc-ic' style='color:"+objCol(o)+"'>"+GKIND[o.kind].g+"</span><span class='oc-t'>"+GKIND[o.kind].uk+" · #"+o.id+"</span><span class='oc-x' id='oc-x'>✕</span></div><div class='oc-body'><div class='fld'><label>Назва</label><input id='f-name' value='"+esc(b.name)+"'/></div>"+(o.kind==="text"?"<div class='fld'><label>Текст мітки</label><input id='f-text' value='"+esc(b.text)+"'/></div>":"")+"<div class='fld'><label>Опис / нотатки</label><textarea id='f-desc'>"+esc(b.desc)+"</textarea></div><div class='fld2'><div class='fld'><label>Сторона</label><select id='f-aff'>"+opt(Object.keys(AFF).map(a=>[a,AFF[a].uk]),b.aff)+"</select></div><div class='fld'><label>Група / тека</label><input id='f-group' value='"+esc(b.group)+"'/></div></div><div class='fld'><label>Колір</label><div class='swatches' id='f-sw'>"+sw+"</div></div><div class='fld2'><div class='fld'><label>Пріоритет</label><select id='f-pri'>"+opt([["low","низький"],["med","середній"],["high","високий"]],b.priority)+"</select></div><div class='fld'><label>Статус</label><select id='f-status'>"+opt([["active","активний"],["planned","план"],["done","виконано"]],b.status)+"</select></div></div><div class='fld'><label>Теги (через кому)</label><input id='f-tags' value='"+esc((b.tags||[]).join(", "))+"'/></div>"+sat+"<div><div class='metric'><span>координати</span><b>"+fmtLL(objCenter(o))+"</b></div><div class='metric'><span>розмір</span><b>"+measureText(o)+"</b></div><div class='metric'><span>створено</span><b>"+o.created.toLocaleTimeString("uk",{hour:"2-digit",minute:"2-digit"})+"</b></div></div><div class='fld'><label>Геометрія</label><div class='oc-modes'><button id='m-vtx' class='"+(GEO.mode==="vertex"&&GEO.edit===o.id?"on":"")+"'>✎ Вершини</button><button id='m-mov' class='"+(GEO.mode==="move"&&GEO.edit===o.id?"on":"")+"'>✥ Перемістити</button></div></div><div class='fld'><label>Батьківський обʼєкт</label><select id='f-parent'>"+parOpts+"</select></div>"+(kids.length?"<div><label style='font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-d)'>Дочірні ("+kids.length+")</label><div class='rellist'>"+kids.map(c=>"<div class='relitem' data-rel='"+c.id+"'>"+GKIND[c.kind].g+" "+esc(c.name)+"</div>").join("")+"</div></div>":"")+"<div class='ocbtns'><button class='go' id='oc-fly'>↗ До обʼєкта</button><button id='oc-vis'>"+(o.visible===false?"○ Показати":"◉ Сховати")+"</button><button class='del' id='oc-del'>🗑 Видалити</button></div></div><div class='oc-savebar'><span class='dirty' id='oc-dirty'>● незбережено</span><button class='sv' id='oc-save'"+(GEO.dirty?"":" disabled")+">Зберегти</button><button id='oc-cancel'>Скасувати</button></div>";
+ const D=(i,ev,fn)=>{const e=document.getElementById(i);if(e)e.addEventListener(ev,fn);};
+ D("oc-x","click",closeCard);
+ D("f-name","input",e=>{b.name=e.target.value;markDirty();});D("f-text","input",e=>{b.text=e.target.value;markDirty();});D("f-desc","input",e=>{b.desc=e.target.value;markDirty();});D("f-aff","change",e=>{b.aff=e.target.value;markDirty();});D("f-group","input",e=>{b.group=e.target.value;markDirty();});D("f-pri","change",e=>{b.priority=e.target.value;markDirty();});D("f-status","change",e=>{b.status=e.target.value;markDirty();});D("f-tags","input",e=>{b.tags=e.target.value.split(",").map(s=>s.trim()).filter(Boolean);markDirty();});D("f-parent","change",e=>{b.parent=e.target.value?+e.target.value:null;markDirty();});
+ el.querySelectorAll("#f-sw .swatch").forEach(s=>s.addEventListener("click",()=>{b.color=s.dataset.c||null;el.querySelectorAll("#f-sw .swatch").forEach(x=>x.classList.toggle("on",x===s));markDirty();}));
+ D("sat-order","click",()=>orderSat(o));D("sat-cancel","click",()=>{pushUndo();o.polyKind="describe";o.satStatus=null;renderCard();renderJournal();});
+ D("oc-fly","click",()=>flyTo(o.id));D("oc-vis","click",()=>{pushUndo();o.visible=o.visible===false?true:false;renderCard();renderJournal();});D("oc-del","click",()=>delObj(o.id));
+ D("oc-save","click",saveCard);D("oc-cancel","click",cancelCard);
+ D("m-vtx","click",()=>{const on=!(GEO.mode==="vertex"&&GEO.edit===o.id);GEO.mode=on?"vertex":null;GEO.edit=on?o.id:null;renderCard();toast(on?"Вершини: тягніть точки · ＋ додати · права кнопка — видалити":"");});
+ D("m-mov","click",()=>{const on=!(GEO.mode==="move"&&GEO.edit===o.id);GEO.mode=on?"move":null;GEO.edit=on?o.id:null;renderCard();toast(on?"Перетягніть обʼєкт по карті":"");});
+ el.querySelectorAll("[data-rel]").forEach(r=>r.addEventListener("click",()=>selectObj(+r.dataset.rel)));}
+function jFiltered(){let a=GEO.objs.slice();const f=GEO.filt;if(f.q){const q=f.q.toLowerCase();a=a.filter(o=>(o.name||"").toLowerCase().includes(q)||(o.tags||[]).join(" ").toLowerCase().includes(q)||(o.group||"").toLowerCase().includes(q));}if(f.type.size)a=a.filter(o=>f.type.has(o.kind));if(f.aff.size)a=a.filter(o=>f.aff.has(o.aff));const s=GEO.sort;a.sort((x,y)=>s==="name"?(x.name||"").localeCompare(y.name||""):s==="old"?x.id-y.id:y.id-x.id);return a;}
+function jItem(o){const sub=[];if(o.parent){const p=gobj(o.parent);if(p)sub.push("↳ "+(p.name||"обʼєкт"));}if(o.group)sub.push(o.group);const badge=(o.polyKind==="satellite")?"<span class='jbadge' style='color:#3fb6d9'>"+(o.satStatus==="ready"?"SAT ✓":"SAT…")+"</span>":"";const ck=GEO.multi.has(o.id);return "<div class='jitem "+(o.id===GEO.sel?"sel":"")+"' data-oid='"+o.id+"'><span class='jcheck' data-ck='"+o.id+"'>"+(ck?"✓":"")+"</span><span class='dot' style='background:"+objCol(o)+"'></span><span class='ic'>"+GKIND[o.kind].g+"</span><span class='nm'>"+esc(o.name||GKIND[o.kind].uk)+(sub.length?" <span class='sub'>· "+esc(sub.join(" · "))+"</span>":"")+"</span>"+badge+"<span class='vis' data-vis='"+o.id+"'>"+(o.visible===false?"○":"◉")+"</span></div>";}
+function renderBatch(){const el=document.getElementById("jbatch");if(!el)return;if(!GEO.multi.size){el.style.display="none";el.innerHTML="";return;}el.style.display="block";el.innerHTML="Обрано: <b>"+GEO.multi.size+"</b><div class='brow'><select id='b-aff'><option value=''>сторона…</option>"+Object.keys(AFF).map(a=>"<option value='"+a+"'>"+AFF[a].uk+"</option>").join("")+"</select><input id='b-grp' placeholder='група…'/><button id='b-grpb'>↳</button></div><div class='brow'><button class='del' id='b-del'>Видалити</button><button id='b-clr'>Зняти вибір</button></div>";
+ const gid=i=>document.getElementById(i);
+ gid("b-aff").onchange=e=>{if(!e.target.value)return;pushUndo();GEO.multi.forEach(id=>{const o=gobj(id);if(o)o.aff=e.target.value;});renderJournal();if(GEO.sel){GEO.buf=editable(gobj(GEO.sel));renderCard();}toast("Сторону змінено");};
+ gid("b-grpb").onclick=()=>{const v=gid("b-grp").value.trim();pushUndo();GEO.multi.forEach(id=>{const o=gobj(id);if(o)o.group=v;});renderJournal();toast("Групу застосовано");};
+ gid("b-del").onclick=()=>{pushUndo();GEO.multi.forEach(id=>{const o=gobj(id);if(o&&o.parent){const p=gobj(o.parent);if(p)p.children=(p.children||[]).filter(x=>x!==id);}});GEO.objs=GEO.objs.filter(o=>!GEO.multi.has(o.id));GEO.multi.clear();if(GEO.sel&&!gobj(GEO.sel))closeCard();renderJournal();toast("Видалено групу");};
+ gid("b-clr").onclick=()=>{GEO.multi.clear();renderJournal();};}
+function renderJournal(){const jc=document.getElementById("jcount");if(jc)jc.textContent=GEO.objs.length;renderBatch();const list=document.getElementById("jlist");if(list){const a=jFiltered();if(!a.length){list.innerHTML="<div class='rnote' style='text-align:center;padding:22px 0'>"+(GEO.objs.length?"Нічого не знайдено за фільтром.":"Порожньо. Оберіть інструмент і намалюйте обʼєкт на карті.")+"</div>";}else{const byT={};for(const o of a)(byT[o.kind]=byT[o.kind]||[]).push(o);let h="";for(const k of GORDER){if(!byT[k])continue;h+="<div><div class='jgroup-t'><span>"+GKIND[k].g+" "+GKIND[k].uk+"</span><span>"+byT[k].length+"</span></div>"+byT[k].map(jItem).join("")+"</div>";}list.innerHTML=h;list.querySelectorAll(".jitem").forEach(el=>{const id=+el.dataset.oid;el.querySelector("[data-vis]").onclick=e=>{e.stopPropagation();const o=gobj(id);o.visible=o.visible===false?true:false;if(GEO.sel===id)renderCard();renderJournal();};el.querySelector("[data-ck]").onclick=e=>{e.stopPropagation();GEO.multi.has(id)?GEO.multi.delete(id):GEO.multi.add(id);renderJournal();};el.onclick=()=>{selectObj(id);flyTo(id);};});}}updateUndoUI();geoSave();}
+function geoGeom(o){switch(o.kind){case "marker":case "text":return {type:"Point",coordinates:o.geom};case "line":case "arrow":return {type:"LineString",coordinates:o.geom};case "polygon":return {type:"Polygon",coordinates:[o.geom]};case "rect":case "sector":return {type:"Polygon",coordinates:[ringOf(o)]};case "circle":return {type:"Point",coordinates:o.geom.center};}return null;}
+function geoExport(){const fc={type:"FeatureCollection",features:GEO.objs.map(o=>({type:"Feature",properties:{id:o.id,kind:o.kind,name:o.name,desc:o.desc,group:o.group,aff:o.aff,color:o.color,tags:o.tags,priority:o.priority,status:o.status,parent:o.parent,polyKind:o.polyKind||null,satStatus:o.satStatus||null,radius_km:o.kind==="circle"?o.geom.rkm:undefined},geometry:geoGeom(o)}))};const blob=new Blob([JSON.stringify(fc,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="delta9-geo.geojson";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast("Експортовано: "+GEO.objs.length);}
+function geoImport(file){const rd=new FileReader();rd.onload=()=>{try{const fc=JSON.parse(rd.result);if(!fc||!fc.features)throw 0;pushUndo();for(const ft of fc.features){const p=ft.properties||{},gm=ft.geometry;if(!gm)continue;let kind=p.kind,geom;if(!kind){kind=gm.type==="Point"?"marker":gm.type==="LineString"?"line":"polygon";}if(kind==="marker"||kind==="text")geom=gm.coordinates;else if(kind==="line"||kind==="arrow")geom=gm.coordinates;else if(kind==="circle")geom={center:gm.coordinates,rkm:p.radius_km||5};else if(kind==="rect"){const r=gm.coordinates[0];geom=[r[0],r[2]];}else if(kind==="sector"){kind="polygon";geom=gm.coordinates[0];}else geom=gm.coordinates[0];const id=GEO.seq++;GEO.objs.push({id,kind,geom,name:p.name||GKIND[kind].uk+" "+id,text:"",desc:p.desc||"",group:p.group||"",aff:p.aff||"neutral",color:p.color||null,tags:p.tags||[],priority:p.priority||"med",status:p.status||"active",created:new Date(),parent:null,children:[],visible:true,polyKind:p.polyKind||((kind==="polygon"||kind==="rect")?"describe":undefined),satStatus:p.satStatus||null});}renderJournal();toast("Імпортовано");}catch(e){toast("Помилка імпорту");}};rd.readAsText(file);}
+function nearestMid(o,x,y){const mids=midsOf(o);let bi=-1,bd=12;mids.forEach(mm=>{const p=map.project(mm.m);const d=Math.hypot(p.x-x,p.y-y);if(d<bd){bd=d;bi=mm.i;}});return bi;}
+function insertVertex(o,i){const g=o.geom,a=g[i],b=g[i+1];g.splice(i+1,0,[(a[0]+b[0])/2,(a[1]+b[1])/2]);if(o.kind==="polygon")g[g.length-1]=g[0].slice();}
+function removeVertex(o,i){const g=o.geom,minp=GKIND[o.kind].min||2,eff=o.kind==="polygon"?g.length-1:g.length;if(eff<=minp){toast("мінімум "+minp+" точок");return;}g.splice(i,1);if(o.kind==="polygon")g[g.length-1]=g[0].slice();}
+function attachGeoMap(){
+ map.on("dblclick",e=>{if(GEO.tool&&GKIND[GEO.tool].multi){e.preventDefault();finishDraft();}});
+ const cv=map.getCanvas();
+ cv.addEventListener("pointerdown",e=>{if(GEO.edit==null)return;const o=gobj(GEO.edit);if(!o)return;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  if(GEO.mode==="move"){const ll=map.unproject([x,y]);pushUndo();GEO.drag={move:true,last:[ll.lng,ll.lat]};try{map.dragPan.disable();}catch(_){}return;}
+  const hs=handlesOf(o);let bi=-1,bd=13;hs.forEach((h,i)=>{const p=map.project(h);const d=Math.hypot(p.x-x,p.y-y);if(d<bd){bd=d;bi=i;}});
+  if(bi>=0){pushUndo();GEO.drag={i:bi};try{map.dragPan.disable();}catch(_){}}
+  else if(GKIND[o.kind].multi){const mi=nearestMid(o,x,y);if(mi>=0){pushUndo();insertVertex(o,mi);GEO.drag={i:mi+1};try{map.dragPan.disable();}catch(_){}renderCard();}}});
+ cv.addEventListener("pointermove",e=>{if(!GEO.drag)return;const o=gobj(GEO.edit);if(!o)return;const r=cv.getBoundingClientRect();const ll=map.unproject([e.clientX-r.left,e.clientY-r.top]);if(GEO.drag.move){translate(o,ll.lng-GEO.drag.last[0],ll.lat-GEO.drag.last[1]);GEO.drag.last=[ll.lng,ll.lat];}else applyHandle(o,GEO.drag.i,[ll.lng,ll.lat]);});
+ cv.addEventListener("pointerup",()=>{if(GEO.drag){GEO.drag=null;try{map.dragPan.enable();}catch(_){}renderJournal();if(GEO.sel===GEO.edit)renderCard();}});
+ cv.addEventListener("contextmenu",e=>{if(GEO.edit==null||GEO.mode!=="vertex")return;const o=gobj(GEO.edit);if(!o||!GKIND[o.kind].multi)return;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const hs=handlesOf(o);let bi=-1,bd=13;hs.forEach((h,i)=>{const p=map.project(h);const d=Math.hypot(p.x-x,p.y-y);if(d<bd){bd=d;bi=i;}});if(bi>=0){e.preventDefault();pushUndo();removeVertex(o,bi);renderJournal();if(GEO.sel===o.id)renderCard();}});
+}
+function geoInit(){const gt=document.getElementById("geo-tools");if(!gt)return;
+ const dp=document.getElementById("gp-draw");
+ const bar=document.createElement("div");bar.className="gbar";bar.innerHTML="<button id='g-undo' disabled>↶ Відмінити</button><button id='g-redo' disabled>↷ Повторити</button>";dp.insertBefore(bar,dp.firstChild);
+ gt.innerHTML=GORDER.map(k=>"<button class='gtool' data-k='"+k+"'><span class='g'>"+GKIND[k].g+"</span>"+GKIND[k].uk+"</button>").join("");
+ gt.querySelectorAll(".gtool").forEach(b=>b.onclick=()=>{GEO.tpl=null;setTool(GEO.tool===b.dataset.k?null:b.dataset.k);});
+ const ga=document.getElementById("geo-aff");ga.innerHTML=Object.keys(AFF).map(a=>"<button class='affbtn"+(a===GEO.aff?" on":"")+"' data-a='"+a+"' style='color:"+AFF[a].col+"'><span class='dot' style='background:"+AFF[a].col+"'></span>"+AFF[a].uk+"</button>").join("");
+ ga.querySelectorAll(".affbtn").forEach(b=>b.onclick=()=>{GEO.aff=b.dataset.a;ga.querySelectorAll(".affbtn").forEach(x=>x.classList.toggle("on",x===b));});
+ const tsec=document.createElement("div");tsec.innerHTML="<div class='rt' style='margin-top:13px'>Шаблони (швидке додавання)</div><div class='gtpl' id='geo-tpl'></div>";dp.insertBefore(tsec,document.getElementById("geo-draft"));
+ const gtpl=document.getElementById("geo-tpl");gtpl.innerHTML=GTPL.map((t,i)=>"<button class='tplbtn' data-i='"+i+"'><span class='d' style='background:"+AFF[t.aff].col+"'></span>"+t.t+"</button>").join("");
+ gtpl.querySelectorAll(".tplbtn").forEach(b=>b.onclick=()=>{const t=GTPL[+b.dataset.i];GEO.aff=t.aff;ga.querySelectorAll(".affbtn").forEach(x=>x.classList.toggle("on",x.dataset.a===t.aff));GEO.tpl={name:t.t};setTool(t.k);toast("Шаблон: "+t.t+" — малюйте на карті");});
+ const jp=document.getElementById("gp-journal");const jb=document.createElement("div");jb.id="jbatch";jp.insertBefore(jb,document.getElementById("jsearch").nextSibling);
+ const ft=document.getElementById("jf-type");ft.innerHTML=GORDER.map(k=>"<span class='chip' data-t='"+k+"'>"+GKIND[k].uk+"</span>").join("");
+ ft.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{const k=c.dataset.t;GEO.filt.type.has(k)?GEO.filt.type.delete(k):GEO.filt.type.add(k);c.classList.toggle("on");renderJournal();});
+ const fa=document.getElementById("jf-aff");fa.innerHTML=Object.keys(AFF).map(a=>"<span class='chip' data-a='"+a+"'>"+AFF[a].uk+"</span>").join("");
+ fa.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{const a=c.dataset.a;GEO.filt.aff.has(a)?GEO.filt.aff.delete(a):GEO.filt.aff.add(a);c.classList.toggle("on");renderJournal();});
+ document.getElementById("jsearch").oninput=e=>{GEO.filt.q=e.target.value;renderJournal();};
+ document.getElementById("jsort").onchange=e=>{GEO.sort=e.target.value;renderJournal();};
+ document.getElementById("geo-export").onclick=geoExport;
+ const imp=document.createElement("button");imp.className="gbtn";imp.textContent="⤒ Імпорт GeoJSON";const fi=document.createElement("input");fi.type="file";fi.accept=".geojson,.json,application/json";fi.style.display="none";imp.onclick=()=>fi.click();fi.onchange=()=>{if(fi.files[0])geoImport(fi.files[0]);fi.value="";};document.getElementById("geo-export").after(imp);imp.after(fi);
+ document.getElementById("geo-clear").onclick=()=>{if(!GEO.objs.length){toast("порожньо");return;}pushUndo();GEO.objs=[];GEO.sel=null;GEO.edit=null;GEO.mode=null;GEO.multi.clear();closeCard();renderJournal();toast("Очищено");};
+ document.getElementById("g-undo").onclick=undo;document.getElementById("g-redo").onclick=redo;
+ document.querySelectorAll(".rtab").forEach(b=>b.onclick=()=>{GEO.tab=b.dataset.gtab;document.querySelectorAll(".rtab").forEach(x=>x.classList.toggle("on",x===b));document.getElementById("gp-draw").style.display=b.dataset.gtab==="draw"?"block":"none";document.getElementById("gp-journal").style.display=b.dataset.gtab==="journal"?"block":"none";if(b.dataset.gtab==="journal")renderJournal();});
+ document.addEventListener("keydown",e=>{const tg=(e.target.tagName||"").toLowerCase();if(tg==="input"||tg==="textarea")return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?redo():undo();}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo();}else if(e.key==="Escape"){if(GEO.tool)setTool(null);else if(GEO.sel)closeCard();}});
+ geoLoad();renderJournal();const gi=setInterval(()=>{if(map){clearInterval(gi);attachGeoMap();}},200);}
+geoInit();
+
+/* ===== boot ===== */
+fillSelects();buildSpeeds();setLegend("завантаження…");setPhase("setup");syncPlay();fitTL();
+window.addEventListener("resize",()=>{fitTL();if(map)map.resize();});
+window.addEventListener("orientationchange",()=>setTimeout(()=>{fitTL();if(map)map.resize();},200));
+if(window.maplibregl&&window.deck)initMap();
+else document.getElementById("loading").innerHTML="ПОМИЛКА · бібліотеки не завантажились (потрібен інтернет)";
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
